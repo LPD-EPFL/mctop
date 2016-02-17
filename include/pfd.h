@@ -76,7 +76,7 @@ static inline ticks getticks()
 
 #if !defined(PREFETCHW)
 #  if defined(__x86_64__) | defined(__i386__)
-#    define PREFETCHW(x) asm volatile("prefetchw %0" :: "m" (*(unsigned long *)x)) /* write */
+#    define PREFETCHW(x) __asm volatile("prefetchw %0" :: "m" (*(unsigned long *)x)) /* write */
 #  elif defined(__sparc__)
 #    define PREFETCHW(x) __builtin_prefetch((const void*) x, 1, 3)
 #  elif defined(__tile__)
@@ -141,14 +141,14 @@ extern  __thread ticks pfd_correction;
 
 #  define PFDI(store)				\
   {						\
-  asm volatile ("");				\
+  __asm volatile ("");				\
   _pfd_s[store] = 0;				\
   volatile ticks __s = getticks();		\
   _pfd_s[store] = __s;
 
 
 #  define PFDO(store, entry)						\
-  asm volatile ("");							\
+  __asm volatile ("");							\
   volatile ticks __e = getticks();					\
   pfd_store[store][entry] = __e - _pfd_s[store] - pfd_correction;	\
   }

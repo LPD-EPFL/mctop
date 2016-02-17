@@ -74,42 +74,84 @@ cdf_print(cdf_t* cdf)
     }
 }
 
-void
+#define CDF_CLUSTER_DEBUG 0
+#if CDF_CLUSTER_DEBUG == 1
+#  define CDF_CLUSTER_DEBUG_PRINT(args...) fprintf(stderr, args)
+#else
+#  define CDF_CLUSTER_DEBUG_PRINT(args...)
+#endif
+
+cdf_cluster_t*
 cdf_cluster(cdf_t* cdf, const int sensitivity)
 {
   cdf_cluster_point_t clusters[cdf->n_points];
 
-  size_t pprev = 0, pprev_min = 0, n_clusters = 0, median = 0, cluster_len = 0;
+  size_t pprev = 0, pprev_min = 0, n_clusters = 0, median = 0, cluster_size = 0;
   for (int i = 0; i < cdf->n_points; i++)
     {
       if (cdf->points[i].val > (pprev + sensitivity))
 	{
-	  printf("\n");
+	  CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
 	  clusters[n_clusters].idx = n_clusters;
+
+	  clusters[n_clusters].size = cluster_size;
 	  clusters[n_clusters].val_min = pprev_min;
 	  clusters[n_clusters].val_max = cdf->points[i - 1].val;
 	  clusters[n_clusters++].median = cdf->points[median].val;
 	  pprev_min = cdf->points[i].val;
 	  median = i;
-	  cluster_len = 0;
+	  cluster_size = 0;
 	}
+      CDF_CLUSTER_DEBUG_PRINT("%-3zu ", cdf->points[i].val);
       pprev = cdf->points[i].val;
-      if ((cluster_len++) & 0x1)
-	{
-	  median++;
-	}
-      printf("%-3zu ", cdf->points[i].val);
+      median += (cluster_size++) & 0x1; /* increment once every two */
     }
 
-  printf("\n");
+  CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
   clusters[n_clusters].idx = n_clusters;
+  clusters[n_clusters].size = cluster_size;
   clusters[n_clusters].val_min = pprev_min;
   clusters[n_clusters].val_max = cdf->points[cdf->n_points - 1].val;
   clusters[n_clusters++].median = cdf->points[median].val;
 
+  cdf_cluster_t* cc = malloc(sizeof(cdf_cluster_t));
+  assert(cc != NULL);
+  cc->clusters = malloc(n_clusters * sizeof(cdf_cluster_point_t));
+  assert(cc->clusters != NULL);
+
+  cc->n_clusters = n_clusters;
   for (int i = 0; i < n_clusters; i++)
     {
-      printf("**** cluster %-2d : %-5zu - %-5zu (%zu)\n",
-	     clusters[i].idx, clusters[i].val_min, clusters[i].val_max, clusters[i].median);
+      cc->clusters[i].idx = clusters[i].idx;
+      cc->clusters[i].size = clusters[i].size;
+      cc->clusters[i].val_min = clusters[i].val_min;
+      cc->clusters[i].val_max = clusters[i].val_max;
+      cc->clusters[i].median = clusters[i].median;
     }
+
+  return cc;
+}
+
+void
+cdf_cluster_free(cdf_cluster_t* cc)
+{
+  free(cc->clusters);
+  free(cc);
+  cc = NULL;
+}
+
+void
+cdf_cluster_print(cdf_cluster_t* cc)
+{
+  printf("## CDF Clusters ##############################################\n");
+  for (int i = 0; i < cc->n_clusters; i++)
+    {
+      printf("#### #%-3d : size %-5zu / range %-5zu - %-5zu / median: %-5zu #\n",
+	     cc->clusters[i].idx, 
+	     cc->clusters[i].size, 
+	     cc->clusters[i].val_min, 
+	     cc->clusters[i].val_max, 
+	     cc->clusters[i].median);
+    }
+  printf("##############################################################\n");
 }

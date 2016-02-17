@@ -32,7 +32,7 @@ static inline void
 barrier2_cross(barrier2_t* b, const int tid, const size_t round)
 {
   COMPILER_BARRIER();
-  asm volatile("mfence");
+  __asm volatile("mfence");
   int vn = round & (BARRIER2_NUM_BARRIER - 1);
   if (tid == 0)
     {
@@ -47,16 +47,16 @@ barrier2_cross(barrier2_t* b, const int tid, const size_t round)
   while (b->val[vn] != 0)
     {
       PAUSE();
-      asm volatile ("mfence");
+      __asm volatile ("mfence");
     }
-  asm volatile("mfence");
+  __asm volatile("mfence");
   COMPILER_BARRIER();
 }
 
 static inline void
 barrier2_cross_explicit(barrier2_t* b, const int tid, const size_t barrier_num)
 {
-  asm volatile("mfence");
+  __asm volatile("mfence");
   int vn = barrier_num;
   if (tid == 0)
     {
@@ -71,9 +71,9 @@ barrier2_cross_explicit(barrier2_t* b, const int tid, const size_t barrier_num)
   while (b->eval[vn] != 0)
     {
       PAUSE();
-      asm volatile ("mfence");
+      __asm volatile ("mfence");
     }
-  asm volatile("mfence");
+  __asm volatile("mfence");
   COMPILER_BARRIER();
 }
 

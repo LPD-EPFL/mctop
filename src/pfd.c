@@ -76,7 +76,7 @@ pfd_store_init(uint32_t num_entries)
       volatile uint64_t speed;
       for (speed = 0; speed < 20e7; speed++)
 	{
-	  asm volatile ("");
+	  __asm volatile ("");
 	}
 #endif	/* XEON */
 
@@ -87,7 +87,7 @@ pfd_store_init(uint32_t num_entries)
       for (i = 0; i < num_entries; i++)
 	{
 	  PFDI(0);
-	  asm volatile ("");
+	  __asm volatile ("");
 	  PFDO(0, i);
 	}
 

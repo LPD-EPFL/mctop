@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 
-#define COMPILER_BARRIER() asm volatile ("" ::: "memory")
+#define COMPILER_BARRIER() __asm volatile ("" ::: "memory")
 
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
@@ -35,7 +35,7 @@
 #  define IAF_U64(a) __sync_add_and_fetch(a,1)
 #  define DAF_U64(a) __sync_sub_and_fetch(a,1)
 
-#define PAUSE() asm volatile ("pause")
+#define PAUSE() __asm volatile ("pause")
 #endif
 
 

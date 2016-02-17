@@ -4,7 +4,7 @@ ifeq (${DEBUG},1)
 CFLAGS = -O0 -ggdb
 endif
 
-CFLAGS += -Wall
+CFLAGS += -Wall -std=c99
 
 INCLUDE = ./include
 SRCPATH = ./src

@@ -33,6 +33,7 @@ typedef struct cdf
 typedef struct cdf_cluster_point
 {
   int idx;
+  size_t size;
   uint64_t val_min;
   uint64_t val_max;
   uint64_t median;
@@ -47,7 +48,10 @@ typedef struct cdf_cluster
 cdf_t* cdf_calc(uint64_t* vals, size_t n_vals);
 void cdf_free(cdf_t* cdf);
 void cdf_print(cdf_t* cdf);
-void cdf_cluster(cdf_t* cdf, const int sensitivity);
+
+cdf_cluster_t* cdf_cluster(cdf_t* cdf, const int sensitivity);
+void cdf_cluster_free(cdf_cluster_t* cc);
+void cdf_cluster_print(cdf_cluster_t* cc);
 
 
 
