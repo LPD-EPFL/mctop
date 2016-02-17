@@ -155,3 +155,18 @@ cdf_cluster_print(cdf_cluster_t* cc)
     }
   printf("##############################################################\n");
 }
+
+inline uint64_t
+cdf_cluster_value_to_cluster_median(cdf_cluster_t* cc, const uint64_t val)
+{
+  for (int i = 0; i < cc->n_clusters; i++)
+    {
+      if (val >= cc->clusters[i].val_min && val <= cc->clusters[i].val_max)
+	{
+	  return cc->clusters[i].median;
+	}
+    }
+
+  fprintf(stderr, "[ERROR] Value %zu does not belong to cdf_cluster\n", val);
+  return 0;
+}

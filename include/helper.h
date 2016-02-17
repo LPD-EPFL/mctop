@@ -35,7 +35,21 @@
 extern int set_cpu(int cpu);
 extern int get_num_hw_ctx();
 
+static inline void*
+malloc_assert(size_t size)
+{
+  void* m = malloc(size);
+  assert(m != NULL);
+  return m;
+}
 
+static inline void*
+realloc_assert(void* old, size_t size)
+{
+  void* m = realloc(old, size);
+  assert(m != NULL);
+  return m;
+}
 
 static inline void
 print_id(size_t id, const char* format, ...)

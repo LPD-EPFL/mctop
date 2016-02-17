@@ -22,7 +22,9 @@ volatile int high_stdev_retry = 0;
 
 static cache_line_t* cache_lines_create(const size_t num);
 inline void cache_lines_destroy(cache_line_t* cl);
-void  print_lat_table(uint64_t* lat_table, const size_t n, const test_format_t test_format);
+void print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_format);
+ticks* lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
+
 
 UNUSED static uint64_t
 fai_prof(cache_line_t* cl, const volatile size_t reps)
@@ -315,8 +317,13 @@ main(int argc, char **argv)
   /* cdf_print(cdf); */
   cdf_cluster_t* cc = cdf_cluster(cdf, 25);
   cdf_cluster_print(cc);
-    
 
+  ticks* lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
+  print_lat_table(lat_table_norm, test_num_hw_ctx, test_format);
+
+  darray_t* da = darray_create();
+
+  free(lat_table_norm);
   cdf_cluster_free(cc);
   cdf_free(cdf);
   free(tds);
@@ -324,7 +331,11 @@ main(int argc, char **argv)
   free(lat_table);
 }
 
-  /*  */
+
+/* ******************************************************************************** */
+/* help functions */
+/* ******************************************************************************** */
+
 static cache_line_t*
 cache_lines_create(const size_t num)
 {
@@ -347,7 +358,7 @@ cache_lines_destroy(cache_line_t* cl)
 }
 
 void 
-print_lat_table(uint64_t* lat_table, const size_t n, const test_format_t test_format)
+print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_format)
 {
   printf("## Output ################################################################\n");
   switch (test_format)
@@ -388,3 +399,16 @@ print_lat_table(uint64_t* lat_table, const size_t n, const test_format_t test_fo
   printf("##########################################################################\n");
 }
 
+ticks*
+lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc)
+{
+  ticks* lat_table_norm = malloc(n * n * sizeof(ticks));
+  assert(lat_table_norm != NULL);
+
+  for (size_t i = 0; i < (n * n); i++)
+    {
+      lat_table_norm[i] = cdf_cluster_value_to_cluster_median(cc, lat_table[i]);
+    }
+
+  return lat_table_norm;
+}

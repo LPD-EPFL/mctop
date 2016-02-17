@@ -52,6 +52,7 @@ void cdf_print(cdf_t* cdf);
 cdf_cluster_t* cdf_cluster(cdf_t* cdf, const int sensitivity);
 void cdf_cluster_free(cdf_cluster_t* cc);
 void cdf_cluster_print(cdf_cluster_t* cc);
+uint64_t cdf_cluster_value_to_cluster_median(cdf_cluster_t* cc, const uint64_t val);
 
 
 
