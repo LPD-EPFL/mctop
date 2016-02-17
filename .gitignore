@@ -1,32 +1,34 @@
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
 
-# Precompiled Headers
-*.gch
-*.pch
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
 
 # Debug files
+# Executables
+# Libraries
+# Object files
+# Precompiled Headers
+# Shared objects (inc. Windows DLLs)
+*.a
+*.app
 *.dSYM/
+*.dll
+*.dylib
+*.elf
+*.exe
+*.gch
+*.hex
+*.i*86
+*.ko
+*.la
+*.lib
+*.lo
+*.o
+*.obj
+*.out
+*.pch
+*.so
+*.so.*
+*.x86_64
+*~
+/mctop
