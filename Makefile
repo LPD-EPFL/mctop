@@ -18,7 +18,7 @@ MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/helper.o ${SRCPATH}/barrier.o ${SRCP
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/helper.h ${SRCPATH}/barrier.o ${INCLUDE}/pfd.h ${INCLUDE}/cdf.h ${INCLUDE}/darray.h \
 		${INCLUDE}/mctop_crawler.h
 
-mctop: 	${MCTOP_OBJS} 
+mctop: 	${MCTOP_OBJS} ${INCLUDES}
 	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS}
 
 clean:
