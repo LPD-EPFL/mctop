@@ -1,3 +1,4 @@
+#include <mctop_crawler.h>
 #include <mctop.h>
 
 const int test_num_threads = 2;
@@ -6,6 +7,7 @@ size_t test_num_warmup_reps = 10000 >> 4;
 size_t test_max_stdev = 7;
 size_t test_max_stdev_max = 14;
 size_t test_num_cache_lines = 1024;
+size_t test_cdf_cluster_offset = 25;
 cache_line_t* test_cache_line = NULL;
 
 typedef enum
@@ -214,6 +216,8 @@ main(int argc, char **argv)
       // These options don't set a flag
       {"help",                      no_argument,       NULL, 'h'},
       {"num-cores",                 required_argument, NULL, 'n'},
+      {"cdf-offset",                required_argument, NULL, 'c'},
+      {"repetitions",               required_argument, NULL, 'r'},
       {"format",                    required_argument, NULL, 'f'},
       {"verbose",                   no_argument,       NULL, 'v'},
       {NULL, 0, NULL, 0}
@@ -224,7 +228,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:r:f:", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -247,6 +251,9 @@ main(int argc, char **argv)
 		 ">>> BASIC SETTINGS\n"
 		 "  -r, --repetitions <int>\n"
 		 "        Number of repetitions per iteration (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
+		 "  -c, --cdf-offset <int>\n"
+		 "        How many cycles should the min and the max elements of two adjacent core\n"
+		 "        clusters differ to consider them distinct? (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
 		 "  -f, --format <int>\n"
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
 		 "        0: c/c++ struct, 1: latency table\n"
@@ -266,6 +273,9 @@ main(int argc, char **argv)
 	case 'r':
 	  test_num_reps = atoi(optarg);
 	  break;
+	case 'c':
+	  test_cdf_cluster_offset = atoi(optarg);
+	  break;
 	case 'v':
 	  test_verbose = 1;
 	  break;
@@ -283,11 +293,9 @@ main(int argc, char **argv)
   pthread_attr_init(&attr);  /* Initialize and set thread detached attribute */
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-  thread_local_data_t* tds = (thread_local_data_t*) malloc(test_num_threads * sizeof(thread_local_data_t));
-  assert(tds != NULL);
+  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert(test_num_threads * sizeof(thread_local_data_t));
   barrier2_t* barrier2 = barrier2_create();
-  lat_table = calloc(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
-  assert(lat_table != NULL);
+  lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
 
   for(int t = 0; t < test_num_threads; t++)
     {
@@ -320,67 +328,14 @@ main(int argc, char **argv)
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
   /* cdf_print(cdf); */
-  cdf_cluster_t* cc = cdf_cluster(cdf, 25);
+  cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset);
   cdf_cluster_print(cc);
 
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
   print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
 
-  const size_t N = test_num_hw_ctx;
-  uint8_t* processed = malloc_assert(N * sizeof(uint8_t));
-  darray_t* group = darray_create();
-  for (int lvl = 1; lvl < cc->n_clusters; lvl++)
-    {
-      ticks target_lat = cc->clusters[lvl].median;
-      printf("---- processing lvl %d (%zu)\n", lvl, target_lat);
-      for (int i = 0; i < N; i++)
-	{
-	  processed[i] = 0;
-	}
-      size_t n_groups = 0;
-      for (int x = 0; x < N; x++)
-	{
-	  if (processed[x])
-	    {
-	      continue;
-	    }
+  mctop_topology_create(lat_table_norm, test_num_hw_ctx, cc);
 
-	  n_groups++;
-	  darray_add(group, x);
-	  processed[x] = 1;
-	  for (int y = x + 1; y < N; y++)
-	    {
-	      int belongs = 1;
-	      for (int w = 0; belongs && w < N; w++)
-	      	{
-	      	  if (w != x && w != y) /* w is neither x or y that are being checked */
-	      	    {
-		      if (darray_exists(group, w)) /* if w already in group => y must either  */
-			{ /* belong with y due to a smaller latency or share the latency as y */
-			  belongs = (lat_table_norm[w][y] <= target_lat);
-			}
-		      else	/* otherwise if w is in larger lat with x and y, then both x */
-			{	/* and y should have the same distance to w */
-			  belongs = (lat_table_norm[x][w] < target_lat ||
-				     lat_table_norm[y][w] < target_lat ||
-				     lat_table_norm[x][w] == lat_table_norm[y][w]);
-			}
-		    }
-	      	}
-
-	      if (belongs)
-		{
-		  darray_add(group, y);
-		  processed[y] = 1;
-		}
-	    }
-	  printf("#%zu - ", n_groups);
-	  darray_print(group);
-	  darray_empty(group);
-	}
-    }
-  darray_free(group);
-  free(processed);
 
   for (int i = 0; i < test_num_hw_ctx; i++)
     {
@@ -402,8 +357,7 @@ main(int argc, char **argv)
 static cache_line_t*
 cache_lines_create(const size_t num)
 {
-  cache_line_t* cls = malloc(num * sizeof(cache_line_t));
-  assert(cls != NULL);
+  cache_line_t* cls = malloc_assert(num * sizeof(cache_line_t));
   for (volatile size_t i = 0; i < num; i++)
     {
       cls[i].word[0] = cls[i].word[2] = cls[i].word[3] = cls[i].word[4] = 0;

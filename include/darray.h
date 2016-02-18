@@ -33,7 +33,13 @@ void darray_free(darray_t* da);
 void darray_empty(darray_t* da);
 
 void darray_add(darray_t* da, size_t elem);
+int darray_add_uniq(darray_t* da, size_t elem);
+
 int darray_exists(darray_t* da, size_t elem);
+size_t darray_get_num_elems(darray_t* da);
+size_t darray_get_elem_n(darray_t* da, size_t n);
+
+void darray_sort(darray_t* da);
 
 void darray_iter_init(darray_iter_t* dai, darray_t* da);
 int darray_iter_next(darray_iter_t* dai, size_t* elem);

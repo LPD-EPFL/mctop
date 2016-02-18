@@ -36,6 +36,17 @@ darray_add(darray_t* da, size_t elem)
   da->array[da->n_elems++] = elem;
 }
 
+int 
+darray_add_uniq(darray_t* da, size_t elem)
+{
+  if (darray_exists(da, elem))
+    {
+      return 0;
+    }
+  darray_add(da, elem);
+  return 1;
+}
+
 inline int			
 darray_exists(darray_t* da, size_t elem)
 {
@@ -49,7 +60,52 @@ darray_exists(darray_t* da, size_t elem)
   return 0;
 }
 
+inline size_t
+darray_get_num_elems(darray_t* da)
+{
+  return da->n_elems;
+}
 
+inline size_t
+darray_get_elem_n(darray_t* da, size_t n)
+{
+  assert(n < da->n_elems);
+  return da->array[n];
+}
+
+inline size_t
+darray_get_nth_elem(darray_t* da)
+{
+  return da->n_elems;
+}
+
+static inline void
+darray_swap_if_greater(size_t* arr, int a, int b)
+{
+  if (arr[a] > arr[b])
+    {
+      size_t tmp = arr[a];
+      arr[a] = arr[b];
+      arr[b] = tmp;
+    }
+}
+
+void
+darray_sort(darray_t* da)
+{
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      for (int j = i + 1; j < da->n_elems; j++)
+	{
+	  darray_swap_if_greater(da->array, i, j);
+	}
+    }
+}
+
+
+/* ******************************************************************************** */
+/* iterator */
+/* ******************************************************************************** */
 
 void
 darray_iter_init(darray_iter_t* dai, darray_t* da)

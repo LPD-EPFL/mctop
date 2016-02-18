@@ -114,10 +114,8 @@ cdf_cluster(cdf_t* cdf, const int sensitivity)
   clusters[n_clusters].val_max = cdf->points[cdf->n_points - 1].val;
   clusters[n_clusters++].median = cdf->points[median].val;
 
-  cdf_cluster_t* cc = malloc(sizeof(cdf_cluster_t));
-  assert(cc != NULL);
-  cc->clusters = malloc(n_clusters * sizeof(cdf_cluster_point_t));
-  assert(cc->clusters != NULL);
+  cdf_cluster_t* cc = malloc_assert(sizeof(cdf_cluster_t));
+  cc->clusters = malloc_assert(n_clusters * sizeof(cdf_cluster_point_t));
 
   cc->n_clusters = n_clusters;
   for (int i = 0; i < n_clusters; i++)
@@ -129,6 +127,14 @@ cdf_cluster(cdf_t* cdf, const int sensitivity)
       cc->clusters[i].median = clusters[i].median;
     }
 
+  return cc;
+}
+
+cdf_cluster_t*
+cdf_cluster_create_empty(const int n_clusters)
+{
+  cdf_cluster_t* cc = calloc_assert(1, sizeof(cdf_cluster_t));
+  cc->clusters = calloc_assert(n_clusters, sizeof(cdf_cluster_point_t));
   return cc;
 }
 
