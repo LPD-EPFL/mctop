@@ -18,6 +18,12 @@ darray_free(darray_t* da)
   da = NULL;
 }
 
+inline void
+darray_empty(darray_t* da)
+{
+  da->n_elems = 0;
+} 
+
 void
 darray_add(darray_t* da, size_t elem)
 {
@@ -35,7 +41,7 @@ darray_exists(darray_t* da, size_t elem)
 {
   for (int i = 0; i < da->n_elems; i++)
     {
-      if (unlikely(elem = da->array[i]))
+      if (unlikely(elem == da->array[i]))
 	{
 	  return 1;
 	}

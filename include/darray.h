@@ -30,6 +30,8 @@ typedef struct darray_iter
 
 darray_t* darray_create();
 void darray_free(darray_t* da);
+void darray_empty(darray_t* da);
+
 void darray_add(darray_t* da, size_t elem);
 int darray_exists(darray_t* da, size_t elem);
 

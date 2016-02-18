@@ -324,35 +324,21 @@ main(int argc, char **argv)
   cdf_cluster_print(cc);
 
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-  /* test_num_hw_ctx = 8; */
-  /* ticks lat_table_norm[8][8] = */
-  /*   { */
-  /*     { 0  , 100, 200, 200, 40 , 100, 200, 200, }, */
-  /*     { 100, 0  , 200, 200, 100, 40 , 200, 200, }, */
-  /*     { 200, 200, 0  , 100, 200, 200, 40 , 100, }, */
-  /*     { 200, 200, 100, 0  , 200, 200, 100, 40 , }, */
-  /*     { 40 , 100, 200, 200, 0  , 100, 200, 200, }, */
-  /*     { 100, 40 , 200, 200, 100, 0  , 200, 200, }, */
-  /*     { 200, 200, 40 , 100, 100, 200, 0  , 100, }, */
-  /*     { 200, 200, 100, 40 , 100, 200, 100, 0  , }, */
-  /*   }; */
-
   print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
 
-  /* int nc = 4; */
-  /* int lats[] = {0, 40, 100, 200}; */
-
-  size_t num_entities = test_num_hw_ctx;
+  const size_t N = test_num_hw_ctx;
+  uint8_t* processed = malloc_assert(N * sizeof(uint8_t));
+  darray_t* group = darray_create();
   for (int lvl = 1; lvl < cc->n_clusters; lvl++)
-  /* for (int lvl = 1; lvl < nc; lvl++) */
     {
       ticks target_lat = cc->clusters[lvl].median;
-      /* ticks target_lat = lats[lvl]; */
       printf("---- processing lvl %d (%zu)\n", lvl, target_lat);
-      darray_t* group = NULL; 
-      uint8_t* processed = calloc_assert(num_entities, sizeof(uint8_t));
+      for (int i = 0; i < N; i++)
+	{
+	  processed[i] = 0;
+	}
       size_t n_groups = 0;
-      for (int x = 0; x < num_entities; x++)
+      for (int x = 0; x < N; x++)
 	{
 	  if (processed[x])
 	    {
@@ -360,40 +346,26 @@ main(int argc, char **argv)
 	    }
 
 	  n_groups++;
-	  group = darray_create();
 	  darray_add(group, x);
 	  processed[x] = 1;
-	  for (int y = x + 1; y < num_entities; y++)
+	  for (int y = x + 1; y < N; y++)
 	    {
 	      int belongs = 1;
-	      darray_iter_t iter;
-	      darray_iter_init(&iter, group);
-	      size_t z;
-	      while (belongs && darray_iter_next(&iter, &z))
-		{
-		  belongs = (lat_table_norm[z][y] <= target_lat);
-		  if (!belongs)
-		    {
-		      /* printf("#%zu: %2zu - %2d no cause lat_table_norm = %lu > %zu\n", */
-		      /* 	     n_groups, z, y, lat_table_norm[z][y], target_lat); */
-		    }
-		}
-
-	      for (int w = 0; belongs && w < num_entities; w++)
+	      for (int w = 0; belongs && w < N; w++)
 	      	{
-	      	  if (w == x || w == y || darray_exists(group, w))
+	      	  if (w != x && w != y) /* w is neither x or y that are being checked */
 	      	    {
-	      	      continue;
-	      	    }
-		  
-	      	  belongs = (lat_table_norm[x][w] < target_lat ||
-			     lat_table_norm[y][w] < target_lat ||
-			     lat_table_norm[x][w] == lat_table_norm[y][w]);
-	      	  if (!belongs)
-	      	    {
-		      /* printf("#%zu: %2d - %2d no cause unequal lat towards %d\n", */
-		      /* 	     n_groups, x, y, w); */
-	      	    }
+		      if (darray_exists(group, w)) /* if w already in group => y must either  */
+			{ /* belong with y due to a smaller latency or share the latency as y */
+			  belongs = (lat_table_norm[w][y] <= target_lat);
+			}
+		      else	/* otherwise if w is in larger lat with x and y, then both x */
+			{	/* and y should have the same distance to w */
+			  belongs = (lat_table_norm[x][w] < target_lat ||
+				     lat_table_norm[y][w] < target_lat ||
+				     lat_table_norm[x][w] == lat_table_norm[y][w]);
+			}
+		    }
 	      	}
 
 	      if (belongs)
@@ -404,20 +376,17 @@ main(int argc, char **argv)
 	    }
 	  printf("#%zu - ", n_groups);
 	  darray_print(group);
-	  darray_free(group);
+	  darray_empty(group);
 	}
-      free(processed);
     }
+  darray_free(group);
+  free(processed);
 
-
-
-
-
-  /* for (int i = 0; i < test_num_hw_ctx; i++) */
-  /*   { */
-  /*     free(lat_table_norm[i]); */
-  /*   } */
-  /* free(lat_table_norm); */
+  for (int i = 0; i < test_num_hw_ctx; i++)
+    {
+      free(lat_table_norm[i]);
+    }
+  free(lat_table_norm);
   cdf_cluster_free(cc);
   cdf_free(cdf);
   free(tds);
@@ -517,3 +486,17 @@ lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc)
 
   return lat_table_norm;
 }
+
+
+  /* test_num_hw_ctx = 8; */
+  /* ticks lat_table_norm[8][8] = */
+  /*   { */
+  /*     { 0  , 100, 200, 200, 40 , 100, 200, 200, }, */
+  /*     { 100, 0  , 200, 200, 100, 40 , 200, 200, }, */
+  /*     { 200, 200, 0  , 100, 200, 200, 40 , 100, }, */
+  /*     { 200, 200, 100, 0  , 200, 200, 100, 40 , }, */
+  /*     { 40 , 100, 200, 200, 0  , 100, 200, 200, }, */
+  /*     { 100, 40 , 200, 200, 100, 0  , 200, 200, }, */
+  /*     { 200, 200, 40 , 100, 100, 200, 0  , 100, }, */
+  /*     { 200, 200, 100, 40 , 100, 200, 100, 0  , }, */
+  /*   }; */
