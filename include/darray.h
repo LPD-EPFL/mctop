@@ -31,7 +31,11 @@ typedef struct darray_iter
 darray_t* darray_create();
 void darray_free(darray_t* da);
 void darray_add(darray_t* da, size_t elem);
+int darray_exists(darray_t* da, size_t elem);
+
 void darray_iter_init(darray_iter_t* dai, darray_t* da);
 int darray_iter_next(darray_iter_t* dai, size_t* elem);
+
+void darray_print(darray_t* da);
 
 #endif	/* _DARRAY_H_ */

@@ -51,6 +51,14 @@ realloc_assert(void* old, size_t size)
   return m;
 }
 
+static inline void*
+calloc_assert(size_t n, size_t size)
+{
+  void* m = calloc(n, size);
+  assert(m != NULL);
+  return m;
+}
+
 static inline void
 print_id(size_t id, const char* format, ...)
 {

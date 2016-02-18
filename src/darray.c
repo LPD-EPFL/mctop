@@ -30,6 +30,21 @@ darray_add(darray_t* da, size_t elem)
   da->array[da->n_elems++] = elem;
 }
 
+inline int			
+darray_exists(darray_t* da, size_t elem)
+{
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      if (unlikely(elem = da->array[i]))
+	{
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+
+
 void
 darray_iter_init(darray_iter_t* dai, darray_t* da)
 {
@@ -46,4 +61,15 @@ darray_iter_next(darray_iter_t* dai, size_t* elem)
     }
   *elem = dai->darray->array[dai->curr++];
   return 1;
+}
+
+
+void
+darray_print(darray_t* da)
+{
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      printf("%-3zu ", da->array[i]);
+    }
+  printf("\n");
 }

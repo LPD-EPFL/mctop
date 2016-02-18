@@ -13,6 +13,11 @@ typedef enum
     C_STRUCT,
     LAT_TABLE,
   } test_format_t;
+typedef enum
+  {
+    AR_1D,
+    AR_2D,
+  } array_format_t;
 test_format_t test_format = 0;
 int test_verbose = 0;
 int test_num_hw_ctx;
@@ -22,8 +27,8 @@ volatile int high_stdev_retry = 0;
 
 static cache_line_t* cache_lines_create(const size_t num);
 inline void cache_lines_destroy(cache_line_t* cl);
-void print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_format);
-ticks* lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
+void print_lat_table(void* lat_table, const size_t n, const test_format_t test_format, array_format_t format);
+ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
 
 
 UNUSED static uint64_t
@@ -310,7 +315,7 @@ main(int argc, char **argv)
 	}
     }
 
-  print_lat_table(lat_table, test_num_hw_ctx, test_format);
+  print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D);
 
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
@@ -318,12 +323,101 @@ main(int argc, char **argv)
   cdf_cluster_t* cc = cdf_cluster(cdf, 25);
   cdf_cluster_print(cc);
 
-  ticks* lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-  print_lat_table(lat_table_norm, test_num_hw_ctx, test_format);
+  ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
+  /* test_num_hw_ctx = 8; */
+  /* ticks lat_table_norm[8][8] = */
+  /*   { */
+  /*     { 0  , 100, 200, 200, 40 , 100, 200, 200, }, */
+  /*     { 100, 0  , 200, 200, 100, 40 , 200, 200, }, */
+  /*     { 200, 200, 0  , 100, 200, 200, 40 , 100, }, */
+  /*     { 200, 200, 100, 0  , 200, 200, 100, 40 , }, */
+  /*     { 40 , 100, 200, 200, 0  , 100, 200, 200, }, */
+  /*     { 100, 40 , 200, 200, 100, 0  , 200, 200, }, */
+  /*     { 200, 200, 40 , 100, 100, 200, 0  , 100, }, */
+  /*     { 200, 200, 100, 40 , 100, 200, 100, 0  , }, */
+  /*   }; */
 
-  darray_t* da = darray_create();
+  print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
 
-  free(lat_table_norm);
+  /* int nc = 4; */
+  /* int lats[] = {0, 40, 100, 200}; */
+
+  size_t num_entities = test_num_hw_ctx;
+  for (int lvl = 1; lvl < cc->n_clusters; lvl++)
+  /* for (int lvl = 1; lvl < nc; lvl++) */
+    {
+      ticks target_lat = cc->clusters[lvl].median;
+      /* ticks target_lat = lats[lvl]; */
+      printf("---- processing lvl %d (%zu)\n", lvl, target_lat);
+      darray_t* group = NULL; 
+      uint8_t* processed = calloc_assert(num_entities, sizeof(uint8_t));
+      size_t n_groups = 0;
+      for (int x = 0; x < num_entities; x++)
+	{
+	  if (processed[x])
+	    {
+	      continue;
+	    }
+
+	  n_groups++;
+	  group = darray_create();
+	  darray_add(group, x);
+	  processed[x] = 1;
+	  for (int y = x + 1; y < num_entities; y++)
+	    {
+	      int belongs = 1;
+	      darray_iter_t iter;
+	      darray_iter_init(&iter, group);
+	      size_t z;
+	      while (belongs && darray_iter_next(&iter, &z))
+		{
+		  belongs = (lat_table_norm[z][y] <= target_lat);
+		  if (!belongs)
+		    {
+		      /* printf("#%zu: %2zu - %2d no cause lat_table_norm = %lu > %zu\n", */
+		      /* 	     n_groups, z, y, lat_table_norm[z][y], target_lat); */
+		    }
+		}
+
+	      for (int w = 0; belongs && w < num_entities; w++)
+	      	{
+	      	  if (w == x || w == y || darray_exists(group, w))
+	      	    {
+	      	      continue;
+	      	    }
+		  
+	      	  belongs = (lat_table_norm[x][w] < target_lat ||
+			     lat_table_norm[y][w] < target_lat ||
+			     lat_table_norm[x][w] == lat_table_norm[y][w]);
+	      	  if (!belongs)
+	      	    {
+		      /* printf("#%zu: %2d - %2d no cause unequal lat towards %d\n", */
+		      /* 	     n_groups, x, y, w); */
+	      	    }
+	      	}
+
+	      if (belongs)
+		{
+		  darray_add(group, y);
+		  processed[y] = 1;
+		}
+	    }
+	  printf("#%zu - ", n_groups);
+	  darray_print(group);
+	  darray_free(group);
+	}
+      free(processed);
+    }
+
+
+
+
+
+  /* for (int i = 0; i < test_num_hw_ctx; i++) */
+  /*   { */
+  /*     free(lat_table_norm[i]); */
+  /*   } */
+  /* free(lat_table_norm); */
   cdf_cluster_free(cc);
   cdf_free(cdf);
   free(tds);
@@ -358,8 +452,10 @@ cache_lines_destroy(cache_line_t* cl)
 }
 
 void 
-print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_format)
+print_lat_table(void* lt, const size_t n, const test_format_t test_format, array_format_t format)
 {
+  ticks* lat_table_1d = (ticks*) lt;
+  ticks** lat_table_2d = (ticks**) lt;
   printf("## Output ################################################################\n");
   switch (test_format)
     {
@@ -370,7 +466,8 @@ print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_forma
 	  printf("  { ");
 	  for (int y = 0; y < n; y++)
 	    {
-	      printf("%-3zu, ", lat_table_2d_get(lat_table, n, x, y));
+	      ticks lat = (format == AR_2D) ? lat_table_2d[x][y] : lat_table_2d_get(lat_table_1d, n, x, y);
+	      printf("%-3zu, ", lat);
 	    }
 	  printf("},\n");
 	}
@@ -390,7 +487,8 @@ print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_forma
 	  printf("[%02d] ", x);
 	  for (int y = 0; y < n; y++)
 	    {
-	      printf("%-3zu ", lat_table_2d_get(lat_table, n, x, y));
+	      ticks lat = (format == AR_2D) ? lat_table_2d[x][y] : lat_table_2d_get(lat_table_1d, n, x, y);
+	      printf("%-3zu ", lat);
 	    }
 	  printf("\n");
 	}
@@ -399,15 +497,22 @@ print_lat_table(ticks* lat_table, const size_t n, const test_format_t test_forma
   printf("##########################################################################\n");
 }
 
-ticks*
+ticks**
 lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc)
 {
-  ticks* lat_table_norm = malloc(n * n * sizeof(ticks));
-  assert(lat_table_norm != NULL);
-
-  for (size_t i = 0; i < (n * n); i++)
+  ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
+  for (int i = 0; i < n ; i++)
     {
-      lat_table_norm[i] = cdf_cluster_value_to_cluster_median(cc, lat_table[i]);
+      lat_table_norm[i] = malloc_assert(n * sizeof(ticks));
+    }
+
+  for (size_t x = 0; x < n; x++)
+    {
+      for (size_t y = 0; y < n; y++)
+	{
+	  ticks lat = lat_table_2d_get(lat_table, n, x, y);
+	  lat_table_norm[x][y] = cdf_cluster_value_to_cluster_median(cc, lat);
+	}
     }
 
   return lat_table_norm;
