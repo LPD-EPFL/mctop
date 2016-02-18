@@ -31,4 +31,5 @@
 *.so.*
 *.x86_64
 *~
+/cscope.files
 /mctop
