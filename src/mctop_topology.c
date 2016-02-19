@@ -2,14 +2,14 @@
 #include <darray.h>
 
 cdf_cluster_t* mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N);
-mctopo_t* mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs);
-hwc_group_t* mctop_hwc_group_create(mctopo_t* t, uint n_hwcs, darray_t* ids, uint id, uint lvl, uint latency);
-socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint latency);
+mctopo_t* mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt);
+hwc_group_t* mctop_hwc_group_create(mctopo_t* t, uint n_hwcs, darray_t* ids, uint id, uint lvl, uint lat, const int has_smt);
+socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int is_smt);
 void mctop_siblings_create(mctopo_t* topo, darray_t* hwc_ids, uint* seq_id, uint lvl, uint latency);
 
 
 mctopo_t*
-mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc)
+mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, const int is_smt)
 {
   int free_cc = 0;
   if (cc == NULL)
@@ -20,7 +20,7 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc)
 
   const uint n_sockets = 4;
   const uint hwc_per_socket = N / n_sockets;
-  mctopo_t* topo = mctopo_create(n_sockets, cc, N);
+  mctopo_t* topo = mctopo_create(n_sockets, cc, N, is_smt);
 
   uint8_t* processed = malloc_assert(N * sizeof(uint8_t));
   darray_t* group = darray_create();
@@ -78,12 +78,12 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc)
 	  if (group_size < hwc_per_socket)
 	    {
 	      /* printf("** within socket lvl = %u\n", lvl); */
-	      mctop_hwc_group_create(topo, group_size, group, seq_id, lvl, target_lat);
+	      mctop_hwc_group_create(topo, group_size, group, seq_id, lvl, target_lat, is_smt);
 	    }
 	  else if (group_size == hwc_per_socket)
 	    {
 	      /* printf("** socket lvl = %u\n", lvl); */
-	      mctop_socket_create(topo, group_size, group, seq_id, lvl, target_lat);
+	      mctop_socket_create(topo, group_size, group, seq_id, lvl, target_lat, is_smt);
 	    }
 	  else
 	    {
@@ -108,7 +108,8 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc)
 void
 mctopo_print(mctopo_t* topo)
 {
-  printf("|||| Topo: %u hwc / %u sockets / %u levels\n", topo->n_hwcs, topo->n_sockets, topo->n_levels);
+  printf("|||| Topo: %u hwc / %u sockets / %u levels / SMT: %d\n", 
+	 topo->n_hwcs, topo->n_sockets, topo->n_levels, topo->is_smt);
   printf("|||||| Latencies: ");
   for (int i = 0; i < topo->n_levels; i++)
     {
@@ -173,9 +174,10 @@ mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N)
 /* ******************************************************************************** */
 
 mctopo_t*
-mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs)
+mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt)
 {
   mctopo_t* topo = calloc_assert(1, sizeof(mctopo_t));
+  topo->is_smt = is_smt;
 
   topo->n_sockets = n_sockets;
   topo->sockets = calloc_assert(topo->n_sockets, sizeof(socket_t));
@@ -194,13 +196,11 @@ mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs)
       topo->hwcs[i].id = i;
       topo->hwcs[i].lvl = 0;      
       topo->hwcs[i].phy_id = i;
+      topo->hwcs[i].type = is_smt ? HW_CONTEXT : CORE;
     }
   
   return topo;
 }
-
-
-#define MCTOP_LVL_ID_MULTI 10000
 
 static inline uint
 mctop_create_id(uint seq_id, uint lvl)
@@ -222,12 +222,12 @@ mctop_get_hwc_n(mctopo_t* topo, uint id)
 }
 
 hwc_group_t*
-mctop_hwc_group_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat)
+mctop_hwc_group_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int has_smt)
 {
   hwc_group_t* group = calloc_assert(1, sizeof(hwc_group_t));
   group->id = mctop_create_id(seq_id, lvl);
   group->lvl = lvl;
-  group->type = HWC_GROUP;	/* could be core as well -- FIXME */
+  group->type = (has_smt && lvl == 1) ? CORE : HWC_GROUP;
   group->latency = lat;
   group->n_hwcs = n_hwcs;
   group->hwcs = (hw_context_t**) malloc_assert(group->n_hwcs * sizeof(hw_context_t*));
@@ -257,13 +257,14 @@ mctop_hwc_group_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_
 }
 
 socket_t*
-mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint latency)
+mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint latency, const int is_smt)
 {
   socket_t* socket = topo->sockets + seq_id;
   socket->id = mctop_create_id(seq_id, lvl);
   socket->lvl = lvl;
   socket->type = SOCKET;
   socket->latency = latency;
+  socket->is_smt = is_smt;
   socket->n_hwcs = n_hwcs;
   socket->hwcs = (hw_context_t**) malloc_assert(socket->n_hwcs * sizeof(hw_context_t*));
   darray_iter_t iter;

@@ -363,7 +363,7 @@ main(int argc, char **argv)
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
   lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
 
-#if 1
+#if 0
   for(int t = 0; t < test_num_threads; t++)
     {
       tds[t].id = t;
@@ -399,13 +399,11 @@ main(int argc, char **argv)
   print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
 
   ticks min_lat = cdf_cluster_get_min_latency(cc);
-  printf("SMT -- min lat %zu \n", min_lat);
   int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
   if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
     {
       fprintf(stderr, "** Cannot find 2 hw contects to check for STM! Single core machine?\n");
     }
-  printf("SMT %d vs %d \n", possible_smt_hwcs[0], possible_smt_hwcs[1]);
 
   /* SMT detection */
   for(int t = 0; t < test_num_smt_threads; t++)
@@ -421,7 +419,6 @@ main(int argc, char **argv)
 	  exit(-1);
 	}
     }
-    
     
   /* Free attribute and wait for the other threads */
   pthread_attr_destroy(&attr);
@@ -445,24 +442,24 @@ main(int argc, char **argv)
 
   printf("## CPU is SMT: %d\n", is_smt_cpu);
 
-  mctopo_construct(lat_table_norm, test_num_hw_ctx, cc);
+  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, cc, is_smt_cpu);
+#else
+  int is_smt_cpu = test_num_hw_ctx > 48;
+  const int n = test_num_hw_ctx;
+  ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
+  for (int i = 0; i < n ; i++)
+    {
+      lat_table_norm[i] = malloc_assert(n * sizeof(ticks));
+    }
+  for (int x = 0; x < test_num_hw_ctx; x++)
+    {
+      for (int y = 0; y < test_num_hw_ctx; y++)
+  	{
+  	  lat_table_norm[x][y] = _lat_table[x][y];
+  	}
+    }
+  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, NULL, is_smt_cpu);
 #endif
-
-  /* const int n = test_num_hw_ctx; */
-  /* ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*)); */
-  /* for (int i = 0; i < n ; i++) */
-  /*   { */
-  /*     lat_table_norm[i] = malloc_assert(n * sizeof(ticks)); */
-  /*   } */
-  /* for (int x = 0; x < test_num_hw_ctx; x++) */
-  /*   { */
-  /*     for (int y = 0; y < test_num_hw_ctx; y++) */
-  /* 	{ */
-  /* 	  lat_table_norm[x][y] = _lat_table[x][y]; */
-  /* 	} */
-  /*   } */
-
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, NULL);
   mctopo_print(topo);
 
 #if 0

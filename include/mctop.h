@@ -7,8 +7,10 @@
 #include <helper.h>
 #include <cdf.h>
 
-struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc);
+struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, const int is_smt);
 void mctopo_print(struct mctopo* topo);
+
+#define MCTOP_LVL_ID_MULTI 10000
 
 typedef enum
   {
