@@ -130,6 +130,20 @@ cdf_cluster(cdf_t* cdf, const int sensitivity)
   return cc;
 }
 
+uint64_t
+cdf_cluster_get_min_latency(cdf_cluster_t* cc)
+{
+  uint64_t min_lat = cc->clusters[0].median;
+  for (int i = 1; i < cc->n_clusters; i++)
+    {
+      if (min_lat == 0 || (cc->clusters[i].median < min_lat))
+	{
+	  min_lat = cc->clusters[i].median;
+	}
+    }
+  return min_lat;
+}
+
 cdf_cluster_t*
 cdf_cluster_create_empty(const int n_clusters)
 {

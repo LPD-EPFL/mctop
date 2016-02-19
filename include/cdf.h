@@ -54,6 +54,7 @@ cdf_cluster_t* cdf_cluster_create_empty(const int n_clusters);
 
 void cdf_cluster_free(cdf_cluster_t* cc);
 void cdf_cluster_print(cdf_cluster_t* cc);
+uint64_t cdf_cluster_get_min_latency(cdf_cluster_t* cc);
 uint64_t cdf_cluster_value_to_cluster_median(cdf_cluster_t* cc, const uint64_t val);
 
 
