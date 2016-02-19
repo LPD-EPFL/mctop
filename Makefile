@@ -8,7 +8,7 @@ CFLAGS += -Wall -std=c99
 
 INCLUDE = include
 SRCPATH = src
-LDFLAGS = -lrt -lm -pthread -L.
+LDFLAGS = -lrt -lm -pthread -lnuma -L.
 VFLAGS = -D_GNU_SOURCE
 
 default: mctop

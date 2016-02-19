@@ -102,6 +102,16 @@ darray_sort(darray_t* da)
     }
 }
 
+void
+darray_copy(darray_t* to, darray_t* from)
+{
+  darray_empty(to);
+  DARRAY_FOR_EACH(from, i)
+    {
+      darray_add(to, DARRAY_GET_N(from, i));
+    }
+}
+
 /* ******************************************************************************** */
 /* iterator */
 /* ******************************************************************************** */
@@ -134,3 +144,4 @@ darray_print(darray_t* da)
     }
   printf("\n");
 }
+

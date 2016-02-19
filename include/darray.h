@@ -40,9 +40,16 @@ size_t darray_get_num_elems(darray_t* da);
 size_t darray_get_elem_n(darray_t* da, size_t n);
 
 void darray_sort(darray_t* da);
+void darray_copy(darray_t* to, darray_t* from);
+
 
 void darray_iter_init(darray_iter_t* dai, darray_t* da);
 int darray_iter_next(darray_iter_t* dai, size_t* elem);
+
+#define DARRAY_FOR_EACH(da, idx)		\
+  for (int idx = 0; idx < (da)->n_elems; idx++)
+#define DARRAY_GET_N(da, idx)			\
+  (da)->array[idx]
 
 void darray_print(darray_t* da);
 

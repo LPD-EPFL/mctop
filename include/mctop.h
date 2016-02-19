@@ -27,19 +27,20 @@ typedef struct hwc_gs hwc_group_t;
 
 typedef struct mctopo
 {
-  uint n_sockets;		/* num. of sockets/nodes */
-  socket_t* sockets;		/* pointer to sockets/nodes */
-  uint is_smt;			/* is SMT enabled CPU */
   uint n_levels;		/* num. of latency lvls */
   uint* latencies;		/* latency per level */
   uint n_hwcs;			/* num. of hwcs in this machine */
+  uint socket_level;		/* level of sockets */
+  uint n_sockets;		/* num. of sockets/nodes */
+  socket_t* sockets;		/* pointer to sockets/nodes */
+  uint is_smt;			/* is SMT enabled CPU */
   struct hw_context* hwcs;	/* pointers to hwcs */
 } mctopo_t;
 
 typedef struct hwc_gs		/* group / socket */
 {
   uint id;			/* mctop id */
-  uint lvl;			/* latency hierarchy lvl */
+  uint level;			/* latency hierarchy lvl */
   mctop_type_t type;		/* HWC_GROUP or SOCKET */
   uint latency;			/* comm. latency within group */
   union
@@ -51,7 +52,7 @@ typedef struct hwc_gs		/* group / socket */
   uint n_hwcs;			/* num. of hwcs descendants */
   struct hw_context** hwcs;	/* descendant hwcs */
   uint n_children;		/* num. of hwc_group descendants */
-  struct hwc_gs* children;	/* pointer to children hwcgroup */
+  struct hwc_gs** children;	/* pointer to children hwcgroup */
   struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
   uint n_siblings;		/* Socket: number of other sockets */
   struct sibling** siblings;	/* Group = NULL - no siblings for groups */
@@ -61,7 +62,7 @@ typedef struct hwc_gs		/* group / socket */
 typedef struct sibling
 {
   uint id;			/* needed?? */
-  uint lvl;			/* latency hierarchy lvl */
+  uint level;			/* latency hierarchy lvl */
   uint latency;			/* comm. latency across this hop */
   socket_t* from;		/* from -->sibling--> to */
   socket_t* to;			/* to   -->sibling--> from */
@@ -70,7 +71,7 @@ typedef struct sibling
 typedef struct hw_context
 {
   uint id;			/* mctop id */
-  uint lvl;			/* latency hierarchy lvl */
+  uint level;			/* latency hierarchy lvl */
   uint phy_id;			/* physical OS is */
   socket_t* socket;		/* pointer to parent socket */
   hwc_group_t* parent;		/* pointer to parent hwcgroup */
