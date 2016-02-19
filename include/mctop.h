@@ -10,13 +10,23 @@
 struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc);
 void mctopo_print(struct mctopo* topo);
 
+typedef enum
+  {
+    HW_CONTEXT,
+    CORE,
+    HWC_GROUP,
+    SOCKET,
+  } mctop_type_t;
+
 
 typedef unsigned int uint;
+typedef struct hwc_gs socket_t;
+typedef struct hwc_gs hwc_group_t;
 
 typedef struct mctopo
 {
   uint n_sockets;		/* num. of sockets/nodes */
-  struct socket* sockets;	/* pointer to sockets/nodes */
+  socket_t* sockets;		/* pointer to sockets/nodes */
   uint is_smt;			/* is SMT enabled CPU */
   uint n_levels;		/* num. of latency lvls */
   uint* latencies;		/* latency per level */
@@ -24,20 +34,27 @@ typedef struct mctopo
   struct hw_context* hwcs;	/* pointers to hwcs */
 } mctopo_t;
 
-typedef struct socket
+typedef struct hwc_gs		/* group / socket */
 {
   uint id;			/* mctop id */
   uint lvl;			/* latency hierarchy lvl */
-  uint node_id;			/* local node id */
-  uint latency;			/* comm. latency within socket */
-  uint is_smt;			/* is SMT enabled CPU */
+  mctop_type_t type;		/* HWC_GROUP or SOCKET */
+  uint latency;			/* comm. latency within group */
+  union
+  {
+    socket_t* socket;		/* Group: pointer to parent socket */
+    uint node_id;		/* Socket: Glocal node id */
+    uint is_smt;		/* Socket: is SMT enabled CPU */
+  };
   uint n_hwcs;			/* num. of hwcs descendants */
   struct hw_context** hwcs;	/* descendant hwcs */
   uint n_children;		/* num. of hwc_group descendants */
-  struct hwc_group* children;	/* pointer to children hwcgroup */
-  uint n_siblings;		/* number of other sockets */
-  struct sibling** siblings;	/* pointers to other sockets, sorted from the closest */
-} socket_t;
+  struct hwc_gs* children;	/* pointer to children hwcgroup */
+  struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
+  uint n_siblings;		/* Socket: number of other sockets */
+  struct sibling** siblings;	/* Group = NULL - no siblings for groups */
+				/* Socket: pointers to other sockets, sorted closest 1st */
+} hwc_gs_t;
 
 typedef struct sibling
 {
@@ -48,20 +65,6 @@ typedef struct sibling
   socket_t* to;			/* to   -->sibling--> from */
 } sibling_t;
 
-typedef struct hwc_group
-{
-  uint id;			/* mctop id */
-  uint lvl;			/* latency hierarchy lvl */
-  uint latency;			/* comm. latency within group */
-  socket_t* socket;		/* pointer to parent socket */
-  uint n_hwcs;			/* num. of hwcs descendants */
-  struct hw_context** hwcs;	/* descendant hwcs */
-  struct hwc_group* parent;	/* pointer to parent hwcgroup */
-  uint n_children;		/* num. of hwc_group descendants */
-  struct hwc_group* children;	/* pointer to children hwcgroup */
-  uint is_core;			/* is it a physical core (if SMT) */
-} hwc_group_t;
-
 typedef struct hw_context
 {
   uint id;			/* mctop id */
@@ -69,7 +72,7 @@ typedef struct hw_context
   uint phy_id;			/* physical OS is */
   socket_t* socket;		/* pointer to parent socket */
   hwc_group_t* parent;		/* pointer to parent hwcgroup */
-  uint is_smt;			/* is it SMT hw context? */
+  mctop_type_t type;		/* HW_CONTEXT or CORE? */
 } hw_context_t;
 
 
