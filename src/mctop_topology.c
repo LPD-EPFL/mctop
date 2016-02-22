@@ -3,6 +3,7 @@
 #include <numa.h>
 
 cdf_cluster_t* mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N);
+
 mctopo_t* mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt);
 hwc_group_t* mctop_hwc_group_create(mctopo_t* t, uint n_hwcs, darray_t* ids, uint id, uint lvl, uint lat, const int has_smt);
 socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int is_smt);
@@ -11,7 +12,7 @@ void mctopo_fix_children_links(mctopo_t* topo);
 void mctopo_fix_horizontal_links(mctopo_t* topo);
 
 mctopo_t*
-mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, const int is_smt)
+mctopo_construct(uint64_t** lat_table_norm, const size_t N, const uint n_sockets, cdf_cluster_t* cc, const int is_smt)
 {
   int free_cc = 0;
   if (cc == NULL)
@@ -20,8 +21,6 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
       free_cc = 1;
     }
 
-  const uint n_sockets = numa_num_task_nodes();
-  /* const uint n_sockets = 1; //numa_num_task_nodes(); */
   const uint hwc_per_socket = N / n_sockets;
   mctopo_t* topo = mctopo_create(n_sockets, cc, N, is_smt);
 
@@ -31,7 +30,6 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
     {
       uint seq_id = 0;
       uint64_t target_lat = cc->clusters[lvl].median;
-      /* printf("---- processing lvl %d (%zu)\n", lvl, target_lat); */
       for (int i = 0; i < N; i++)
 	{
 	  processed[i] = 0;
@@ -52,7 +50,6 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
 	      int belongs = 1;
 	      for (int w = 0; belongs && w < N; w++)
 	      	{
-		  /* w != x &&  */
 	      	  if (w != y) /* w is not y that is being checked */
 	      	    {
 		      if (darray_exists(group, w)) /* if w already in group => y must either  */
@@ -74,9 +71,6 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
 		  processed[y] = 1;
 		}
 	    }
-	  /* printf("#%zu - ", n_groups); */
-	  /* darray_print(group); */
-	  
 	  size_t group_size = darray_get_num_elems(group);
 	  if (group_size < hwc_per_socket) /* within socket */
 	    {

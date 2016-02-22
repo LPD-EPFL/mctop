@@ -26,6 +26,7 @@ typedef enum
 test_format_t test_format = 0;
 int test_verbose = 0;
 int test_num_hw_ctx;
+int test_num_sockets = -1;
 ticks* lat_table;
 volatile int high_stdev_retry = 0;
 
@@ -280,6 +281,7 @@ main(int argc, char **argv)
       // These options don't set a flag
       {"help",                      no_argument,       NULL, 'h'},
       {"num-cores",                 required_argument, NULL, 'n'},
+      {"num-sockets",               required_argument, NULL, 's'},
       {"cdf-offset",                required_argument, NULL, 'c'},
       {"repetitions",               required_argument, NULL, 'r'},
       {"format",                    required_argument, NULL, 'f'},
@@ -292,7 +294,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -334,6 +336,9 @@ main(int argc, char **argv)
 	case 'n':
 	  test_num_hw_ctx = atoi(optarg);
 	  break;
+	case 's':
+	  test_num_sockets = atoi(optarg);
+	  break;
 	case 'r':
 	  test_num_reps = atoi(optarg);
 	  break;
@@ -351,6 +356,11 @@ main(int argc, char **argv)
 	}
     }
 
+
+  if (test_num_sockets < 0)
+    {
+      test_num_sockets = numa_num_task_nodes();
+    }
 
   pthread_t threads[test_num_threads];
   pthread_attr_t attr;
@@ -441,8 +451,7 @@ main(int argc, char **argv)
     }
 
   printf("## CPU is SMT: %d\n", is_smt_cpu);
-
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, cc, is_smt_cpu);
+  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, test_num_sockets, cc, is_smt_cpu);
 #else
   int is_smt_cpu = 1;
   const int n = test_num_hw_ctx;

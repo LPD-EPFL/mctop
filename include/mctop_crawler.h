@@ -6,6 +6,10 @@
 #include <pthread.h>
 #include <getopt.h>
 
+#if __x86_64__
+#include <numa.h>
+#endif
+
 #include <helper.h>
 #include <barrier.h>
 #include <pfd.h>
