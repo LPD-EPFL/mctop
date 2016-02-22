@@ -363,7 +363,7 @@ main(int argc, char **argv)
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
   lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
 
-#if 0
+#if 1
   for(int t = 0; t < test_num_threads; t++)
     {
       tds[t].id = t;
@@ -455,7 +455,7 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
   	{
-  	  lat_table_norm[x][y] = _lat_table1[x][y];
+  	  lat_table_norm[x][y] = _lat_table[x][y];
   	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, NULL, is_smt_cpu);

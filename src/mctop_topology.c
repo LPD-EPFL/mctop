@@ -20,8 +20,8 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
       free_cc = 1;
     }
 
-  /* const uint n_sockets = numa_num_task_nodes(); */
-  const uint n_sockets = 1; //numa_num_task_nodes();
+  const uint n_sockets = numa_num_task_nodes();
+  /* const uint n_sockets = 1; //numa_num_task_nodes(); */
   const uint hwc_per_socket = N / n_sockets;
   mctopo_t* topo = mctopo_create(n_sockets, cc, N, is_smt);
 
@@ -31,7 +31,7 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
     {
       uint seq_id = 0;
       uint64_t target_lat = cc->clusters[lvl].median;
-      printf("---- processing lvl %d (%zu)\n", lvl, target_lat);
+      /* printf("---- processing lvl %d (%zu)\n", lvl, target_lat); */
       for (int i = 0; i < N; i++)
 	{
 	  processed[i] = 0;
@@ -74,8 +74,8 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
 		  processed[y] = 1;
 		}
 	    }
-	  printf("#%zu - ", n_groups);
-	  darray_print(group);
+	  /* printf("#%zu - ", n_groups); */
+	  /* darray_print(group); */
 	  
 	  size_t group_size = darray_get_num_elems(group);
 	  if (group_size < hwc_per_socket) /* within socket */
@@ -113,35 +113,39 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
 void
 mctopo_print(mctopo_t* topo)
 {
-  printf("TTTTTTTTTTTT MCTOP Topology: #HW contexts: %u | #Sockets: %u | Socket lvl: %u | SMT: %d \n", 
+  printf("|====== MCTOP Topology: #HW contexts: %u | #Sockets: %u | Socket lvl: %u | SMT: %d \n", 
 	 topo->n_hwcs, topo->n_sockets, topo->socket_level, topo->is_smt);
-  printf("TTTTTTTTTTTT #Levels: %u | Latencies: ", topo->n_levels);
+  printf("|====== #Levels: %u | Latencies: ", topo->n_levels);
   for (int i = 0; i < topo->n_levels; i++)
     {
-      printf("%u ", topo->latencies[i]);
+      printf("%-4u ", topo->latencies[i]);
     }
   printf("\n");
 
   /* hwc level */
   int l = 0;
-  printf("TTTTTTTT Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
+  printf("  |==== Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
 	 l, topo->latencies[l], l, mctop_get_type_desc(topo->hwcs[0].type));
-  printf("TTTT ");
+  printf("    |== ");
   for (int i = 0; i < topo->n_hwcs; i++)
     {
-      printf("%u ", topo->hwcs[i].id);
+      printf("%-4u ", topo->hwcs[i].id);
+      if ((i != (topo->n_hwcs - 1)) && ((i + 1) & 15) == 0)
+	{
+	  printf("\n        ");
+	}
     }
   printf("\n");
 
   for (int l = 1; l <= topo->socket_level; l++)
     {
       hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
-      printf("TTTTTTTT Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
+      printf("  |====  Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
 	     l, topo->latencies[l], l - 1, mctop_get_type_desc(gs->type));
-      printf("TTTT ID       Members\n");
+      printf("    |== ID       Members\n");
       while (gs != NULL)
 	{
-	  printf("TTTT " MCTOP_ID_PRINTER "   ", MCTOP_ID_PRINT(gs->id));
+	  printf("    |== " MCTOP_ID_PRINTER "   ", MCTOP_ID_PRINT(gs->id));
 	  for (int i = 0; i < gs->n_children; i++)
 	    {
 	      printf(MCTOP_ID_PRINTER "  ", MCTOP_ID_PRINT(gs->children[i]->id));
@@ -154,13 +158,13 @@ mctopo_print(mctopo_t* topo)
   /* siblings */
   for (int l = topo->socket_level + 1; l < topo->n_levels; l++)
     {
-      printf("TTTTTTTT Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
+      printf("  |====  Level %u | Latency: %-4u | Ref level: %u | Type: %s\n",
 	     l, topo->latencies[l], topo->socket_level, mctop_get_type_desc(CROSS_SOCKET));
-      printf("TTTT ID       Members\n");
+      printf("    |== ID       Members\n");
       sibling_t* sibling = mctop_get_first_sibling_lvl(topo, l);
       while (sibling != NULL)
 	{
-	  printf("TTTT "MCTOP_ID_PRINTER"   "MCTOP_ID_PRINTER"  "MCTOP_ID_PRINTER"\n", 
+	  printf("    |== "MCTOP_ID_PRINTER"   "MCTOP_ID_PRINTER"  "MCTOP_ID_PRINTER"\n", 
 		 MCTOP_ID_PRINT(sibling->id), MCTOP_ID_PRINT(sibling->left->id), MCTOP_ID_PRINT(sibling->right->id));
 	  sibling = sibling->next;
 	}
@@ -309,14 +313,6 @@ mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id,
 	}
     }
 
-  printf("Socket %u groups: ", socket->id);
-  for (int i = 0; i < pgroups->n_elems; i++)
-    {
-      hwc_group_t* cur = (hwc_group_t*) pgroups->array[i];
-      printf("%u ", cur->id);
-    }
-  printf("\n");
-
   darray_free(pgroups);
   return socket;
 }
@@ -377,8 +373,6 @@ mctop_siblings_create(mctopo_t* topo, darray_t* hwc_ids, uint* seq_id, uint lvl,
 void
 mctopo_fix_children_links(mctopo_t* topo)
 {
-  int n_lvls_fix = topo->n_levels - topo->socket_level;
-  printf("** need to fix %d levels\n", n_lvls_fix);
   for (int s = 0; s < topo->n_sockets; s++)
     {
       socket_t* socket = topo->sockets + s;
