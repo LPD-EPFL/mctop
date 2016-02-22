@@ -8,6 +8,7 @@ hwc_group_t* mctop_hwc_group_create(mctopo_t* t, uint n_hwcs, darray_t* ids, uin
 socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int is_smt);
 void mctop_siblings_create(mctopo_t* topo, darray_t* hwc_ids, uint* seq_id, uint lvl, uint latency);
 void mctopo_fix_children_links(mctopo_t* topo);
+void mctopo_fix_horizontal_links(mctopo_t* topo);
 
 mctopo_t*
 mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, const int is_smt)
@@ -20,6 +21,7 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
     }
 
   const uint n_sockets = numa_num_task_nodes();
+  /* const uint n_sockets = 1; //numa_num_task_nodes(); */
   const uint hwc_per_socket = N / n_sockets;
   mctopo_t* topo = mctopo_create(n_sockets, cc, N, is_smt);
 
@@ -98,6 +100,7 @@ mctopo_construct(uint64_t** lat_table_norm, const size_t N, cdf_cluster_t* cc, c
   free(processed);
 
   mctopo_fix_children_links(topo);
+  mctopo_fix_horizontal_links(topo);
 
   if (free_cc)
     {
@@ -118,34 +121,22 @@ mctopo_print(mctopo_t* topo)
       printf("%u ", topo->latencies[i]);
     }
   printf("\n");
-  hw_context_t* hwc = topo->hwcs;
-  printf("%d -> ", hwc->id);
-  hwc_gs_t* gs = hwc->parent;
-  do
+  for (int s = 0; s < topo->n_sockets; s++)
     {
-      printf("%d -> ", gs->id);
-      gs = gs->parent;
+      socket_t* socket = topo->sockets + s;
+      printf("|||||| Socket #%d: ", socket->id);
+      for (int c = 0; c < socket->n_children; c++)
+  	{
+  	  /* hwc_gs_t* cur = socket->children[c]; */
+  	  /* do */
+  	  /*   { */
+  	  /*     printf("%u ", cur->id); */
+  	  /*   } */
+  	  /* while (cur->n_children); */
+  	}
+
+      printf("\n");
     }
-  while (gs != NULL);
-
-  printf("\n");
-
-  /* for (int s = 0; s < topo->n_sockets; s++) */
-  /*   { */
-  /*     socket_t* socket = topo->sockets + s; */
-  /*     printf("|||||| Socket #%d: ", socket->id); */
-  /*     for (int c = 0; c < socket->n_children; c++) */
-  /* 	{ */
-  /* 	  hwc_gs_t* cur = socket->children[c]; */
-  /* 	  do */
-  /* 	    { */
-  /* 	      printf("%u ", cur->id); */
-  /* 	    } */
-  /* 	  while (cur->n_children); */
-  /* 	} */
-
-  /*     printf("\n"); */
-  /*   } */
 }
 
 
@@ -423,4 +414,79 @@ mctopo_fix_children_links(mctopo_t* topo)
       darray_free(children);
       darray_free(parents);
     }
+}
+
+void
+mctopo_fix_horizontal_links(mctopo_t* topo)
+{
+  darray_t* smt_hwcs = darray_create();
+  hw_context_t* hwc_prev_socket = NULL;
+  for (int s = 0; s < topo->n_sockets; s++)
+    {
+      socket_t* socket = topo->sockets + s;
+      hw_context_t* hwc_cur = socket->hwcs[0];
+      if (hwc_prev_socket != NULL)
+	{
+	  hwc_prev_socket->next = hwc_cur;
+	}
+      int r;
+      for (r = 1;  r < socket->n_hwcs; r++)
+	{
+	  if (mctop_are_hwcs_same_core(hwc_cur, socket->hwcs[r]))
+	    {
+	      darray_add(smt_hwcs, (uintptr_t) socket->hwcs[r]);
+	    }
+	  else
+	    {
+	      hwc_cur->next = socket->hwcs[r];
+	      hwc_cur = hwc_cur->next;
+	    }
+	}
+
+      DARRAY_FOR_EACH(smt_hwcs, i)
+	{
+	  hw_context_t* hwc = (hw_context_t*) DARRAY_GET_N(smt_hwcs, i);
+	  hwc_cur->next = hwc;
+	  hwc_cur = hwc_cur->next;
+	}
+      hwc_prev_socket = hwc_cur;
+
+      darray_empty(smt_hwcs);
+    }
+
+  darray_t* hwgs = smt_hwcs;	// just a synonym
+  hw_context_t* hwc_cur = topo->hwcs;
+  while (hwc_cur != NULL)
+    {
+      darray_add_uniq(hwgs, (uintptr_t) hwc_cur->parent);
+      hwc_cur = hwc_cur->next;
+    }
+
+  int do_next_lvl = 0;
+
+  do
+    {
+      DARRAY_FOR_EACH_FROM(hwgs, i, 1)
+	{
+	  hwc_gs_t* gsp = (hwc_gs_t*) DARRAY_GET_N(hwgs, i - 1);
+	  hwc_gs_t* gsc = (hwc_gs_t*) DARRAY_GET_N(hwgs, i);
+	  gsp->next = gsc;
+	}
+      hwc_gs_t* first = (hwc_gs_t*) darray_get_elem_n(hwgs, 0);
+  
+      do_next_lvl = 0;
+      if (first->parent != NULL)
+	{
+	  do_next_lvl = 1;
+	  darray_empty(hwgs);
+	  while (first != NULL)
+	    {
+	      darray_add_uniq(hwgs, (uintptr_t) first->parent);
+	      first = first->next;
+	    }
+	}
+    }
+  while (do_next_lvl);
+
+  darray_free(smt_hwcs);
 }

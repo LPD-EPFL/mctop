@@ -14,7 +14,7 @@ VFLAGS = -D_GNU_SOURCE
 default: mctop
 
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/helper.o ${SRCPATH}/barrier.o ${SRCPATH}/pfd.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o \
-		${SRCPATH}/mctop_topology.o
+		${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/helper.h ${SRCPATH}/barrier.o ${INCLUDE}/pfd.h ${INCLUDE}/cdf.h ${INCLUDE}/darray.h \
 		${INCLUDE}/mctop_crawler.h
 

@@ -444,7 +444,7 @@ main(int argc, char **argv)
 
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, cc, is_smt_cpu);
 #else
-  int is_smt_cpu = test_num_hw_ctx > 48;
+  int is_smt_cpu = 1;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
   for (int i = 0; i < n ; i++)

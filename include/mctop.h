@@ -57,6 +57,7 @@ typedef struct hwc_gs		/* group / socket */
   uint n_siblings;		/* Socket: number of other sockets */
   struct sibling** siblings;	/* Group = NULL - no siblings for groups */
 				/* Socket: pointers to other sockets, sorted closest 1st */
+  struct hwc_gs* next;		/* link groups of a level to a list */
 } hwc_gs_t;
 
 typedef struct sibling
@@ -76,7 +77,15 @@ typedef struct hw_context
   socket_t* socket;		/* pointer to parent socket */
   hwc_group_t* parent;		/* pointer to parent hwcgroup */
   mctop_type_t type;		/* HW_CONTEXT or CORE? */
+  struct hw_context* next;	/* link hwcs to a list */
 } hw_context_t;
+
+
+/* ******************************************************************************** */
+/* MCTOP CONTROL IF */
+/* ******************************************************************************** */
+
+uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 
 
 #endif	/* __H_MCTOP__ */
