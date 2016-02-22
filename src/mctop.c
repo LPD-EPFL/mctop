@@ -455,7 +455,7 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
   	{
-  	  lat_table_norm[x][y] = _lat_table[x][y];
+  	  lat_table_norm[x][y] = _lat_table1[x][y];
   	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, NULL, is_smt_cpu);
