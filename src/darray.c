@@ -6,7 +6,7 @@ darray_create()
   darray_t* da = malloc_assert(sizeof(darray_t));
   da->n_elems = 0;
   da->size = DARRAY_MIN_SIZE;
-  da->array = malloc_assert(DARRAY_MIN_SIZE * sizeof(size_t));
+  da->array = malloc_assert(DARRAY_MIN_SIZE * sizeof(uintptr_t));
   return da;
 }
 
@@ -25,19 +25,19 @@ darray_empty(darray_t* da)
 } 
 
 void
-darray_add(darray_t* da, size_t elem)
+darray_add(darray_t* da, uintptr_t elem)
 {
   if (unlikely(da->n_elems == da->size))
     {
       size_t size_new = DARRAY_GROW_MUL * da->size;
-      da->array = realloc_assert(da->array, size_new * sizeof(size_t));
+      da->array = realloc_assert(da->array, size_new * sizeof(uintptr_t));
       da->size = size_new;
     }
   da->array[da->n_elems++] = elem;
 }
 
 int 
-darray_add_uniq(darray_t* da, size_t elem)
+darray_add_uniq(darray_t* da, uintptr_t elem)
 {
   if (darray_exists(da, elem))
     {
@@ -48,7 +48,7 @@ darray_add_uniq(darray_t* da, size_t elem)
 }
 
 inline int			
-darray_exists(darray_t* da, size_t elem)
+darray_exists(darray_t* da, uintptr_t elem)
 {
   for (int i = 0; i < da->n_elems; i++)
     {
@@ -66,17 +66,11 @@ darray_get_num_elems(darray_t* da)
   return da->n_elems;
 }
 
-inline size_t
-darray_get_elem_n(darray_t* da, size_t n)
+inline uintptr_t
+darray_get_elem_n(darray_t* da, uintptr_t n)
 {
   assert(n < da->n_elems);
   return da->array[n];
-}
-
-inline size_t
-darray_get_nth_elem(darray_t* da)
-{
-  return da->n_elems;
 }
 
 static inline void
@@ -84,7 +78,7 @@ darray_swap_if_greater(size_t* arr, int a, int b)
 {
   if (arr[a] > arr[b])
     {
-      size_t tmp = arr[a];
+      uintptr_t tmp = arr[a];
       arr[a] = arr[b];
       arr[b] = tmp;
     }
@@ -124,7 +118,7 @@ darray_iter_init(darray_iter_t* dai, darray_t* da)
 }
 
 inline int			/* error or OK */
-darray_iter_next(darray_iter_t* dai, size_t* elem)
+darray_iter_next(darray_iter_t* dai, uintptr_t* elem)
 {
   if (dai->curr >= dai->darray->n_elems)
     {
