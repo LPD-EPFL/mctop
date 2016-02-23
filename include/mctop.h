@@ -64,12 +64,7 @@ typedef struct hwc_gs		/* group / socket */
   uint level;			/* latency hierarchy lvl */
   mctop_type_t type;		/* HWC_GROUP or SOCKET */
   uint latency;			/* comm. latency within group */
-  union
-  {
-    socket_t* socket;		/* Group: pointer to parent socket */
-    uint node_id;		/* Socket: Glocal node id */
-    uint is_smt;		/* Socket: is SMT enabled CPU */
-  };
+  socket_t* socket;		/* Group: pointer to parent socket */
   struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
   uint n_hwcs;			/* num. of hwcs descendants */
   struct hw_context** hwcs;	/* descendant hwcs */

@@ -324,7 +324,6 @@ mctop_socket_create(mctopo_t* topo,
   socket->level = lvl;
   socket->type = SOCKET;
   socket->latency = latency;
-  socket->is_smt = is_smt;
   socket->n_hwcs = n_hwcs;
   socket->hwcs = (hw_context_t**) malloc_assert(socket->n_hwcs * sizeof(hw_context_t*));
   socket->n_nodes = topo->n_sockets;
