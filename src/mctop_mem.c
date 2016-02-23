@@ -14,7 +14,7 @@ void*
 mctop_mem_alloc_local(size_t size, int node) 
 {
   void* mem;
-  if (node > 0)
+  if (node >= 0)
     {
       mem = numa_alloc_onnode(size, node);
     }
