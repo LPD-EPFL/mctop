@@ -12,6 +12,7 @@ size_t test_max_stdev = 7;
 size_t test_max_stdev_max = 14;
 size_t test_num_cache_lines = 1024;
 size_t test_cdf_cluster_offset = 25;
+int test_num_clusters_hint = 0;
 cache_line_t* test_cache_line = NULL;
 
 typedef enum
@@ -504,6 +505,7 @@ main(int argc, char **argv)
       {"mem",                       required_argument, NULL, 'm'},
       {"num-sockets",               required_argument, NULL, 's'},
       {"cdf-offset",                required_argument, NULL, 'c'},
+      {"num-clusters",              required_argument, NULL, 'i'},
       {"repetitions",               required_argument, NULL, 'r'},
       {"format",                    required_argument, NULL, 'f'},
       {"verbose",                   no_argument,       NULL, 'v'},
@@ -515,7 +517,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:i:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -554,6 +556,9 @@ main(int argc, char **argv)
 		 "        Up to how many hardware contexts to run on (default=all cores)\n"
 		 "  -s, --num-sockets <int>\n"
 		 "        How many sockets (i.e., NUMA nodes) to assume if -n is given (default=all sockets)\n"
+		 "  -i, --num-clusters <int>\n"
+		 "        Hint on how many latency groups to look for (default=disabled). For example, on a 2-socket\n"
+		 "        Intel server with HyperThreads, we expect 4 groups (i.e., hyperthread, core, socket, cross socket)."
 		 ">>> AUXILLIARY SETTINGS\n"
 		 "  -h, --help\n"
 		 "        Print this message\n"
@@ -565,7 +570,7 @@ main(int argc, char **argv)
 	  test_num_hw_ctx = atoi(optarg);
 	  break;
 	case 'm':
-	  test_do_mem = 1;
+	  test_do_mem = atoi(optarg);
 	  break;
 	case 's':
 	  test_num_sockets = atoi(optarg);
@@ -575,6 +580,9 @@ main(int argc, char **argv)
 	  break;
 	case 'c':
 	  test_cdf_cluster_offset = atoi(optarg);
+	  break;
+	case 'i':
+	  test_num_clusters_hint = atoi(optarg);
 	  break;
 	case 'v':
 	  test_verbose = 1;
@@ -604,6 +612,7 @@ main(int argc, char **argv)
   printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
   printf("#   # Cores        : %d\n", test_num_hw_ctx);
   printf("#   # Sockets      : %d\n", test_num_sockets);
+  printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
   printf("# Progress\n");
   pthread_t threads_mem[test_num_sockets];
 
@@ -697,7 +706,15 @@ main(int argc, char **argv)
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
   /* cdf_print(cdf); */
-  cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset);
+  cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset, test_num_clusters_hint);
+  if (cc == NULL)
+    {
+      fprintf(stderr, "*** Error: Could not create an appropriate clusterings of cores. Rerun mctop with:\n"
+	      "\t1. more repetitions (-r)\n"
+	      "\t2. on time mem. latency measurements (-m1)\n");
+      exit(-1);
+    }
+
   cdf_cluster_print(cc);
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
   print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
@@ -768,6 +785,7 @@ main(int argc, char **argv)
 
   if (test_do_mem == ON_TOPO)
     {
+      printf("## Calculating memory latencies on topology\n");
       mctopo_mem_latencies_calc(topo, mem_lat_table);
     }
 

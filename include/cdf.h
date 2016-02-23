@@ -49,7 +49,7 @@ cdf_t* cdf_calc(uint64_t* vals, size_t n_vals);
 void cdf_free(cdf_t* cdf);
 void cdf_print(cdf_t* cdf);
 
-cdf_cluster_t* cdf_cluster(cdf_t* cdf, const int sensitivity);
+cdf_cluster_t* cdf_cluster(cdf_t* cdf, const uint sensitivity, const uint target_n_clusters);
 cdf_cluster_t* cdf_cluster_create_empty(const int n_clusters);
 
 void cdf_cluster_free(cdf_cluster_t* cc);

@@ -82,50 +82,73 @@ cdf_print(cdf_t* cdf)
 #endif
 
 cdf_cluster_t*
-cdf_cluster(cdf_t* cdf, const int sensitivity)
+cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
 {
-  cdf_cluster_point_t clusters[cdf->n_points];
+  uint tries = 25;
+  int sensitivity = sens;
+  cdf_cluster_t* cc = NULL;
 
-  size_t pprev = 0, pprev_min = 0, n_clusters = 0, median = 0, cluster_size = 0;
-  for (int i = 0; i < cdf->n_points; i++)
+  do
     {
-      if (cdf->points[i].val > (pprev + sensitivity) || (pprev == 0 && cdf->points[i].val > 0))
+      cdf_cluster_point_t clusters[cdf->n_points];
+
+      size_t pprev = 0, pprev_min = 0, n_clusters = 0, median = 0, cluster_size = 0;
+      for (int i = 0; i < cdf->n_points; i++)
 	{
-	  CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
-	  clusters[n_clusters].idx = n_clusters;
+	  if (cdf->points[i].val > (pprev + sensitivity) || (pprev == 0 && cdf->points[i].val > 0))
+	    {
+	      CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
+	      clusters[n_clusters].idx = n_clusters;
 
-	  clusters[n_clusters].size = cluster_size;
-	  clusters[n_clusters].val_min = pprev_min;
-	  clusters[n_clusters].val_max = cdf->points[i - 1].val;
-	  clusters[n_clusters++].median = cdf->points[median].val;
-	  pprev_min = cdf->points[i].val;
-	  median = i;
-	  cluster_size = 0;
+	      clusters[n_clusters].size = cluster_size;
+	      clusters[n_clusters].val_min = pprev_min;
+	      clusters[n_clusters].val_max = cdf->points[i - 1].val;
+	      clusters[n_clusters++].median = cdf->points[median].val;
+	      pprev_min = cdf->points[i].val;
+	      median = i;
+	      cluster_size = 0;
+	    }
+	  CDF_CLUSTER_DEBUG_PRINT("%-3zu ", cdf->points[i].val);
+	  pprev = cdf->points[i].val;
+	  median += (cluster_size++) & 0x1; /* increment once every two */
 	}
-      CDF_CLUSTER_DEBUG_PRINT("%-3zu ", cdf->points[i].val);
-      pprev = cdf->points[i].val;
-      median += (cluster_size++) & 0x1; /* increment once every two */
+
+      CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
+      clusters[n_clusters].idx = n_clusters;
+      clusters[n_clusters].size = cluster_size;
+      clusters[n_clusters].val_min = pprev_min;
+      clusters[n_clusters].val_max = cdf->points[cdf->n_points - 1].val;
+      clusters[n_clusters++].median = cdf->points[median].val;
+
+
+      cc = malloc_assert(sizeof(cdf_cluster_t));
+      cc->clusters = malloc_assert(n_clusters * sizeof(cdf_cluster_point_t));
+
+      cc->n_clusters = n_clusters;
+      for (int i = 0; i < n_clusters; i++)
+	{
+	  cc->clusters[i].idx = clusters[i].idx;
+	  cc->clusters[i].size = clusters[i].size;
+	  cc->clusters[i].val_min = clusters[i].val_min;
+	  cc->clusters[i].val_max = clusters[i].val_max;
+	  cc->clusters[i].median = clusters[i].median;
+	}
+
+      if (target_n_clusters && n_clusters != target_n_clusters)
+	{
+	  cdf_cluster_print(cc);
+	  cdf_cluster_free(cc);
+	  sensitivity -= (target_n_clusters - n_clusters);
+	  fprintf(stderr, "## Warning: Found %zu clusters, expected %u. Retrying with sensitivity: %-2u!\n",
+		  n_clusters, target_n_clusters, sensitivity);
+	  cc = NULL;
+	}
+      else
+	{
+	  break;
+	}
     }
-
-  CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
-  clusters[n_clusters].idx = n_clusters;
-  clusters[n_clusters].size = cluster_size;
-  clusters[n_clusters].val_min = pprev_min;
-  clusters[n_clusters].val_max = cdf->points[cdf->n_points - 1].val;
-  clusters[n_clusters++].median = cdf->points[median].val;
-
-  cdf_cluster_t* cc = malloc_assert(sizeof(cdf_cluster_t));
-  cc->clusters = malloc_assert(n_clusters * sizeof(cdf_cluster_point_t));
-
-  cc->n_clusters = n_clusters;
-  for (int i = 0; i < n_clusters; i++)
-    {
-      cc->clusters[i].idx = clusters[i].idx;
-      cc->clusters[i].size = clusters[i].size;
-      cc->clusters[i].val_min = clusters[i].val_min;
-      cc->clusters[i].val_max = clusters[i].val_max;
-      cc->clusters[i].median = clusters[i].median;
-    }
+  while (sensitivity > 0 && tries-- > 0);
 
   return cc;
 }
