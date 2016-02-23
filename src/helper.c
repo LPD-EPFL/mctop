@@ -50,7 +50,6 @@ get_num_hw_ctx()
   	}
       nc++;
     }
-  printf("** found #cores: %d\n", nc);
   return nc;
 }
 

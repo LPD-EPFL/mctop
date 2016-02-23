@@ -16,6 +16,7 @@ cache_line_t* test_cache_line = NULL;
 
 typedef enum
   {
+    NONE,
     C_STRUCT,
     LAT_TABLE,
   } test_format_t;
@@ -24,7 +25,7 @@ typedef enum
     AR_1D,
     AR_2D,
   } array_format_t;
-test_format_t test_format = 0;
+test_format_t test_format = NONE;
 int test_verbose = 0;
 int test_num_hw_ctx;
 ticks* lat_table = NULL;
@@ -128,6 +129,122 @@ crawl(void* param)
 {
   thread_local_data_t* tld = (thread_local_data_t*) param;
   const int tid = tld->id;
+  barrier2_t* barrier2 = tld->barrier2;
+  
+  const double test_completion_perc_step = 100.0 / test_num_hw_ctx;
+  double test_completion_perc = 0;
+  double test_completion_time = 0;
+
+  size_t _test_num_reps = test_num_reps; /* local copy */
+  size_t _test_num_warmup_reps = test_num_warmup_reps; /* local copy */
+  const size_t _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
+  int max_stdev = test_max_stdev;
+
+  PFDINIT(_test_num_reps);
+  volatile size_t sum = 0;
+
+  for (int x = 0; x < test_num_hw_ctx; x++)
+    {
+      clock_t _clock_start = clock();
+      if (tid == 0)
+	{
+	  set_cpu(x); 
+	  PFDTERM_INIT(_test_num_reps);
+	  cache_lines_destroy(test_cache_line, _test_cl_size, 0);
+	  test_cache_line = cache_lines_create(_test_cl_size, -1);
+	}
+
+      /* pthread_barrier_wait(barrier_sleep); */
+      barrier2_cross_explicit(barrier2, tid, 8);
+      volatile cache_line_t* cache_line = test_cache_line;
+
+      size_t history_med[2] = { 0 };
+      for (int y = x + 1; y < test_num_hw_ctx; y++)
+	{
+	  ID1_DO(set_cpu(y); PFDTERM_INIT(_test_num_reps));
+
+	  dvfs_warmup(cache_line, _test_num_warmup_reps, barrier2, tid);
+
+	  for (size_t rep = 0; rep < _test_num_reps; rep++)
+	    {
+	      barrier2_cross_explicit(barrier2, tid, 5);
+	      if (tid == 0)
+		{
+		  sum += ATOMIC_OP(cache_line, rep);
+		  barrier2_cross(barrier2, tid, rep);
+		}
+	      else
+		{
+		  barrier2_cross(barrier2, tid, rep);      
+		  sum += ATOMIC_OP(cache_line, rep);
+		}
+	    }
+
+	  abs_deviation_t ad;							
+	  get_abs_deviation(pfd_store[0], _test_num_reps, &ad);
+	  double stdev = 100 * (1 - (ad.avg - ad.std_dev) / ad.avg);
+	  size_t median = ad.median;
+	  if (tid == 0)
+	    {
+	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
+		{
+		  high_stdev_retry = 1;
+		}
+
+	      if (unlikely(test_verbose))
+		{
+		  printf(" [%02d->%02d] median %-4zu with stdv %-7.2f%% | limit %2d%% %s\n",
+			 x, y, median, stdev, max_stdev,  high_stdev_retry ? "(high)" : "");
+		}
+	      lat_table_2d_set(lat_table, test_num_hw_ctx, x, y, median);
+	      history_med[0] = history_med[1];
+	      history_med[1] = median;
+	    }
+	  else
+	    {
+	      lat_table_2d_set(lat_table, test_num_hw_ctx, y, x, median);
+	    }
+
+	  barrier2_cross_explicit(barrier2, tid, 6);
+	  if (high_stdev_retry)
+	    {
+	      barrier2_cross_explicit(barrier2, tid, 7);
+	      if (++max_stdev > test_max_stdev_max)
+		{
+		  max_stdev = test_max_stdev_max;
+		}
+	      high_stdev_retry = 0;
+	      y--;
+	    }
+	  else
+	    {
+	      max_stdev = test_max_stdev;
+	      history_med[0] = history_med[1] = 0;
+	    }
+	}
+
+      if (tid == 0)
+	{
+	  clock_t _clock_stop = clock();
+	  double sec = (_clock_stop - _clock_start) / (double) CLOCKS_PER_SEC;
+	  test_completion_time += sec;
+	  test_completion_perc += test_completion_perc_step;
+	  printf(" %6.1f%% completed in %8.1f secs (step took %7.1f secs) \n",
+		 test_completion_perc, test_completion_time, sec);
+	  assert(sum != 0);
+	}
+    }
+
+  ID0_DO(cache_lines_destroy(test_cache_line, _test_cl_size, 0));
+  PFDTERM();
+  return NULL;
+}
+
+void*
+crawl_mem(void* param)
+{
+  thread_local_data_t* tld = (thread_local_data_t*) param;
+  const int tid = tld->id;
   pthread_barrier_t* barrier_sleep = tld->barrier;
   barrier2_t* barrier2 = tld->barrier2;
   
@@ -156,51 +273,39 @@ crawl(void* param)
 
 	  /* mem. latency measurements */
 	  int node_local = -1;
-	  if (unlikely(_do_mem == ON_TIME))
+	  volatile ticks mem_lats[_num_sockets];
+	  for (int n = 0; n < _num_sockets; n++)
 	    {
-	      printf("%02d : ", x);
-	      volatile ticks mem_lats[_num_sockets];
-	      for (int n = 0; n < _num_sockets; n++)
+	      volatile uint64_t* l = node_mem[n];
+	      volatile uint64_t* mem = NULL;
+	      if (unlikely(_mem_on_demand))
 		{
-		  volatile uint64_t* l = node_mem[n];
-		  volatile uint64_t* mem = NULL;
-		  if (unlikely(_mem_on_demand))
-		    {
-		      mem = numa_alloc_onnode(test_mem_size, n);
-		      ll_random_create(mem, test_mem_size);
-		      l = mem;
-		    }
-		  mem_lats[n] = ll_random_traverse(l, test_mem_reps);
-		  if (unlikely(_mem_on_demand))
-		    {
-		      numa_free((void*) mem, test_mem_size);
-		    }
+		  mem = numa_alloc_onnode(test_mem_size, n);
+		  ll_random_create(mem, test_mem_size);
+		  l = mem;
 		}
-	      ticks mem_lat_min = -1;
-	      for (int n = 0; n < _num_sockets; n++)
+	      mem_lats[n] = ll_random_traverse(l, test_mem_reps);
+	      if (unlikely(_mem_on_demand))
 		{
-		  if (mem_lats[n] < mem_lat_min)
-		    {
-		      mem_lat_min = mem_lats[n];
-		      node_local = n;
-		    }
-		  mem_lat_table[x][n] = mem_lats[n];
+		  numa_free((void*) mem, test_mem_size);
 		}
-	      for (int n = 0; n < _num_sockets; n++)
-		{
-		  printf("%4zu%s ", mem_lats[n], (n == node_local) ? "*" : " ");
-		}
-	      printf("\n");
-
-	      numa_set_preferred(mem_lat_min);
 	    }
-
+	  ticks mem_lat_min = -1;
+	  for (int n = 0; n < _num_sockets; n++)
+	    {
+	      if (mem_lats[n] < mem_lat_min)
+		{
+		  mem_lat_min = mem_lats[n];
+		  node_local = n;
+		}
+	      mem_lat_table[x][n] = mem_lats[n];
+	    }
+	  numa_set_preferred(mem_lat_min);
 	  cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
 	  test_cache_line = cache_lines_create(_test_cl_size, node_local);
 	}
 
-      /* pthread_barrier_wait(barrier_sleep); */
-      barrier2_cross_explicit(barrier2, tid, 8);
+      pthread_barrier_wait(barrier_sleep);
       volatile cache_line_t* cache_line = test_cache_line;
 
       size_t history_med[2] = { 0 };
@@ -493,7 +598,13 @@ main(int argc, char **argv)
       test_num_sockets = numa_num_task_nodes();
     }
 
-  printf("# Sockets %d\n", test_num_sockets);
+  printf("# MCTOP Settings:\n");
+  printf("#   Repetitions    : %zu\n", test_num_reps);
+  printf("#   Do-memory      : %d\n", test_do_mem);
+  printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
+  printf("#   # Cores        : %d\n", test_num_hw_ctx);
+  printf("#   # Sockets      : %d\n", test_num_sockets);
+  printf("# Progress\n");
   pthread_t threads_mem[test_num_sockets];
 
   if (test_do_mem == ON_TIME)
@@ -551,7 +662,15 @@ main(int argc, char **argv)
       tds[t].id = t;
       tds[t].barrier = barrier;
       tds[t].barrier2 = barrier2;
-      int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
+      int rc;
+      if (test_do_mem == ON_TIME)
+	{
+	  rc = pthread_create(&threads[t], &attr, crawl_mem, tds + t);
+	}
+      else
+	{
+	  rc = pthread_create(&threads[t], &attr, crawl, tds + t);
+	}
       if (rc)
 	{
 	  printf("ERROR; return code from pthread_create() is %d\n", rc);
@@ -573,7 +692,7 @@ main(int argc, char **argv)
 
 
 
-  /* print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D); */
+  print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D);
 
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
@@ -629,8 +748,8 @@ main(int argc, char **argv)
 
 
 #else
-  int is_smt_cpu = is_smt1;
-  test_num_sockets = n_sockets1;
+  int is_smt_cpu = is_smt4;
+  test_num_sockets = n_sockets4;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
   for (int i = 0; i < n ; i++)
@@ -641,7 +760,7 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
 	{
-	  lat_table_norm[x][y] = _lat_table1[x][y];
+	  lat_table_norm[x][y] = _lat_table4[x][y];
 	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
@@ -710,7 +829,10 @@ print_lat_table(void* lt, const size_t n, const test_format_t test_format, array
 {
   ticks* lat_table_1d = (ticks*) lt;
   ticks** lat_table_2d = (ticks**) lt;
-  printf("## Output ################################################################\n");
+  if (test_format != NONE)
+    {
+      printf("## Output ################################################################\n");
+    }
   switch (test_format)
     {
     case C_STRUCT:
@@ -747,8 +869,13 @@ print_lat_table(void* lt, const size_t n, const test_format_t test_format, array
 	  printf("\n");
 	}
       break;
+    case NONE:
+      break;
     }
-  printf("##########################################################################\n");
+  if (test_format != NONE)
+    {
+      printf("##########################################################################\n");
+    }
 }
 
 int
