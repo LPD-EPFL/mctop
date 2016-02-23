@@ -7,7 +7,9 @@
 #include <helper.h>
 #include <cdf.h>
 
-struct mctopo* mctopo_construct(uint64_t** lat_tbl_norm, const size_t N, const uint n_sock, cdf_cluster_t* cc, const int is_smt);
+struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
+				uint64_t** mem_lat_table, const uint n_sockets,
+				cdf_cluster_t* cc, const int is_smt);
 void mctopo_print(struct mctopo* topo);
 
 #define MCTOP_LVL_ID_MULTI 10000
@@ -48,6 +50,7 @@ typedef struct mctopo
   uint n_sockets;		/* num. of sockets/nodes */
   socket_t* sockets;		/* pointer to sockets/nodes */
   uint is_smt;			/* is SMT enabled CPU */
+  uint has_mem;			/* flag whether there are mem. latencies */
   struct hw_context* hwcs;	/* pointers to hwcs */
   uint n_siblings;
   struct sibling** siblings;
@@ -70,10 +73,13 @@ typedef struct hwc_gs		/* group / socket */
   struct hw_context** hwcs;	/* descendant hwcs */
   uint n_children;		/* num. of hwc_group descendants */
   struct hwc_gs** children;	/* pointer to children hwcgroup */
-  uint n_siblings;		/* Socket: number of other sockets */
-  struct sibling** siblings;	/* Group = NULL - no siblings for groups */
-				/* Socket: pointers to other sockets, sorted closest 1st */
   struct hwc_gs* next;		/* link groups of a level to a list */
+  /* socket only info */
+  uint n_siblings;		/* number of other sockets */
+  struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st */
+  uint local_node;		/* local NUMA mem. node */
+  uint n_nodes;			/* num of nodes = topo->n_sockets */
+  uint* mem_latencies;		/* mem. latencies to NUMA nodes */
 } hwc_gs_t;
 
 typedef struct sibling

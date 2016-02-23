@@ -1,4 +1,5 @@
 #include <mctop_crawler.h>
+#include <mctop_mem.h>
 #include <mctop.h>
 
 const int test_num_threads = 2;
@@ -26,13 +27,22 @@ typedef enum
 test_format_t test_format = 0;
 int test_verbose = 0;
 int test_num_hw_ctx;
-int test_num_sockets = -1;
-ticks* lat_table;
+ticks* lat_table = NULL;
+ticks** mem_lat_table = NULL;
 volatile int high_stdev_retry = 0;
 
+int test_num_sockets = -1;	/* num nodes / sockets */
+int test_do_mem = 0;
+int test_mem_on_demand = 0;
+const size_t test_mem_reps = 1e6;
+const size_t test_mem_size = 128 * 1024 * 1024LL;
+volatile uint64_t** node_mem;
 
-static cache_line_t* cache_lines_create(const size_t num);
-void cache_lines_destroy(cache_line_t* cl);
+void ll_random_create(volatile uint64_t* mem, const size_t size);
+ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
+
+static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
+void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lat_table, const size_t n, const test_format_t test_format, array_format_t format);
 ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
@@ -111,6 +121,7 @@ crawl(void* param)
 {
   thread_local_data_t* tld = (thread_local_data_t*) param;
   const int tid = tld->id;
+  pthread_barrier_t* barrier_sleep = tld->barrier;
   barrier2_t* barrier2 = tld->barrier2;
   
   const double test_completion_perc_step = 100.0 / test_num_hw_ctx;
@@ -119,6 +130,10 @@ crawl(void* param)
 
   size_t _test_num_reps = test_num_reps; /* local copy */
   size_t _test_num_warmup_reps = test_num_warmup_reps; /* local copy */
+  const size_t _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
+  size_t _num_sockets = test_num_sockets;
+  uint _do_mem = test_do_mem;
+  uint _mem_on_demand = test_mem_on_demand;
   int max_stdev = test_max_stdev;
 
   PFDINIT(_test_num_reps);
@@ -131,10 +146,53 @@ crawl(void* param)
 	{
 	  set_cpu(x); 
 	  PFDTERM_INIT(_test_num_reps);
-	  cache_lines_destroy(test_cache_line);
-	  test_cache_line = cache_lines_create(test_num_cache_lines);
+
+	  /* mem. latency measurements */
+	  int node_local = -1;
+	  if (_do_mem)
+	    {
+	      printf("%02d : ", x);
+	      volatile ticks mem_lats[_num_sockets];
+	      for (int n = 0; n < _num_sockets; n++)
+		{
+		  volatile uint64_t* l = node_mem[n];
+		  volatile uint64_t* mem = NULL;
+		  if (unlikely(_mem_on_demand))
+		    {
+		      mem = numa_alloc_onnode(test_mem_size, n);
+		      ll_random_create(mem, test_mem_size);
+		      l = mem;
+		    }
+		  mem_lats[n] = ll_random_traverse(l, test_mem_reps);
+		  if (unlikely(_mem_on_demand))
+		    {
+		      numa_free((void*) mem, test_mem_size);
+		    }
+		}
+	      ticks mem_lat_min = -1;
+	      for (int n = 0; n < _num_sockets; n++)
+		{
+		  if (mem_lats[n] < mem_lat_min)
+		    {
+		      mem_lat_min = mem_lats[n];
+		      node_local = n;
+		    }
+		  mem_lat_table[x][n] = mem_lats[n];
+		}
+	      for (int n = 0; n < _num_sockets; n++)
+		{
+		  printf("%4zu%s ", mem_lats[n], (n == node_local) ? "*" : " ");
+		}
+	      printf("\n");
+
+	      numa_set_preferred(mem_lat_min);
+	    }
+
+	  cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem);
+	  test_cache_line = cache_lines_create(_test_cl_size, node_local);
 	}
-      barrier2_cross_explicit(barrier2, tid, 8);
+
+      pthread_barrier_wait(barrier_sleep);
       volatile cache_line_t* cache_line = test_cache_line;
 
       size_t history_med[2] = { 0 };
@@ -165,16 +223,12 @@ crawl(void* param)
 	  size_t median = ad.median;
 	  if (tid == 0)
 	    {
-	      /* if (test_verbose) */
-	      /* 	{ */
-	      /* 	  /\* PFDPN(0, _test_num_reps, 0); *\/ */
-	      /* 	} */
 	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
 		{
 		  high_stdev_retry = 1;
 		}
 
-	      if (test_verbose)
+	      if (unlikely(test_verbose))
 		{
 		  printf(" [%02d->%02d] median %-4zu with stdv %-5.2f%% | limit %2d%% %s\n",
 			 x, y, median, stdev, max_stdev,  high_stdev_retry ? "(high)" : "");
@@ -218,8 +272,61 @@ crawl(void* param)
 	}
     }
 
-  ID0_DO(cache_lines_destroy(test_cache_line));
+  ID0_DO(cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem));
   PFDTERM();
+  return NULL;
+}
+
+static inline size_t
+abs_sub(const size_t a, const size_t b)
+{
+  if (a > b)
+    {
+      return a - b;
+    }
+  return b - a;
+}
+
+void*
+init_mem(void* param)
+{
+  const int tid = *(int*) param;
+  numa_run_on_node(tid);
+  node_mem[tid] = numa_alloc_onnode(test_mem_size, tid);
+  assert(node_mem[tid] != NULL);
+  volatile uint64_t* m = node_mem[tid];
+  ll_random_create(m, test_mem_size);
+  if (tid == 0 && test_num_sockets > 1)
+    {
+      ticks t1 = ll_random_traverse(node_mem[!tid], test_mem_reps);
+      ticks t2 = ll_random_traverse(node_mem[!tid], test_mem_reps);
+      ticks df = abs_sub(t1, t2);
+      ticks avg = (t1 + t2) / 2;
+      if (df > (0.2 * avg))
+	{
+	  printf("## Memory measurements inaccurate (try 1: %zu, 2: %zu) \n", t1, t2);
+
+	  volatile uint64_t* m = numa_alloc_onnode(test_mem_size, !tid);
+	  assert(m != NULL);
+	  ll_random_create(m, test_mem_size);
+	  ticks t1 = ll_random_traverse(node_mem[!tid], test_mem_reps);
+	  numa_free((void*) m, test_mem_size);
+
+	  m = numa_alloc_onnode(test_mem_size, !tid);
+	  assert(m != NULL);
+	  ll_random_create(m, test_mem_size);
+	  ticks t2 = ll_random_traverse(node_mem[!tid], test_mem_reps);
+	  numa_free((void*) m, test_mem_size);
+
+	  ticks df = abs_sub(t1, t2);
+	  ticks avg = (t1 + t2) / 2;
+	  if (df < (0.2 * avg))
+	    {
+	      printf("## Will use on-demand memory allocation (try 1: %zu, 2: %zu) \n", t1, t2);
+	      test_mem_on_demand = 1;
+	    }
+	}
+    }
   return NULL;
 }
 
@@ -281,6 +388,7 @@ main(int argc, char **argv)
       // These options don't set a flag
       {"help",                      no_argument,       NULL, 'h'},
       {"num-cores",                 required_argument, NULL, 'n'},
+      {"mem",                       required_argument, NULL, 'm'},
       {"num-sockets",               required_argument, NULL, 's'},
       {"cdf-offset",                required_argument, NULL, 'c'},
       {"repetitions",               required_argument, NULL, 'r'},
@@ -294,7 +402,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:s:", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:m", long_options, &i);
 
       if(c == -1)
 	break;
@@ -317,6 +425,11 @@ main(int argc, char **argv)
 		 ">>> BASIC SETTINGS\n"
 		 "  -r, --repetitions <int>\n"
 		 "        Number of repetitions per iteration (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
+		 "  -m, --mem <int>\n"
+		 "        Do (NUMA) memory latency measurements (default=" XSTR(DEFAULT_MEM) ")\n"
+		 "        0: no mem. latency measurements\n"
+		 "        1: do mem. latency measurements while measuring communication latencies (slow)\n"
+		 "        2: do mem. latency measurements per-node after constructing the topology\n"
 		 "  -c, --cdf-offset <int>\n"
 		 "        How many cycles should the min and the max elements of two adjacent core\n"
 		 "        clusters differ to consider them distinct? (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
@@ -326,6 +439,8 @@ main(int argc, char **argv)
 		 ">>> SECONDARY SETTINGS"
 		 "  -n, --num-cores <int>\n"
 		 "        Up to how many hardware contexts to run on (default=all cores)\n"
+		 "  -s, --num-sockets <int>\n"
+		 "        How many sockets (i.e., NUMA nodes) to assume if -n is given (default=all sockets)\n"
 		 ">>> AUXILLIARY SETTINGS\n"
 		 "  -h, --help\n"
 		 "        Print this message\n"
@@ -335,6 +450,9 @@ main(int argc, char **argv)
 	  exit(0);
 	case 'n':
 	  test_num_hw_ctx = atoi(optarg);
+	  break;
+	case 'm':
+	  test_do_mem = 1;
 	  break;
 	case 's':
 	  test_num_sockets = atoi(optarg);
@@ -357,26 +475,79 @@ main(int argc, char **argv)
     }
 
 
-  if (test_num_sockets < 0)
-    {
-      test_num_sockets = numa_num_task_nodes();
-    }
-
   pthread_t threads[test_num_threads];
   pthread_attr_t attr;
   pthread_attr_init(&attr);  /* Initialize and set thread detached attribute */
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+  if (test_num_sockets < 0)
+    {
+      test_num_sockets = numa_num_task_nodes();
+    }
+
+  printf("# Sockets %d\n", test_num_sockets);
+  pthread_t threads_mem[test_num_sockets];
+
+  if (test_do_mem)
+    {
+      node_mem = calloc_assert(test_num_sockets, sizeof(uint64_t*));
+      /* for (int n = 0; n < test_num_sockets; n++) */
+      /* 	{ */
+      /* 	  node_mem[n] = numa_alloc_onnode(test_mem_size, n); */
+      /* 	  ll_random_create(node_mem[n], test_mem_size); */
+      /* 	  assert(node_mem != NULL); */
+      /* 	} */
+
+      clock_t start = clock();
+      int ids[test_num_sockets];
+      for(int t = 0; t < test_num_sockets; t++)
+	{
+	  ids[t] = t;
+	  int rc = pthread_create(&threads_mem[t], &attr, init_mem, ids + t);
+	  if (rc)
+	    {
+	      printf("ERROR; return code from pthread_create() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
+    
+    
+      for(int t = 0; t < test_num_sockets; t++) 
+	{
+	  void* status;
+	  int rc = pthread_join(threads_mem[t], &status);
+	  if (rc) 
+	    {
+	      printf("ERROR; return code from pthread_join() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
+      clock_t stop = clock();
+      printf("# Mem init took: %.1f secs\n", (stop - start) / (double) CLOCKS_PER_SEC);
+    }
+
+
   thread_local_data_t* tds = (thread_local_data_t*) malloc_assert(test_num_threads * sizeof(thread_local_data_t));
   barrier2_t* barrier2 = barrier2_create();
   pthread_barrier_t* barrier = malloc_assert(sizeof(pthread_barrier_t));
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
-  lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
 
-#if 1
+  lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
+  if (test_do_mem)
+    {
+      mem_lat_table = malloc_assert(test_num_hw_ctx * sizeof(ticks*));
+      for (int n = 0; n < test_num_hw_ctx; n++)
+	{
+	  mem_lat_table[n] = calloc_assert(test_num_sockets, sizeof(ticks));
+	}
+    }
+
+#define MCTOP_PREDEFINED_LAT_TABLE 0
+#if MCTOP_PREDEFINED_LAT_TABLE == 0
   for(int t = 0; t < test_num_threads; t++)
     {
       tds[t].id = t;
+      tds[t].barrier = barrier;
       tds[t].barrier2 = barrier2;
       int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
       if (rc)
@@ -398,7 +569,9 @@ main(int argc, char **argv)
 	}
     }
 
-  print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D);
+
+
+  /* print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D); */
 
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
@@ -406,8 +579,7 @@ main(int argc, char **argv)
   cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset);
   cdf_cluster_print(cc);
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-  print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
-
+  /* print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D); */
   ticks min_lat = cdf_cluster_get_min_latency(cc);
   int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
   if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
@@ -451,9 +623,12 @@ main(int argc, char **argv)
     }
 
   printf("## CPU is SMT: %d\n", is_smt_cpu);
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, test_num_sockets, cc, is_smt_cpu);
+  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
+
+
 #else
-  int is_smt_cpu = 1;
+  int is_smt_cpu = is_smt1;
+  test_num_sockets = n_sockets1;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
   for (int i = 0; i < n ; i++)
@@ -463,15 +638,32 @@ main(int argc, char **argv)
   for (int x = 0; x < test_num_hw_ctx; x++)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
-  	{
-  	  lat_table_norm[x][y] = _lat_table[x][y];
-  	}
+	{
+	  lat_table_norm[x][y] = _lat_table1[x][y];
+	}
     }
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, NULL, is_smt_cpu);
+  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
 #endif
+
   mctopo_print(topo);
 
-#if 0
+
+#if MCTOP_PREDEFINED_LAT_TABLE == 0
+  if (test_do_mem)
+    {
+      for (int n = 0; n < test_num_sockets; n++)
+	{
+	  numa_free((void*) node_mem[n], test_mem_size);
+	}
+      free(node_mem);
+
+      for (int n = 0; n < test_num_hw_ctx; n++)
+	{
+	  free(mem_lat_table[n]);
+	}
+      free(mem_lat_table);
+    }
+
   for (int i = 0; i < test_num_hw_ctx; i++)
     {
       free(lat_table_norm[i]);
@@ -479,10 +671,10 @@ main(int argc, char **argv)
   free(lat_table_norm);
   cdf_cluster_free(cc);
   cdf_free(cdf);
-#endif
   free(tds);
   free(barrier2);
   free(lat_table);
+#endif
 }
 
 
@@ -491,22 +683,18 @@ main(int argc, char **argv)
 /* ******************************************************************************** */
 
 cache_line_t*
-cache_lines_create(const size_t num)
+cache_lines_create(const size_t size_bytes, const int on_node)
 {
-  cache_line_t* cls = malloc_assert(num * sizeof(cache_line_t));
-  for (volatile size_t i = 0; i < num; i++)
-    {
-      cls[i].word[0] = cls[i].word[2] = cls[i].word[3] = cls[i].word[4] = 0;
-    }
+  cache_line_t* cls = mctop_mem_alloc_local(size_bytes, on_node);
   return cls;
 }
 
 inline void
-cache_lines_destroy(cache_line_t* cl)
+cache_lines_destroy(cache_line_t* cl, const size_t size, const uint numa_lib)
 {
   if (likely(cl != NULL))
     {
-      free((void*) cl);
+      mctop_mem_free((void*) cl, size, numa_lib);
     }
 }
 
@@ -596,16 +784,52 @@ lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc)
   return lat_table_norm;
 }
 
+ticks
+ll_random_traverse(volatile uint64_t* list, const size_t reps)
+{
+  volatile ticks __s = getticks();
+  for (size_t r = 0; r < reps; r++)
+    {
+      list = (uint64_t*) *list;
+    }
+  volatile ticks __e = getticks();
+  return (__e - __s) / reps;
+}
 
-  /* test_num_hw_ctx = 8; */
-  /* ticks lat_table_norm[8][8] = */
-  /*   { */
-  /*     { 0  , 100, 200, 200, 40 , 100, 200, 200, }, */
-  /*     { 100, 0  , 200, 200, 100, 40 , 200, 200, }, */
-  /*     { 200, 200, 0  , 100, 200, 200, 40 , 100, }, */
-  /*     { 200, 200, 100, 0  , 200, 200, 100, 40 , }, */
-  /*     { 40 , 100, 200, 200, 0  , 100, 200, 200, }, */
-  /*     { 100, 40 , 200, 200, 100, 0  , 200, 200, }, */
-  /*     { 200, 200, 40 , 100, 100, 200, 0  , 100, }, */
-  /*     { 200, 200, 100, 40 , 100, 200, 100, 0  , }, */
-  /*   }; */
+void
+ll_random_create(volatile uint64_t* mem, const size_t size)
+{
+  const size_t size_cl = size / CACHE_LINE_SIZE;
+  const size_t per_cl = CACHE_LINE_SIZE / sizeof(uint64_t);
+  uint8_t* used = calloc_assert(size_cl, sizeof(uint8_t));
+  unsigned long* seeds = seeds_create();
+  seeds[0] = 0x0123456789ABCDLL;
+  seeds[1] = 0xA023457689BAC0LL;
+  seeds[2] = 0xB0245736F9BAC1LL;
+
+  size_t idx = 0;
+  size_t used_num = 0;
+  while (used_num < size_cl - 1)
+    {
+      used[idx] = 1;
+      used_num++;
+
+      size_t nxt;
+      do
+	{
+	  nxt = (marsaglia_rand(seeds) % size_cl);
+	}
+      while (used[nxt]);
+
+      size_t nxt_8 = (nxt * per_cl);
+      size_t idx_8 = (idx * per_cl);
+      mem[idx_8] = (uint64_t) (mem + nxt_8);
+      idx = nxt;
+    }
+
+  mem[idx * per_cl] = (uint64_t) mem;
+  /* mem[idx * per_cl] = 0; */
+
+  free(seeds);
+  free(used);
+}

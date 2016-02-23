@@ -70,4 +70,36 @@ print_id(size_t id, const char* format, ...)
   fflush(stdout);
 }
 
+static inline unsigned long* 
+seeds_create() 
+{
+  unsigned long* seeds;
+  seeds = (unsigned long*) memalign(CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  return seeds;
+}
+
+//Marsaglia's xorshf generator
+static inline unsigned long
+xorshf96(unsigned long* x, unsigned long* y, unsigned long* z)  //period 2^96-1
+{
+  unsigned long t;
+  (*x) ^= (*x) << 16;
+  (*x) ^= (*x) >> 5;
+  (*x) ^= (*x) << 1;
+
+  t = *x;
+  (*x) = *y;
+  (*y) = *z;
+  (*z) = t ^ (*x) ^ (*y);
+
+  return *z;
+}
+
+static inline unsigned long
+marsaglia_rand(unsigned long* seeds)
+{
+  return xorshf96(seeds, seeds + 1, seeds + 2);
+}
+
+
 #endif	/* _HELPER_H_ */
