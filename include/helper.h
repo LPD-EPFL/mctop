@@ -101,5 +101,7 @@ marsaglia_rand(unsigned long* seeds)
   return xorshf96(seeds, seeds + 1, seeds + 2);
 }
 
+uint64_t ll_random_traverse(volatile uint64_t* list, const size_t reps);
+void ll_random_create(volatile uint64_t* mem, const size_t size);
 
 #endif	/* _HELPER_H_ */

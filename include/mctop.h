@@ -10,6 +10,8 @@
 struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 				uint64_t** mem_lat_table, const uint n_sockets,
 				cdf_cluster_t* cc, const int is_smt);
+void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
+
 void mctopo_print(struct mctopo* topo);
 
 #define MCTOP_LVL_ID_MULTI 10000
@@ -74,6 +76,7 @@ typedef struct hwc_gs		/* group / socket */
   uint n_children;		/* num. of hwc_group descendants */
   struct hwc_gs** children;	/* pointer to children hwcgroup */
   struct hwc_gs* next;		/* link groups of a level to a list */
+  mctopo_t* topo;		/* link to topology */
   /* socket only info */
   uint n_siblings;		/* number of other sockets */
   struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st */
@@ -108,9 +111,11 @@ typedef struct hw_context
 /* MCTOP CONTROL IF */
 /* ******************************************************************************** */
 
+socket_t* mctop_get_socket(mctopo_t* topo, const uint socket_n);
 uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 socket_t* mctop_get_first_socket(mctopo_t* topo);
 hwc_gs_t* mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl);
+hw_context_t* mctop_get_first_hwc_socket(socket_t* socket);
 sibling_t* mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl);
 
 static inline uint
@@ -141,5 +146,12 @@ mctop_print_id(uint id)
 
 #define MCTOP_ID_PRINTER "%u-%04u"
 #define MCTOP_ID_PRINT(id)  mctop_id_get_lvl(id), mctop_id_no_lvl(id)
+
+
+/* ******************************************************************************** */
+/* MCTOP Scheduling */
+/* ******************************************************************************** */
+int mctop_run_on_socket_ref(socket_t* socket);
+int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
 
 #endif	/* __H_MCTOP__ */
