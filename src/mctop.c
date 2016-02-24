@@ -498,7 +498,7 @@ main(int argc, char **argv)
 		 "        clusters differ to consider them distinct? (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
 		 "  -f, --format <int>\n"
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
-		 "        0: c/c++ struct, 1: latency table\n"
+		 "        0: none, 1: c/c++ struct, 2: latency table\n"
 		 ">>> SECONDARY SETTINGS"
 		 "  -n, --num-cores <int>\n"
 		 "        Up to how many hardware contexts to run on (default=all cores)\n"
@@ -522,6 +522,9 @@ main(int argc, char **argv)
 	  break;
 	case 's':
 	  test_num_sockets = atoi(optarg);
+	  break;
+	case 'f':
+	  test_format = atoi(optarg);
 	  break;
 	case 'r':
 	  test_num_reps = atoi(optarg);
