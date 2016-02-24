@@ -609,14 +609,10 @@ main(int argc, char **argv)
   lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
   if (test_do_mem != NO_MEM)
     {
-      mem_lat_table = malloc_assert(test_num_hw_ctx * sizeof(ticks*));
-      for (int n = 0; n < test_num_hw_ctx; n++)
-	{
-	  mem_lat_table[n] = calloc_assert(test_num_sockets, sizeof(ticks));
-	}
+      mem_lat_table = (ticks**) table_calloc(test_num_hw_ctx, test_num_sockets, sizeof(ticks));
     }
 
-#define MCTOP_PREDEFINED_LAT_TABLE 1
+#define MCTOP_PREDEFINED_LAT_TABLE 0
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   for(int t = 0; t < test_num_threads; t++)
     {
@@ -709,20 +705,17 @@ main(int argc, char **argv)
 
 
 #else
-  int is_smt_cpu = is_smt5;
-  test_num_sockets = n_sockets5;
-  test_num_hw_ctx = n_hwcs5;
+  int is_smt_cpu = is_smt2;
+  test_num_sockets = n_sockets2;
+  test_num_hw_ctx = n_hwcs2;
   const int n = test_num_hw_ctx;
-  ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
-  for (int i = 0; i < n ; i++)
-    {
-      lat_table_norm[i] = malloc_assert(n * sizeof(ticks));
-    }
+  ticks** lat_table_norm = table_malloc(n, n, sizeof(ticks));
+
   for (int x = 0; x < test_num_hw_ctx; x++)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
 	{
-	  lat_table_norm[x][y] = lat_table5[x][y];
+	  lat_table_norm[x][y] = lat_table2[x][y];
 	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
@@ -753,11 +746,7 @@ main(int argc, char **argv)
       free(mem_lat_table);
     }
 
-  for (int i = 0; i < test_num_hw_ctx; i++)
-    {
-      free(lat_table_norm[i]);
-    }
-  free(lat_table_norm);
+  table_free((void**) lat_table_norm, test_num_hw_ctx);
   cdf_cluster_free(cc);
   cdf_free(cdf);
   free(tds);

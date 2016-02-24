@@ -95,7 +95,7 @@ typedef struct hw_context
   uint id;			/* mctop id */
   uint level;			/* latency hierarchy lvl */
   mctop_type_t type;		/* HW_CONTEXT or CORE? */
-  uint latency;
+  uint phy_id;			/* OS id (e.g., for set_cpu() */
   socket_t* socket;		/* pointer to parent socket */
   struct hwc_gs* parent;	/* pointer to parent hwcgroup */
   struct hw_context* next;	/* link hwcs to a list */
