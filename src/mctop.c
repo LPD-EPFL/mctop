@@ -5,8 +5,11 @@
 const int test_num_threads = 2;
 const int test_num_smt_threads = 2;
 size_t test_num_reps = 10000;
-size_t test_num_smt_reps = 5e6;
-double test_smt_ratio = 0.75;
+const size_t test_num_smt_reps = 5e6;
+const size_t test_num_dvfs_reps = 5e6;
+const double test_smt_ratio = 0.75;
+const double test_dvfs_ratio = 0.95;
+
 size_t test_num_warmup_reps = 10000 >> 4;
 size_t test_max_stdev = 7;
 size_t test_max_stdev_max = 14;
@@ -79,6 +82,42 @@ cas_prof(cache_line_t* cl, const volatile size_t reps)
 
 #define ATOMIC_OP(a, b) cas_prof(a, b)
 
+static ticks
+spin_time(size_t n)
+{
+  volatile ticks __s = getticks();
+  volatile size_t sum = 0;
+  for (volatile size_t i = 0; i < n; i++)
+    {
+      sum += i;
+    }
+  volatile ticks __e = getticks();
+  return __e - __s;
+}
+
+static int
+dvfs_scale_up(const size_t n_reps, const double ratio)
+{
+  const double is_dvfs_ratio = 0.9;
+
+  ticks times[2];
+  times[0] = spin_time(n_reps);
+  times[1] = spin_time(n_reps);
+  ticks prev = times[1], last = prev;
+  if (times[1] < (ratio * times[0]))
+    {
+       ticks cmp = prev;
+      do
+	{
+	  cmp = prev;
+	  last = spin_time(n_reps);
+	  prev = last;
+	}
+      while (last < (ratio * cmp));
+    }
+  return (last < (is_dvfs_ratio * times[0]));
+}
+
 static void
 dvfs_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid)
 {
@@ -96,19 +135,7 @@ dvfs_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, co
 	  barrier2_cross(barrier2, tid, rep);      
 	}
     }
-}
-
-static ticks
-spin_time(size_t n)
-{
-  volatile ticks __s = getticks();
-  volatile size_t sum = 0;
-  for (volatile size_t i = 0; i < n; i++)
-    {
-      sum += i;
-    }
-  volatile ticks __e = getticks();
-  return __e - __s;
+  
 }
 
 #define ID0_DO(x) if (tid == 0) { x; }
@@ -168,6 +195,8 @@ crawl(void* param)
 	{
 	  set_cpu(x); 
 	  PFDTERM_INIT(_num_reps);
+
+	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
 
 	  /* mem. latency measurements */
 	  int node_local = -1;
@@ -404,11 +433,12 @@ is_smt(void* param)
   return NULL;
 }
 
-
 int
 main(int argc, char **argv) 
 {
   test_num_hw_ctx = get_num_hw_ctx();
+
+  printf("## CPU is DVFS: %d\n", dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio));
 
   struct option long_options[] = 
     {
