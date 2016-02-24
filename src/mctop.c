@@ -9,6 +9,7 @@ const size_t test_num_smt_reps = 5e6;
 const size_t test_num_dvfs_reps = 5e6;
 const double test_smt_ratio = 0.75;
 const double test_dvfs_ratio = 0.95;
+uint test_dvfs = 0;
 
 size_t test_num_warmup_reps = 10000 >> 4;
 size_t test_max_stdev = 7;
@@ -119,7 +120,7 @@ dvfs_scale_up(const size_t n_reps, const double ratio)
 }
 
 static void
-dvfs_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid)
+hw_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid)
 {
   for (size_t rep = 0; rep < (warmup_reps + 1); rep++)
     {
@@ -183,6 +184,7 @@ crawl(void* param)
   uint _mem_on_demand = test_mem_on_demand;
   const uint _num_hw_ctx = test_num_hw_ctx;
   const uint _verbose = test_verbose;
+  const int _do_dvfs = test_dvfs;
   int max_stdev = test_max_stdev;
 
   PFDINIT(_num_reps);
@@ -196,7 +198,10 @@ crawl(void* param)
 	  set_cpu(x); 
 	  PFDTERM_INIT(_num_reps);
 
-	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
+	  if (_do_dvfs)
+	    {
+	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
+	    }
 
 	  /* mem. latency measurements */
 	  int node_local = -1;
@@ -243,7 +248,7 @@ crawl(void* param)
 	{
 	  ID1_DO(set_cpu(y); PFDTERM_INIT(_num_reps));
 
-	  dvfs_warmup(cache_line, _num_warmup_reps, barrier2, tid);
+	  hw_warmup(cache_line, _num_warmup_reps, barrier2, tid);
 
 	  for (size_t rep = 0; rep < _num_reps; rep++)
 	    {
@@ -438,7 +443,7 @@ main(int argc, char **argv)
 {
   test_num_hw_ctx = get_num_hw_ctx();
 
-  printf("## CPU is DVFS: %d\n", dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio));
+  test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
 
   struct option long_options[] = 
     {
@@ -556,6 +561,7 @@ main(int argc, char **argv)
   printf("#   # Cores        : %d\n", test_num_hw_ctx);
   printf("#   # Sockets      : %d\n", test_num_sockets);
   printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
+  printf("#   CPU DVFS       : %d\n", test_dvfs);
   printf("# Progress\n");
   pthread_t threads_mem[test_num_sockets];
 
