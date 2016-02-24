@@ -77,7 +77,7 @@ cas_prof(cache_line_t* cl, const volatile size_t reps)
   return c;
 }
 
-#define ATOMIC_OP(a, b) fai_prof(a, b)
+#define ATOMIC_OP(a, b) cas_prof(a, b)
 
 static void
 dvfs_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid)
@@ -86,13 +86,14 @@ dvfs_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, co
     {
       if (tid == 0)
 	{
-	  ATOMIC_OP(cl, rep);
 	  barrier2_cross(barrier2, tid, rep);
+	  ATOMIC_OP(cl, rep);
 	}
       else
 	{
-	  barrier2_cross(barrier2, tid, rep);      
 	  ATOMIC_OP(cl, rep);
+	  /* ATOMIC_OP_NO_PROF(cl); */
+	  barrier2_cross(barrier2, tid, rep);      
 	}
     }
 }
@@ -140,133 +141,6 @@ crawl(void* param)
 {
   thread_local_data_t* tld = (thread_local_data_t*) param;
   const int tid = tld->id;
-  barrier2_t* barrier2 = tld->barrier2;
-  
-  const double test_completion_perc_step = 100.0 / test_num_hw_ctx;
-  double test_completion_perc = 0;
-  double test_completion_time = 0;
-
-  size_t _test_num_reps = test_num_reps; /* local copy */
-  size_t _test_num_warmup_reps = test_num_warmup_reps; /* local copy */
-  const size_t _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
-  int max_stdev = test_max_stdev;
-
-  PFDINIT(_test_num_reps);
-  volatile size_t sum = 0;
-
-  for (int x = 0; x < test_num_hw_ctx; x++)
-    {
-      clock_t _clock_start = clock();
-      if (tid == 0)
-	{
-	  set_cpu(x); 
-	  PFDTERM_INIT(_test_num_reps);
-	  cache_lines_destroy(test_cache_line, _test_cl_size, 0);
-	  test_cache_line = cache_lines_create(_test_cl_size, -1);
-	}
-
-      /* pthread_barrier_wait(barrier_sleep); */
-      barrier2_cross_explicit(barrier2, tid, 8);
-      volatile cache_line_t* cache_line = test_cache_line;
-
-      size_t history_med[2] = { 0 };
-      for (int y = x + 1; y < test_num_hw_ctx; y++)
-	{
-	  ID1_DO(set_cpu(y); PFDTERM_INIT(_test_num_reps));
-
-	  dvfs_warmup(cache_line, _test_num_warmup_reps, barrier2, tid);
-
-	  for (size_t rep = 0; rep < _test_num_reps; rep++)
-	    {
-	      barrier2_cross_explicit(barrier2, tid, 5);
-	      if (tid == 0)
-		{
-		  sum += ATOMIC_OP(cache_line, rep);
-		  barrier2_cross(barrier2, tid, rep);
-		}
-	      else
-		{
-		  barrier2_cross(barrier2, tid, rep);      
-		  sum += ATOMIC_OP(cache_line, rep);
-		}
-	    }
-
-	  abs_deviation_t ad;							
-	  get_abs_deviation(pfd_store[0], _test_num_reps, &ad);
-	  double stdev = 100 * (1 - (ad.avg - ad.std_dev) / ad.avg);
-	  size_t median = ad.median;
-	  if (tid == 0)
-	    {
-	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
-		{
-		  high_stdev_retry = 1;
-		}
-
-	      if (unlikely(test_verbose))
-		{
-		  printf(" [%02d->%02d] median %-4zu with stdv %-7.2f%% | limit %2d%% %s\n",
-			 x, y, median, stdev, max_stdev,  high_stdev_retry ? "(high)" : "");
-		}
-	      lat_table_2d_set(lat_table, test_num_hw_ctx, x, y, median);
-	      history_med[0] = history_med[1];
-	      history_med[1] = median;
-	    }
-	  else
-	    {
-	      lat_table_2d_set(lat_table, test_num_hw_ctx, y, x, median);
-	    }
-
-	  barrier2_cross_explicit(barrier2, tid, 6);
-
-	  if (tid == 0)
-	    {
-	      ticks from_x = lat_table_2d_get(lat_table, test_num_hw_ctx, x, y);
-	      ticks from_y = lat_table_2d_get(lat_table, test_num_hw_ctx, y, x);
-	      if (abs_sub(from_x, from_y) > test_cdf_cluster_offset)
-		{
-		  printf("** Warning: x (%-3d): %-4zu vs. y (%-3d): %-4zu\n", x, from_x, y, from_y);
-		}
-	    }
-
-	  if (high_stdev_retry)
-	    {
-	      barrier2_cross_explicit(barrier2, tid, 7);
-	      if (++max_stdev > test_max_stdev_max)
-		{
-		  max_stdev = test_max_stdev_max;
-		}
-	      high_stdev_retry = 0;
-	      y--;
-	    }
-	  else
-	    {
-	      max_stdev = test_max_stdev;
-	      history_med[0] = history_med[1] = 0;
-	    }
-	}
-
-      if (tid == 0)
-	{
-	  clock_t _clock_stop = clock();
-	  double sec = (_clock_stop - _clock_start) / (double) CLOCKS_PER_SEC;
-	  test_completion_time += sec;
-	  test_completion_perc += test_completion_perc_step;
-	  printf(" %6.1f%% completed in %8.1f secs (step took %7.1f secs) \n",
-		 test_completion_perc, test_completion_time, sec);
-	  assert(sum != 0);
-	}
-    }
-
-  ID0_DO(cache_lines_destroy(test_cache_line, _test_cl_size, 0));
-  PFDTERM();
-  return NULL;
-}
-
-void*
-crawl_mem(void* param)
-{
-  thread_local_data_t* tld = (thread_local_data_t*) param;
-  const int tid = tld->id;
   pthread_barrier_t* barrier_sleep = tld->barrier;
   barrier2_t* barrier2 = tld->barrier2;
   
@@ -274,55 +148,60 @@ crawl_mem(void* param)
   double test_completion_perc = 0;
   double test_completion_time = 0;
 
-  size_t _test_num_reps = test_num_reps; /* local copy */
-  size_t _test_num_warmup_reps = test_num_warmup_reps; /* local copy */
-  const size_t _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
-  size_t _num_sockets = test_num_sockets;
+  const uint _num_reps = test_num_reps; /* local copy */
+  const uint _num_warmup_reps = test_num_warmup_reps; /* local copy */
+  const uint _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
+  const uint _num_sockets = test_num_sockets;
   mctop_mem_type_t _do_mem = test_do_mem;
   uint _mem_on_demand = test_mem_on_demand;
+  const uint _num_hw_ctx = test_num_hw_ctx;
+  const uint _verbose = test_verbose;
   int max_stdev = test_max_stdev;
 
-  PFDINIT(_test_num_reps);
+  PFDINIT(_num_reps);
   volatile size_t sum = 0;
 
-  for (int x = 0; x < test_num_hw_ctx; x++)
+  for (int x = 0; x < _num_hw_ctx; x++)
     {
       clock_t _clock_start = clock();
       if (tid == 0)
 	{
 	  set_cpu(x); 
-	  PFDTERM_INIT(_test_num_reps);
+	  PFDTERM_INIT(_num_reps);
 
 	  /* mem. latency measurements */
 	  int node_local = -1;
-	  volatile ticks mem_lats[_num_sockets];
-	  for (int n = 0; n < _num_sockets; n++)
+	  if (unlikely(_do_mem == ON_TIME))
 	    {
-	      volatile uint64_t* l = node_mem[n];
-	      volatile uint64_t* mem = NULL;
-	      if (unlikely(_mem_on_demand))
+	      volatile ticks mem_lats[_num_sockets];
+	      for (int n = 0; n < _num_sockets; n++)
 		{
-		  mem = numa_alloc_onnode(test_mem_size, n);
-		  ll_random_create(mem, test_mem_size);
-		  l = mem;
+		  volatile uint64_t* l = node_mem[n];
+		  volatile uint64_t* mem = NULL;
+		  if (unlikely(_mem_on_demand))
+		    {
+		      mem = numa_alloc_onnode(test_mem_size, n);
+		      ll_random_create(mem, test_mem_size);
+		      l = mem;
+		    }
+		  mem_lats[n] = ll_random_traverse(l, test_mem_reps);
+		  if (unlikely(_mem_on_demand))
+		    {
+		      numa_free((void*) mem, test_mem_size);
+		    }
 		}
-	      mem_lats[n] = ll_random_traverse(l, test_mem_reps);
-	      if (unlikely(_mem_on_demand))
+	      ticks mem_lat_min = -1;
+	      for (int n = 0; n < _num_sockets; n++)
 		{
-		  numa_free((void*) mem, test_mem_size);
+		  if (mem_lats[n] < mem_lat_min)
+		    {
+		      mem_lat_min = mem_lats[n];
+		      node_local = n;
+		    }
+		  mem_lat_table[x][n] = mem_lats[n];
 		}
+	      numa_set_preferred(mem_lat_min);
 	    }
-	  ticks mem_lat_min = -1;
-	  for (int n = 0; n < _num_sockets; n++)
-	    {
-	      if (mem_lats[n] < mem_lat_min)
-		{
-		  mem_lat_min = mem_lats[n];
-		  node_local = n;
-		}
-	      mem_lat_table[x][n] = mem_lats[n];
-	    }
-	  numa_set_preferred(mem_lat_min);
 	  cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
 	  test_cache_line = cache_lines_create(_test_cl_size, node_local);
 	}
@@ -331,54 +210,66 @@ crawl_mem(void* param)
       volatile cache_line_t* cache_line = test_cache_line;
 
       size_t history_med[2] = { 0 };
-      for (int y = x + 1; y < test_num_hw_ctx; y++)
+      for (int y = x + 1; y < _num_hw_ctx; y++)
 	{
-	  ID1_DO(set_cpu(y); PFDTERM_INIT(_test_num_reps));
+	  ID1_DO(set_cpu(y); PFDTERM_INIT(_num_reps));
 
-	  dvfs_warmup(cache_line, _test_num_warmup_reps, barrier2, tid);
+	  dvfs_warmup(cache_line, _num_warmup_reps, barrier2, tid);
 
-	  for (size_t rep = 0; rep < _test_num_reps; rep++)
+	  for (size_t rep = 0; rep < _num_reps; rep++)
 	    {
 	      barrier2_cross_explicit(barrier2, tid, 5);
-	      if (tid == 0)
+	      if (likely(tid == 0))
 		{
-		  sum += ATOMIC_OP(cache_line, rep);
 		  barrier2_cross(barrier2, tid, rep);
+		  sum += ATOMIC_OP(cache_line, rep);
 		}
 	      else
 		{
-		  barrier2_cross(barrier2, tid, rep);      
 		  sum += ATOMIC_OP(cache_line, rep);
+		  barrier2_cross(barrier2, tid, rep);      
+		  /* sum += ATOMIC_OP_NO_PROF(cache_line); */
 		}
 	    }
 
 	  abs_deviation_t ad;							
-	  get_abs_deviation(pfd_store[0], _test_num_reps, &ad);
+	  get_abs_deviation(pfd_store[0], _num_reps, &ad);
 	  double stdev = 100 * (1 - (ad.avg - ad.std_dev) / ad.avg);
 	  size_t median = ad.median;
-	  if (tid == 0)
+	  if (likely(tid == 0))
 	    {
 	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
 		{
 		  high_stdev_retry = 1;
 		}
 
-	      if (unlikely(test_verbose))
+	      if (unlikely(_verbose))
 		{
 		  printf(" [%02d->%02d] median %-4zu with stdv %-7.2f%% | limit %2d%% %s\n",
 			 x, y, median, stdev, max_stdev,  high_stdev_retry ? "(high)" : "");
 		}
-	      lat_table_2d_set(lat_table, test_num_hw_ctx, x, y, median);
+	      lat_table_2d_set(lat_table, _num_hw_ctx, x, y, median);
 	      history_med[0] = history_med[1];
 	      history_med[1] = median;
 	    }
 	  else
 	    {
-	      lat_table_2d_set(lat_table, test_num_hw_ctx, y, x, median);
+	      lat_table_2d_set(lat_table, _num_hw_ctx, y, x, median);
 	    }
 
 	  barrier2_cross_explicit(barrier2, tid, 6);
-	  if (high_stdev_retry)
+
+	  /* if (tid == 0) */
+	  /*   { */
+	  /*     ticks from_x = lat_table_2d_get(lat_table, _num_hw_ctx, x, y); */
+	  /*     ticks from_y = lat_table_2d_get(lat_table, _num_hw_ctx, y, x); */
+	  /*     if (abs_sub(from_x, from_y) > test_cdf_cluster_offset) */
+	  /* 	{ */
+	  /* 	  printf("** Warning: x (%-3d): %-4zu vs. y (%-3d): %-4zu\n", x, from_x, y, from_y); */
+	  /* 	} */
+	  /*   } */
+
+	  if (unlikely(high_stdev_retry))
 	    {
 	      barrier2_cross_explicit(barrier2, tid, 7);
 	      if (++max_stdev > test_max_stdev_max)
@@ -407,7 +298,18 @@ crawl_mem(void* param)
 	}
     }
 
-  ID0_DO(cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem));
+  if (tid == 0)
+    {
+      cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
+      for (int x = 0; x < _num_hw_ctx; x++)
+	{
+	  for (int y = x + 1; y < _num_hw_ctx; y++)
+	    {
+	      ticks xy = lat_table_2d_get(lat_table, _num_hw_ctx, x, y);
+	      lat_table_2d_set(lat_table, _num_hw_ctx, y, x, xy);
+	    }
+	}
+    }
   PFDTERM();
   return NULL;
 }
@@ -682,15 +584,7 @@ main(int argc, char **argv)
       tds[t].id = t;
       tds[t].barrier = barrier;
       tds[t].barrier2 = barrier2;
-      int rc;
-      if (test_do_mem == ON_TIME)
-	{
-	  rc = pthread_create(&threads[t], &attr, crawl_mem, tds + t);
-	}
-      else
-	{
-	  rc = pthread_create(&threads[t], &attr, crawl, tds + t);
-	}
+      int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
       if (rc)
 	{
 	  printf("ERROR; return code from pthread_create() is %d\n", rc);
