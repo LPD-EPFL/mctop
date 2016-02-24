@@ -616,7 +616,7 @@ main(int argc, char **argv)
 	}
     }
 
-#define MCTOP_PREDEFINED_LAT_TABLE 0
+#define MCTOP_PREDEFINED_LAT_TABLE 1
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   for(int t = 0; t < test_num_threads; t++)
     {
@@ -709,8 +709,9 @@ main(int argc, char **argv)
 
 
 #else
-  int is_smt_cpu = is_smt4;
-  test_num_sockets = n_sockets4;
+  int is_smt_cpu = is_smt5;
+  test_num_sockets = n_sockets5;
+  test_num_hw_ctx = n_hwcs5;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = malloc_assert(n * sizeof(ticks*));
   for (int i = 0; i < n ; i++)
@@ -721,7 +722,7 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
 	{
-	  lat_table_norm[x][y] = _lat_table4[x][y];
+	  lat_table_norm[x][y] = lat_table5[x][y];
 	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
