@@ -125,6 +125,16 @@ lat_table_2d_get(ticks* arr, const int col_size, const int row, const int col)
   return arr[(row * col_size) + col];
 }
 
+static inline size_t
+abs_sub(const size_t a, const size_t b)
+{
+  if (a > b)
+    {
+      return a - b;
+    }
+  return b - a;
+}
+
 void*
 crawl(void* param)
 {
@@ -207,6 +217,17 @@ crawl(void* param)
 	    }
 
 	  barrier2_cross_explicit(barrier2, tid, 6);
+
+	  if (tid == 0)
+	    {
+	      ticks from_x = lat_table_2d_get(lat_table, test_num_hw_ctx, x, y);
+	      ticks from_y = lat_table_2d_get(lat_table, test_num_hw_ctx, y, x);
+	      if (abs_sub(from_x, from_y) > test_cdf_cluster_offset)
+		{
+		  printf("** Warning: x (%-3d): %-4zu vs. y (%-3d): %-4zu\n", x, from_x, y, from_y);
+		}
+	    }
+
 	  if (high_stdev_retry)
 	    {
 	      barrier2_cross_explicit(barrier2, tid, 7);
@@ -389,16 +410,6 @@ crawl_mem(void* param)
   ID0_DO(cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem));
   PFDTERM();
   return NULL;
-}
-
-static inline size_t
-abs_sub(const size_t a, const size_t b)
-{
-  if (a > b)
-    {
-      return a - b;
-    }
-  return b - a;
 }
 
 void*
