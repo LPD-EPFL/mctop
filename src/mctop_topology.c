@@ -213,7 +213,7 @@ mctopo_print(mctopo_t* topo)
       /* mem. latencies */
       if (topo->has_mem && l == topo->socket_level)
 	{
-	  printf(PD_2"          Memory latencies\n");
+	  printf(PD_2"          Memory latencies (cycles)\n");
 	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
 	  while (gs != NULL)
 	    {
@@ -625,6 +625,8 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
   if (mem_lat_table != NULL)
     {
       topo->has_mem = 1;
+      topo->node_to_socket = calloc_assert(topo->n_sockets, sizeof(uint));
+
       for (int s = 0; s < topo->n_sockets; s++)
 	{
 	  socket_t* socket = &topo->sockets[s];
@@ -659,6 +661,7 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
 	      socket->mem_latencies[n] = lats[n];
 	    }
 	  socket->local_node = local_node;
+	  topo->node_to_socket[socket->local_node] = socket->id;
 	}
     }
 }

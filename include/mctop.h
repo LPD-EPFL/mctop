@@ -53,6 +53,7 @@ typedef struct mctopo
   socket_t* sockets;		/* pointer to sockets/nodes */
   uint is_smt;			/* is SMT enabled CPU */
   uint has_mem;			/* flag whether there are mem. latencies */
+  uint* node_to_socket;		/* node-id to socket-id translation */
   struct hw_context* hwcs;	/* pointers to hwcs */
   uint n_siblings;
   struct sibling** siblings;

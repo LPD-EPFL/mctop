@@ -705,9 +705,9 @@ main(int argc, char **argv)
 
 
 #else
-  int is_smt_cpu = is_smt2;
-  test_num_sockets = n_sockets2;
-  test_num_hw_ctx = n_hwcs2;
+  int is_smt_cpu = is_smt1;
+  test_num_sockets = n_sockets1;
+  test_num_hw_ctx = n_hwcs1;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = table_malloc(n, n, sizeof(ticks));
 
@@ -715,7 +715,7 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
 	{
-	  lat_table_norm[x][y] = lat_table2[x][y];
+	  lat_table_norm[x][y] = lat_table1[x][y];
 	}
     }
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
