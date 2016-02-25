@@ -1,4 +1,4 @@
-CFLAGS = -O3
+CFLAGS = -O2
 
 ifeq (${DEBUG},1)
 CFLAGS = -O0 -ggdb

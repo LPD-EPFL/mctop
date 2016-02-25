@@ -5,11 +5,12 @@
 const int test_num_threads = 2;
 const int test_num_smt_threads = 2;
 size_t test_num_reps = 10000;
-const size_t test_num_smt_reps = 5e6;
+const size_t test_num_smt_reps = 1e7;
 const size_t test_num_dvfs_reps = 5e6;
 const double test_smt_ratio = 0.75;
 const double test_dvfs_ratio = 0.95;
 uint test_dvfs = 0;
+volatile int dvfs_up_hwc_ready = -1; /* which hw context is ready by the dvfs up thread */
 
 size_t test_num_warmup_reps = 10000 >> 4;
 size_t test_max_stdev = 7;
@@ -97,24 +98,33 @@ spin_time(size_t n)
 }
 
 static int
-dvfs_scale_up(const size_t n_reps, const double ratio)
+dvfs_scale_up(const size_t n_reps, const double ratio, double* dur)
 {
   const double is_dvfs_ratio = 0.9;
+  const uint max_tries = 16;
+  uint tries = max_tries;
 
+  clock_t s = clock();
   ticks times[2];
   times[0] = spin_time(n_reps);
   times[1] = spin_time(n_reps);
   ticks prev = times[1], last = prev;
   if (times[1] < (ratio * times[0]))
     {
-       ticks cmp = prev;
+      ticks cmp = prev;
       do
 	{
 	  cmp = prev;
 	  last = spin_time(n_reps);
 	  prev = last;
 	}
-      while (last < (ratio * cmp));
+      while (tries-- > 0 && last < (ratio * cmp));
+    }
+  clock_t e = clock();
+
+  if (dur != NULL)
+    {
+      *dur = 1000.0 * (e - s) / (double) CLOCKS_PER_SEC;
     }
   return (last < (is_dvfs_ratio * times[0]));
 }
@@ -200,7 +210,7 @@ crawl(void* param)
 
 	  if (_do_dvfs)
 	    {
-	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
+	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
 	    }
 
 	  /* mem. latency measurements */
@@ -262,7 +272,6 @@ crawl(void* param)
 		{
 		  sum += ATOMIC_OP(cache_line, rep);
 		  barrier2_cross(barrier2, tid, rep);      
-		  /* sum += ATOMIC_OP_NO_PROF(cache_line); */
 		}
 	    }
 
@@ -292,16 +301,6 @@ crawl(void* param)
 	    }
 
 	  barrier2_cross_explicit(barrier2, tid, 6);
-
-	  /* if (tid == 0) */
-	  /*   { */
-	  /*     ticks from_x = lat_table_2d_get(lat_table, _num_hw_ctx, x, y); */
-	  /*     ticks from_y = lat_table_2d_get(lat_table, _num_hw_ctx, y, x); */
-	  /*     if (abs_sub(from_x, from_y) > test_cdf_cluster_offset) */
-	  /* 	{ */
-	  /* 	  printf("** Warning: x (%-3d): %-4zu vs. y (%-3d): %-4zu\n", x, from_x, y, from_y); */
-	  /* 	} */
-	  /*   } */
 
 	  if (unlikely(high_stdev_retry))
 	    {
@@ -443,7 +442,8 @@ main(int argc, char **argv)
 {
   test_num_hw_ctx = get_num_hw_ctx();
 
-  test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio);
+  double dvfs_up_dur;
+  test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, &dvfs_up_dur);
 
   struct option long_options[] = 
     {
@@ -547,11 +547,6 @@ main(int argc, char **argv)
     }
 
 
-  pthread_t threads[test_num_threads];
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);  /* Initialize and set thread detached attribute */
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
   if (test_num_sockets < 0)
     {
       test_num_sockets = numa_num_task_nodes();
@@ -564,9 +559,14 @@ main(int argc, char **argv)
   printf("#   # Cores        : %d\n", test_num_hw_ctx);
   printf("#   # Sockets      : %d\n", test_num_sockets);
   printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
-  printf("#   CPU DVFS       : %d\n", test_dvfs);
+  printf("#   CPU DVFS       : %d (Freq. up in %zu ms)\n", test_dvfs, !test_dvfs ? 0 : (size_t) dvfs_up_dur);
   printf("# Progress\n");
+
   pthread_t threads_mem[test_num_sockets];
+  pthread_t threads[test_num_threads];
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);  /* Initialize and set thread detached attribute */
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
   if (test_do_mem == ON_TIME)
     {
@@ -601,7 +601,7 @@ main(int argc, char **argv)
     }
 
 
-  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert(test_num_threads * sizeof(thread_local_data_t));
+  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert((test_num_threads) * sizeof(thread_local_data_t));
   barrier2_t* barrier2 = barrier2_create();
   pthread_barrier_t* barrier = malloc_assert(sizeof(pthread_barrier_t));
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
