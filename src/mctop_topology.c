@@ -11,6 +11,7 @@ socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, ui
 void mctop_siblings_create(mctopo_t* topo, uint socket_x_id, uint socket_y_id, uint* seq_id, uint lvl, uint latency);
 void mctopo_fix_children_links(mctopo_t* topo);
 void mctopo_fix_horizontal_links(mctopo_t* topo);
+void mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 
 mctopo_t*
@@ -148,6 +149,7 @@ mctopo_construct(uint64_t** lat_table_norm,
 
   mctopo_fix_children_links(topo);
   mctopo_fix_horizontal_links(topo);
+  mctopo_fix_n_hwcs_per_core_smt(topo);
   mctopo_mem_latencies_add(topo, mem_lat_table);
 
   if (free_cc)
@@ -175,7 +177,7 @@ mctopo_print(mctopo_t* topo)
 
   /* hwc level */
   int l = 0;
-      printf(PD_1" Level %u / Latency: %-4u / Ref level: %u / Type: %s\n",
+  printf(PD_1" Level %u / Latency: %-4u / Ref level: %u / Type: %s\n",
 	 l, topo->latencies[l], l, mctop_get_type_desc(topo->hwcs[0].type));
   printf(PD_2" Hardware contexts: \n");
   printf(PD_2" ");
@@ -221,6 +223,23 @@ mctopo_print(mctopo_t* topo)
 	      for (int n = 0; n < gs->n_nodes; n++)
 		{
 		  printf("%6u%s ", gs->mem_latencies[n], (gs->local_node == n) ? "*" : " ");
+		}
+	      printf("\n");
+	      gs = gs->next;
+	    }
+	}
+
+      /* mem. bandwidht */
+      if (topo->has_mem && l == topo->socket_level)
+	{
+	  printf(PD_2"          Memory bandwidths (GB/s)\n");
+	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
+	  while (gs != NULL)
+	    {
+	      printf(PD_2" " MCTOP_ID_PRINTER "   ", MCTOP_ID_PRINT(gs->id));
+	      for (int n = 0; n < gs->n_nodes; n++)
+		{
+		  printf("%6.2f%s ", gs->mem_bandwidths[n], (gs->local_node == n) ? "*" : " ");
 		}
 	      printf("\n");
 	      gs = gs->next;
@@ -488,12 +507,14 @@ mctopo_fix_children_links(mctopo_t* topo)
 		      darray_add(contents, (uintptr_t) gsc);
 		    }
 		}
+
 	      gsp->n_children = darray_get_num_elems(contents);
 	      gsp->children = malloc_assert(gsp->n_children * sizeof(hwc_gs_t*));
 	      DARRAY_FOR_EACH(contents, c)
 		{
 		  gsp->children[c] = (hwc_gs_t*) DARRAY_GET_N(contents, c);
 		}
+
 	      darray_empty(contents);
 	    }
 
@@ -668,6 +689,18 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
 
 
 void
+mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo)
+{
+  if (topo->is_smt)
+    {
+      hwc_group_t* gs = mctop_get_first_gs_at_lvl(topo, 1);
+      assert(gs->type == CORE);
+      topo->n_hwcs_per_core = gs->n_children;
+    }
+}
+
+
+void
 mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
 {
   const size_t test_mem_size = 128 * 1024 * 1024LL;
@@ -692,4 +725,18 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
     }
 
   mctopo_mem_latencies_add(topo, mem_lat_table);
+}
+
+void 
+mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
+{
+  for (int s = 0; s < topo->n_sockets; s++)
+    {
+      socket_t* socket = topo->sockets + s;
+      socket->mem_bandwidths = malloc_assert(socket->n_nodes * sizeof(double));
+      for (int n = 0; n < socket->n_nodes; n++)
+	{
+	  socket->mem_bandwidths[n] = mem_bw_table[s][n];
+	}
+    }
 }

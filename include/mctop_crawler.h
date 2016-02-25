@@ -15,6 +15,7 @@
 #include <pfd.h>
 #include <cdf.h>
 #include <darray.h>
+#include <mctop.h>
 
 typedef volatile struct cache_line
 {
@@ -24,9 +25,11 @@ typedef volatile struct cache_line
 typedef struct thread_local_data
 {
   int id;
+  uint n_threads;
   int hw_context;
   barrier2_t* barrier2;
   pthread_barrier_t* barrier;
+  mctopo_t* topo;
 } thread_local_data_t;
 
 size_t is_smt1 = 1;

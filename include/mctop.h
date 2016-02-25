@@ -11,6 +11,8 @@ struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 				uint64_t** mem_lat_table, const uint n_sockets,
 				cdf_cluster_t* cc, const int is_smt);
 void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
+void mctopo_mem_bandwidth_add(struct mctopo* topo, double** mem_bw_table);
+
 
 void mctopo_print(struct mctopo* topo);
 
@@ -52,6 +54,7 @@ typedef struct mctopo
   uint n_sockets;		/* num. of sockets/nodes */
   socket_t* sockets;		/* pointer to sockets/nodes */
   uint is_smt;			/* is SMT enabled CPU */
+  uint n_hwcs_per_core;		/* if SMT, how many hw contexts per core? */
   uint has_mem;			/* flag whether there are mem. latencies */
   uint* node_to_socket;		/* node-id to socket-id translation */
   struct hw_context* hwcs;	/* pointers to hwcs */
@@ -79,6 +82,7 @@ typedef struct hwc_gs		/* group / socket */
   uint local_node;		/* local NUMA mem. node */
   uint n_nodes;			/* num of nodes = topo->n_sockets */
   uint* mem_latencies;		/* mem. latencies to NUMA nodes */
+  double* mem_bandwidths;	/* mem. bandwidts to NUMA nodes */
 } hwc_gs_t;
 
 typedef struct sibling
@@ -113,6 +117,11 @@ socket_t* mctop_get_first_socket(mctopo_t* topo);
 hwc_gs_t* mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl);
 hw_context_t* mctop_get_first_hwc_socket(socket_t* socket);
 sibling_t* mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl);
+
+size_t mctop_get_num_nodes(mctopo_t* topo);
+size_t mctop_get_num_cores_per_socket(mctopo_t* topo);
+size_t mctop_get_num_hwc_per_socket(mctopo_t* topo);
+
 
 static inline uint
 mctop_create_id(uint seq_id, uint lvl)
@@ -149,5 +158,6 @@ mctop_print_id(uint id)
 /* ******************************************************************************** */
 int mctop_run_on_socket_ref(socket_t* socket);
 int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
+int mctop_run_on_node(mctopo_t* topo, const uint node_n);
 
 #endif	/* __H_MCTOP__ */

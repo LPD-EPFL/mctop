@@ -40,16 +40,34 @@ mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
   return cur;
 }
 
-socket_t*
+inline socket_t*
 mctop_get_socket(mctopo_t* topo, const uint socket_n)
 {
   return topo->sockets + socket_n;
 }
 
-hw_context_t*
+inline hw_context_t*
 mctop_get_first_hwc_socket(socket_t* socket)
 {
   return socket->hwcs[0];
+}
+
+inline size_t
+mctop_get_num_cores_per_socket(mctopo_t* topo)
+{
+  return (topo->n_hwcs / topo->n_sockets / topo->n_hwcs_per_core);
+}
+
+inline size_t
+mctop_get_num_nodes(mctopo_t* topo)
+{
+  return topo->n_sockets;
+}
+
+size_t
+mctop_get_num_hwc_per_socket(mctopo_t* topo)
+{
+  return topo->sockets[0].n_hwcs;
 }
 
 int
@@ -87,6 +105,22 @@ mctop_run_on_socket(mctopo_t* topo, const uint socket_n)
     {
       return -EINVAL;
     }
+  socket_t* socket = &topo->sockets[socket_n];
+  return mctop_run_on_socket_ref(socket);
+}
+
+
+uint n_to_s[4] = { 0, 1, 2, 3 };
+
+int
+mctop_run_on_node(mctopo_t* topo, const uint node_n)
+{
+  if (node_n >= topo->n_sockets)
+    {
+      return -EINVAL;
+    }
+
+  const uint socket_n = topo->node_to_socket[node_n];
   socket_t* socket = &topo->sockets[socket_n];
   return mctop_run_on_socket_ref(socket);
 }

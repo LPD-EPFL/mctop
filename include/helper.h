@@ -34,6 +34,8 @@
 
 extern int set_cpu(int cpu);
 extern int get_num_hw_ctx();
+struct timespec timespec_diff(struct timespec start, struct timespec end);
+
 
 static inline void*
 malloc_assert(size_t size)

@@ -52,6 +52,14 @@ const size_t test_mem_reps = 1e6;
 const size_t test_mem_size = 128 * 1024 * 1024LL;
 volatile uint64_t** node_mem;
 
+const uint test_mem_bw_num_streams = 2;
+const size_t test_mem_bw_size = 1024 * 1024 * 1024LL;
+const uint test_mem_bw_num_reps = 4;
+volatile uint32_t mem_bw_barrier = 0;
+volatile double* mem_bw_gbps;
+double** mem_bw_table;
+
+
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
 
@@ -437,11 +445,112 @@ is_smt(void* param)
   return NULL;
 }
 
+static void
+mini_barrier(volatile uint32_t* b, const uint n)
+{
+  IAF_U32(b);
+  while (*b != n)
+    {
+      PAUSE();
+    }
+}
+
+double
+mem_bw_estimate(volatile cache_line_t** mem, const uint n_streams, const size_t n, const size_t reps)
+{
+  volatile cache_line_t* m0, *m1;
+  m0 = mem[0];
+  m1 = mem[1];
+  volatile size_t sum[n_streams];
+
+  struct timespec start, stop;
+  clock_gettime(CLOCK_REALTIME, &start);
+  for (uint r = 0; r < reps; r++)
+    {
+      for (size_t i = 0; i < n; i++)
+	{
+	  sum[0] = m0[i].word[0];
+	  sum[1] = m1[i].word[0];
+	}
+    }
+  clock_gettime(CLOCK_REALTIME, &stop);
+  struct timespec dur = timespec_diff(start, stop);
+  double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
+
+  if (dur_s == 9)
+    {
+      printf("%p%zu%p%zu", m0, sum[0], m1, sum[1]);
+    }
+
+  double bw = (n_streams * reps * n * sizeof(cache_line_t)) / (1e9 * dur_s);
+  return bw;
+}
+
+void*
+mem_bandwidth(void* param)
+{
+  thread_local_data_t* tld = (thread_local_data_t*) param;
+  const int tid = tld->id;
+  const uint n_threads = tld->n_threads;
+  pthread_barrier_t* barrier = tld->barrier;
+  mctopo_t* topo = tld->topo;
+  const uint n_cls = test_mem_bw_size / sizeof(cache_line_t);
+
+  volatile cache_line_t** mem_bw = malloc_assert(test_mem_bw_num_streams * sizeof(cache_line_t*));
+
+  ID0_DO(mem_bw_gbps = (double*) malloc_assert(n_threads * sizeof(double)));
+
+  for (int n = 0; n < mctop_get_num_nodes(topo); n++)
+    {
+      mctop_run_on_node(topo, n);
+      ID0_DO(printf(" ######## Run Node %d\n", n);)
+      for (int mem_on = 0; mem_on < mctop_get_num_nodes(topo); mem_on++)
+	{
+	  ID0_DO(printf(" #### Mem Node %d\n", mem_on));
+	  for (int s = 0; s < test_mem_bw_num_streams; s++)
+	    {
+	      mem_bw[s] = numa_alloc_onnode(test_mem_bw_size, mem_on);
+	      assert(mem_bw[s] != NULL);
+	      bzero((void*) mem_bw[s], test_mem_bw_size);
+	    }
+
+	  pthread_barrier_wait(barrier);
+	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
+	  mini_barrier(&mem_bw_barrier, n_threads);
+
+	  double bw_gbps = mem_bw_estimate(mem_bw, test_mem_bw_num_streams, n_cls, test_mem_bw_num_reps);
+	  mem_bw_gbps[tid] = bw_gbps;
+
+	  pthread_barrier_wait(barrier);
+
+	  for (int s = 0; s < test_mem_bw_num_streams; s++)
+	    {
+	      numa_free((void*) mem_bw[s], test_mem_bw_size);
+	    }
+
+	  if (tid == 0)
+	    {
+	      mem_bw_barrier = 0;
+	      double tot_bw = 0;
+	      printf("   BW (");
+	      for (int i = 0; i < n_threads; i++)
+		{
+		  printf("+%2.2f", mem_bw_gbps[i]);
+		  tot_bw += mem_bw_gbps[i];
+		}
+	      printf(") = %f\n", tot_bw);
+	      mem_bw_table[n][mem_on] = tot_bw;
+	    }
+	}
+    }
+
+  return NULL;
+}
+
 int
 main(int argc, char **argv) 
 {
   test_num_hw_ctx = get_num_hw_ctx();
-
   double dvfs_up_dur;
   test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, &dvfs_up_dur);
 
@@ -601,7 +710,7 @@ main(int argc, char **argv)
     }
 
 
-  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert((test_num_threads) * sizeof(thread_local_data_t));
+  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert(test_num_threads * sizeof(thread_local_data_t));
   barrier2_t* barrier2 = barrier2_create();
   pthread_barrier_t* barrier = malloc_assert(sizeof(pthread_barrier_t));
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
@@ -617,6 +726,7 @@ main(int argc, char **argv)
   for(int t = 0; t < test_num_threads; t++)
     {
       tds[t].id = t;
+      tds[t].n_threads = test_num_threads;
       tds[t].barrier = barrier;
       tds[t].barrier2 = barrier2;
       int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
@@ -669,6 +779,7 @@ main(int argc, char **argv)
   for(int t = 0; t < test_num_smt_threads; t++)
     {
       tds[t].id = t;
+      tds[t].n_threads = test_num_smt_threads;
       tds[t].barrier = barrier;
       tds[t].barrier2 = barrier2;
       tds[t].hw_context = possible_smt_hwcs[t];
@@ -680,9 +791,6 @@ main(int argc, char **argv)
 	}
     }
     
-  /* Free attribute and wait for the other threads */
-  pthread_attr_destroy(&attr);
-
   int is_smt_cpu = 0;
   for(int t = 0; t < test_num_smt_threads; t++) 
     {
@@ -703,13 +811,12 @@ main(int argc, char **argv)
   printf("## CPU is SMT: %d\n", is_smt_cpu);
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
 
-
 #else
   int is_smt_cpu = is_smt1;
   test_num_sockets = n_sockets1;
   test_num_hw_ctx = n_hwcs1;
   const int n = test_num_hw_ctx;
-  ticks** lat_table_norm = table_malloc(n, n, sizeof(ticks));
+  ticks** lat_table_norm = (ticks**) table_malloc(n, n, sizeof(ticks));
 
   for (int x = 0; x < test_num_hw_ctx; x++)
     {
@@ -726,6 +833,47 @@ main(int argc, char **argv)
       printf("## Calculating memory latencies on topology\n");
       mctopo_mem_latencies_calc(topo, mem_lat_table);
     }
+
+  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+  uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
+  printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
+  pthread_t threads_mem_bw[test_num_mem_bw_threads];
+  pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
+  pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
+
+  thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
+  for(int t = 0; t < test_num_mem_bw_threads; t++)
+    {
+      tds_mem_bw[t].id = t;
+      tds_mem_bw[t].n_threads = test_num_mem_bw_threads;
+      tds_mem_bw[t].barrier = barrier_mem_bw;
+      tds_mem_bw[t].topo = topo;
+      int rc = pthread_create(&threads_mem_bw[t], &attr, mem_bandwidth, tds_mem_bw + t);
+      if (rc)
+	{
+	  printf("ERROR; return code from pthread_create() is %d\n", rc);
+	  exit(-1);
+	}
+    }
+    
+  for(int t = 0; t < test_num_mem_bw_threads; t++) 
+    {
+      void* status;
+      int rc = pthread_join(threads_mem_bw[t], &status);
+      if (rc) 
+	{
+	  printf("ERROR; return code from pthread_join() is %d\n", rc);
+	  exit(-1);
+	}
+    }
+  free(tds_mem_bw);
+  free(barrier_mem_bw);
+
+  mctopo_mem_bandwidth_add(topo, mem_bw_table);
+  table_free((void**) mem_bw_table, test_num_sockets);
+
+  /* Free attribute and wait for the other threads */
+  pthread_attr_destroy(&attr);
 
   mctopo_print(topo);
 
