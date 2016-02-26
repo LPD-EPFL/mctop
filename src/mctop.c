@@ -47,15 +47,15 @@ typedef enum
     ON_TIME,			/* mem. lat measurements in // with comm. latencies */
     ON_TOPO,			/* mem. lat measurements based on topology */
     ON_TOPO_BW,			/* mem. lat + bw measurements based on topology */
-  } mctop_mem_type_t;
-const char* mctop_mem_type_desc[4] =
+  } mctop_test_mem_type_t;
+const char* mctop_test_mem_type_desc[4] =
   {
     "No",
     "Latency only while communicating",
     "Latency only on topology",
     "Latency+Bandwidth on topology",
   };
-mctop_mem_type_t test_do_mem = ON_TOPO;
+mctop_test_mem_type_t test_do_mem = ON_TOPO;
 int test_mem_on_demand = 0;
 const size_t test_mem_reps = 1e6;
 const size_t test_mem_size = 128 * 1024 * 1024LL;
@@ -122,6 +122,7 @@ hw_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, cons
 
 #define ID0_DO(x) if (tid == 0) { x; }
 #define ID1_DO(x) if (tid == 1) { x; }
+#define VERBOSE(x) if (unlikely(test_verbose)) { x; }
 
 static inline void
 lat_table_2d_set(ticks* arr, const int col_size, const int row, const int col, ticks val)
@@ -161,7 +162,7 @@ crawl(void* param)
   const uint _num_warmup_reps = test_num_warmup_reps; /* local copy */
   const uint _test_cl_size = test_num_cache_lines * sizeof(cache_line_t);
   const uint _num_sockets = test_num_sockets;
-  mctop_mem_type_t _do_mem = test_do_mem;
+  mctop_test_mem_type_t _do_mem = test_do_mem;
   uint _mem_on_demand = test_mem_on_demand;
   const uint _num_hw_ctx = test_num_hw_ctx;
   const uint _verbose = test_verbose;
@@ -470,10 +471,10 @@ mem_bandwidth(void* param)
   for (int n = 0; n < mctop_get_num_nodes(topo); n++)
     {
       mctop_run_on_node(topo, n);
-      ID0_DO(printf(" ######## Run Node %d\n", n);)
+      VERBOSE(ID0_DO(printf(" ######## Run Node %d\n", n);););
       for (int mem_on = 0; mem_on < mctop_get_num_nodes(topo); mem_on++)
 	{
-	  ID0_DO(printf(" #### Mem Node %d\n", mem_on));
+	  VERBOSE(ID0_DO(printf(" #### Mem Node %d\n", mem_on)););
 	  for (int s = 0; s < test_mem_bw_num_streams; s++)
 	    {
 	      mem_bw[s] = numa_alloc_onnode(test_mem_bw_size, mem_on);
@@ -499,13 +500,13 @@ mem_bandwidth(void* param)
 	    {
 	      mem_bw_barrier = 0;
 	      double tot_bw = 0;
-	      printf("   BW (");
+	      VERBOSE(printf("   BW ("););
 	      for (int i = 0; i < n_threads; i++)
 		{
-		  printf("+%2.2f", mem_bw_gbps[i]);
+		  VERBOSE(printf("+%2.2f", mem_bw_gbps[i]););
 		  tot_bw += mem_bw_gbps[i];
 		}
-	      printf(") = %f\n", tot_bw);
+	      VERBOSE(printf(") = %f GB/s\n", tot_bw););
 	      mem_bw_table[n][mem_on] = tot_bw;
 	    }
 	}
@@ -630,7 +631,7 @@ main(int argc, char **argv)
 
   printf("# MCTOP Settings:\n");
   printf("#   Repetitions    : %zu\n", test_num_reps);
-  printf("#   Do-memory      : %s\n", mctop_mem_type_desc[test_do_mem]);
+  printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
   printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
   printf("#   # Cores        : %d\n", test_num_hw_ctx);
   printf("#   # Sockets      : %d\n", test_num_sockets);

@@ -303,6 +303,7 @@ mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt)
 {
   mctopo_t* topo = calloc_assert(1, sizeof(mctopo_t));
   topo->is_smt = is_smt;
+  topo->has_mem = NO_MEMORY;
 
   topo->n_sockets = n_sockets;
   topo->sockets = calloc_assert(topo->n_sockets, sizeof(socket_t));

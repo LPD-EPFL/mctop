@@ -37,7 +37,7 @@ static const char* mctop_type_desc[] =
 
 typedef enum
   {
-    NONE,
+    NO_MEMORY,
     LATENCY,
     BANDWIDTH,
   } mctop_mem_type_t;
