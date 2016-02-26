@@ -230,7 +230,7 @@ mctopo_print(mctopo_t* topo)
 	}
 
       /* mem. bandwidht */
-      if (topo->has_mem && l == topo->socket_level)
+      if (topo->has_mem == BANDWIDTH && l == topo->socket_level)
 	{
 	  printf(PD_2"          Memory bandwidths (GB/s)\n");
 	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
@@ -645,7 +645,7 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
   /* mem. latencies */
   if (mem_lat_table != NULL)
     {
-      topo->has_mem = 1;
+      topo->has_mem = topo->has_mem | LATENCY;
       topo->node_to_socket = calloc_assert(topo->n_sockets, sizeof(uint));
 
       for (int s = 0; s < topo->n_sockets; s++)
@@ -730,6 +730,7 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
 void 
 mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
 {
+  topo->has_mem = BANDWIDTH;
   for (int s = 0; s < topo->n_sockets; s++)
     {
       socket_t* socket = topo->sockets + s;

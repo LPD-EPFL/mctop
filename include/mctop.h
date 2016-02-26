@@ -35,6 +35,13 @@ static const char* mctop_type_desc[] =
     "Cross Socket",
   };
 
+typedef enum
+  {
+    NONE,
+    LATENCY,
+    BANDWIDTH,
+  } mctop_mem_type_t;
+
 static inline const char*
 mctop_get_type_desc(mctop_type_t type)
 {
