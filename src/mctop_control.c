@@ -55,7 +55,11 @@ mctop_get_first_hwc_socket(socket_t* socket)
 inline size_t
 mctop_get_num_cores_per_socket(mctopo_t* topo)
 {
-  return (topo->n_hwcs / topo->n_sockets / topo->n_hwcs_per_core);
+  if (topo->is_smt)
+    {
+      return (topo->n_hwcs / topo->n_sockets / topo->n_hwcs_per_core);
+    }
+  return (topo->n_hwcs / topo->n_sockets);
 }
 
 inline size_t
@@ -108,9 +112,6 @@ mctop_run_on_socket(mctopo_t* topo, const uint socket_n)
   socket_t* socket = &topo->sockets[socket_n];
   return mctop_run_on_socket_ref(socket);
 }
-
-
-uint n_to_s[4] = { 0, 1, 2, 3 };
 
 int
 mctop_run_on_node(mctopo_t* topo, const uint node_n)
