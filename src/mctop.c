@@ -46,7 +46,15 @@ typedef enum
     NO_MEM,			/* no mem. lat measurements */
     ON_TIME,			/* mem. lat measurements in // with comm. latencies */
     ON_TOPO,			/* mem. lat measurements based on topology */
+    ON_TOPO_BW,			/* mem. lat + bw measurements based on topology */
   } mctop_mem_type_t;
+const char* mctop_mem_type_desc[4] =
+  {
+    "No",
+    "Latency only while communicating",
+    "Latency only on topology",
+    "Latency+Bandwidth on topology",
+  };
 mctop_mem_type_t test_do_mem = ON_TOPO;
 int test_mem_on_demand = 0;
 const size_t test_mem_reps = 1e6;
@@ -622,7 +630,7 @@ main(int argc, char **argv)
 
   printf("# MCTOP Settings:\n");
   printf("#   Repetitions    : %zu\n", test_num_reps);
-  printf("#   Do-memory      : %d\n", test_do_mem);
+  printf("#   Do-memory      : %s\n", mctop_mem_type_desc[test_do_mem]);
   printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
   printf("#   # Cores        : %d\n", test_num_hw_ctx);
   printf("#   # Sockets      : %d\n", test_num_sockets);
@@ -787,49 +795,52 @@ main(int argc, char **argv)
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
 #endif
 
-  if (test_do_mem == ON_TOPO)
+  if (test_do_mem >= ON_TOPO)
     {
       printf("## Calculating memory latencies on topology\n");
       mctopo_mem_latencies_calc(topo, mem_lat_table);
     }
 
-  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
-  uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
-  printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
-  pthread_t threads_mem_bw[test_num_mem_bw_threads];
-  pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
-  pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
-
-  thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
-  for(int t = 0; t < test_num_mem_bw_threads; t++)
+  if (test_do_mem == ON_TOPO_BW)
     {
-      tds_mem_bw[t].id = t;
-      tds_mem_bw[t].n_threads = test_num_mem_bw_threads;
-      tds_mem_bw[t].barrier = barrier_mem_bw;
-      tds_mem_bw[t].topo = topo;
-      int rc = pthread_create(&threads_mem_bw[t], &attr, mem_bandwidth, tds_mem_bw + t);
-      if (rc)
+      mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+      uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
+      printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
+      pthread_t threads_mem_bw[test_num_mem_bw_threads];
+      pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
+      pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
+
+      thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
+      for(int t = 0; t < test_num_mem_bw_threads; t++)
 	{
-	  printf("ERROR; return code from pthread_create() is %d\n", rc);
-	  exit(-1);
+	  tds_mem_bw[t].id = t;
+	  tds_mem_bw[t].n_threads = test_num_mem_bw_threads;
+	  tds_mem_bw[t].barrier = barrier_mem_bw;
+	  tds_mem_bw[t].topo = topo;
+	  int rc = pthread_create(&threads_mem_bw[t], &attr, mem_bandwidth, tds_mem_bw + t);
+	  if (rc)
+	    {
+	      printf("ERROR; return code from pthread_create() is %d\n", rc);
+	      exit(-1);
+	    }
 	}
-    }
     
-  for(int t = 0; t < test_num_mem_bw_threads; t++) 
-    {
-      void* status;
-      int rc = pthread_join(threads_mem_bw[t], &status);
-      if (rc) 
+      for(int t = 0; t < test_num_mem_bw_threads; t++) 
 	{
-	  printf("ERROR; return code from pthread_join() is %d\n", rc);
-	  exit(-1);
+	  void* status;
+	  int rc = pthread_join(threads_mem_bw[t], &status);
+	  if (rc) 
+	    {
+	      printf("ERROR; return code from pthread_join() is %d\n", rc);
+	      exit(-1);
+	    }
 	}
-    }
-  free(tds_mem_bw);
-  free(barrier_mem_bw);
+      free(tds_mem_bw);
+      free(barrier_mem_bw);
 
-  mctopo_mem_bandwidth_add(topo, mem_bw_table);
-  table_free((void**) mem_bw_table, test_num_sockets);
+      mctopo_mem_bandwidth_add(topo, mem_bw_table);
+      table_free((void**) mem_bw_table, test_num_sockets);
+    }
 
   /* Free attribute and wait for the other threads */
   pthread_attr_destroy(&attr);
