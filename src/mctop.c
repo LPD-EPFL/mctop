@@ -26,13 +26,21 @@ typedef enum
     NONE,
     C_STRUCT,
     LAT_TABLE,
+    MCT_FILE,
   } test_format_t;
+const char* test_format_desc[] =
+  {
+    "None",
+    "C struct",
+    "Table",
+    "MCT description file",
+  };
 typedef enum
   {
     AR_1D,
     AR_2D,
   } array_format_t;
-test_format_t test_format = NONE;
+test_format_t test_format = MCT_FILE;
 int test_verbose = 0;
 int test_num_hw_ctx;
 ticks* lat_table = NULL;
@@ -75,7 +83,10 @@ ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
 void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
-void print_lat_table(void* lat_table, const size_t n, const test_format_t test_format, array_format_t format);
+void print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format, array_format_t format, const char* h);
+void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
+void print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_format, const char* hostname);
+
 ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
 
 
@@ -576,7 +587,7 @@ main(int argc, char **argv)
 		 "  -f, --format <int>\n"
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
 		 "        0: none, 1: c/c++ struct, 2: latency table\n"
-		 ">>> SECONDARY SETTINGS"
+		 ">>> SECONDARY SETTINGS\n"
 		 "  -n, --num-cores <int>\n"
 		 "        Up to how many hardware contexts to run on (default=all cores)\n"
 		 "  -s, --num-sockets <int>\n"
@@ -629,7 +640,15 @@ main(int argc, char **argv)
       test_num_sockets = numa_num_task_nodes();
     }
 
+  char hostname[50];
+  if (gethostname(hostname, 50) != 0)
+    {
+      perror("MCTOP: Could not get hostname!");
+    }
+
   printf("# MCTOP Settings:\n");
+  printf("#   Machine name   : %s\n", hostname);
+  printf("#   Output         : %s\n", test_format_desc[test_format]);
   printf("#   Repetitions    : %zu\n", test_num_reps);
   printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
   printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
@@ -719,7 +738,10 @@ main(int argc, char **argv)
 
 
 
-  print_lat_table(lat_table, test_num_hw_ctx, test_format, AR_1D);
+  if (test_format != MCT_FILE)
+    {
+      print_lat_table(lat_table, test_num_hw_ctx, test_num_sockets, test_format, AR_1D, hostname);
+    }
 
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
   cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
@@ -735,7 +757,7 @@ main(int argc, char **argv)
 
   cdf_cluster_print(cc);
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-  print_lat_table(lat_table_norm, test_num_hw_ctx, test_format, AR_2D);
+  print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, hostname);
   ticks min_lat = cdf_cluster_get_min_latency(cc);
   int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
   if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
@@ -802,6 +824,12 @@ main(int argc, char **argv)
       mctopo_mem_latencies_calc(topo, mem_lat_table);
     }
 
+  if (test_do_mem)
+    {
+      print_mem_lat_table(mem_lat_table, test_num_hw_ctx, test_num_sockets, test_format, hostname);
+    }
+
+
   if (test_do_mem == ON_TOPO_BW)
     {
       mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
@@ -840,6 +868,8 @@ main(int argc, char **argv)
       free(barrier_mem_bw);
 
       mctopo_mem_bandwidth_add(topo, mem_bw_table);
+      print_mem_bw_table(mem_bw_table, test_num_sockets, test_format, hostname);
+
       table_free((void**) mem_bw_table, test_num_sockets);
     }
 
@@ -896,13 +926,13 @@ cache_lines_destroy(cache_line_t* cl, const size_t size, const uint numa_lib)
 }
 
 void 
-print_lat_table(void* lt, const size_t n, const test_format_t test_format, array_format_t format)
+print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format, array_format_t format, const char* hostname)
 {
   ticks* lat_table_1d = (ticks*) lt;
   ticks** lat_table_2d = (ticks**) lt;
   if (test_format != NONE)
     {
-      printf("## Output ################################################################\n");
+      printf("## Lat table #############################################################\n");
     }
   switch (test_format)
     {
@@ -940,6 +970,188 @@ print_lat_table(void* lt, const size_t n, const test_format_t test_format, array
 	  printf("\n");
 	}
       break;
+    case MCT_FILE:
+      {
+	char out_file[50];
+	sprintf(out_file, "./desc/%s.mct", hostname);
+	printf("## MCTOP output in: %s\n", out_file);
+
+	int ofp_open = 1;
+	FILE* ofp = fopen(out_file, "w+");
+	if (ofp == NULL) 
+	  {
+	    ofp_open = 0;
+	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    ofp = stderr;
+	  }
+	fprintf(ofp, "#%s #HWCs %zu #Nodes %zu\n", hostname, n, n_sockets);
+	for (int x = 0; x < n; x++)
+	  {
+	    for (int y = 0; y < n; y++)
+	      {
+		ticks lat = (format == AR_2D) ? lat_table_2d[x][y] : lat_table_2d_get(lat_table_1d, n, x, y);
+		fprintf(ofp, "%-4d %-4d %zu\n", x, y, lat);
+	      }
+	  }
+	if (ofp_open)
+	  {
+	    fclose(ofp);
+	  }
+      }
+    case NONE:
+      break;
+    }
+  if (test_format != NONE)
+    {
+      printf("##########################################################################\n");
+    }
+}
+
+void
+print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* hostname)
+{
+  if (test_format != NONE)
+    {
+      printf("## Mem. lat table ########################################################\n");
+    }
+  switch (test_format)
+    {
+    case C_STRUCT:
+      printf("size_t mem_lat_table[%zu][%zu] = \n{\n", n, n_sockets);
+      for (int x = 0; x < n; x++)
+	{
+	  printf("  { ");
+	  for (int y = 0; y < n_sockets; y++)
+	    {
+	      printf("%-3zu, ", mem_lat_table[x][y]);
+	    }
+	  printf("},\n");
+	}
+      printf("};\n");
+      break;
+    case LAT_TABLE:
+      printf("     ");
+      for (int y = 0; y < n_sockets; y++)
+	{
+	  printf("%-3d ", y);
+	}
+      printf("\n");
+
+      /* print lat table */
+      for (int x = 0; x < n; x++)
+	{
+	  printf("[%02d] ", x);
+	  for (int y = 0; y < n_sockets; y++)
+	    {
+	      printf("%-3zu, ", mem_lat_table[x][y]);
+	    }
+	  printf("\n");
+	}
+      break;
+    case MCT_FILE:
+      {
+	char out_file[50];
+	sprintf(out_file, "./desc/%s.mct", hostname);
+	printf("## MCTOP output in: %s\n", out_file);
+
+	int ofp_open = 1;
+	FILE* ofp = fopen(out_file, "a");
+	if (ofp == NULL) 
+	  {
+	    ofp_open = 0;
+	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    ofp = stderr;
+	  }
+	fprintf(ofp, "#Mem_latencies %zu\n", n_sockets);
+	for (int x = 0; x < n; x++)
+	  {
+	    for (int y = 0; y < n_sockets; y++)
+	      {
+		fprintf(ofp, "%-4d %-4d %zu\n", x, y, mem_lat_table[x][y]);
+	      }
+	  }
+	if (ofp_open)
+	  {
+	    fclose(ofp);
+	  }
+      }
+    case NONE:
+      break;
+    }
+  if (test_format != NONE)
+    {
+      printf("##########################################################################\n");
+    }
+}
+
+void
+print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_format, const char* hostname)
+{
+  if (test_format != NONE)
+    {
+      printf("## Mem. bw table #########################################################\n");
+    }
+  switch (test_format)
+    {
+    case C_STRUCT:
+      printf("size_t mem_bw_table[%zu][%zu] = \n{\n", n_sockets, n_sockets);
+      for (int x = 0; x < n_sockets; x++)
+	{
+	  printf("  { ");
+	  for (int y = 0; y < n_sockets; y++)
+	    {
+	      printf("%-10.6f, ", mem_bw_table[x][y]);
+	    }
+	  printf("},\n");
+	}
+      printf("};\n");
+      break;
+    case LAT_TABLE:
+      printf("     ");
+      for (int y = 0; y < n_sockets; y++)
+	{
+	  printf("%-3d ", y);
+	}
+      printf("\n");
+
+      /* print lat table */
+      for (int x = 0; x < n_sockets; x++)
+	{
+	  printf("[%02d] ", x);
+	  for (int y = 0; y < n_sockets; y++)
+	    {
+	      printf("%-10.6f, ", mem_bw_table[x][y]);
+	    }
+	  printf("\n");
+	}
+      break;
+    case MCT_FILE:
+      {
+	char out_file[50];
+	sprintf(out_file, "./desc/%s.mct", hostname);
+	printf("## MCTOP output in: %s\n", out_file);
+
+	int ofp_open = 1;
+	FILE* ofp = fopen(out_file, "a");
+	if (ofp == NULL) 
+	  {
+	    ofp_open = 0;
+	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    ofp = stderr;
+	  }
+	fprintf(ofp, "#Mem_bw %zu\n", n_sockets);
+	for (int x = 0; x < n_sockets; x++)
+	  {
+	    for (int y = 0; y < n_sockets; y++)
+	      {
+		fprintf(ofp, "%-4d %-4d %f\n", x, y, mem_bw_table[x][y]);
+	      }
+	  }
+	if (ofp_open)
+	  {
+	    fclose(ofp);
+	  }
+      }
     case NONE:
       break;
     }
