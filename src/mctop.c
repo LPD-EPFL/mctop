@@ -54,7 +54,7 @@ const size_t test_mem_size = 128 * 1024 * 1024LL;
 volatile uint64_t** node_mem;
 
 const uint test_mem_bw_num_streams = 2;
-const size_t test_mem_bw_size = 1024 * 1024 * 1024LL;
+const size_t test_mem_bw_size = 256 * 1024 * 1024LL;
 const uint test_mem_bw_num_reps = 4;
 volatile uint32_t mem_bw_barrier = 0;
 volatile double* mem_bw_gbps;
