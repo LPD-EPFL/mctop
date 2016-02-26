@@ -1,5 +1,4 @@
 #include <helper.h>
-#include <pfd.h>
 #include <time.h>
 
 int
@@ -123,6 +122,49 @@ ll_random_create(volatile uint64_t* mem, const size_t size)
   free(used);
 }
 
+ticks
+spin_time(size_t n)
+{
+  volatile ticks __s = getticks();
+  volatile size_t sum = 0;
+  for (volatile size_t i = 0; i < n; i++)
+    {
+      sum += i;
+    }
+  volatile ticks __e = getticks();
+  return __e - __s;
+}
+int
+dvfs_scale_up(const size_t n_reps, const double ratio, double* dur)
+{
+  const double is_dvfs_ratio = 0.9;
+  const uint max_tries = 16;
+  uint tries = max_tries;
+
+  clock_t s = clock();
+  ticks times[2];
+  times[0] = spin_time(n_reps);
+  times[1] = spin_time(n_reps);
+  ticks prev = times[1], last = prev;
+  if (times[1] < (ratio * times[0]))
+    {
+      ticks cmp = prev;
+      do
+	{
+	  cmp = prev;
+	  last = spin_time(n_reps);
+	  prev = last;
+	}
+      while (tries-- > 0 && last < (ratio * cmp));
+    }
+  clock_t e = clock();
+
+  if (dur != NULL)
+    {
+      *dur = 1000.0 * (e - s) / (double) CLOCKS_PER_SEC;
+    }
+  return (last < (is_dvfs_ratio * times[0]));
+}
 void**
 table_malloc(const size_t rows, const size_t cols, const size_t elem_size)
 {

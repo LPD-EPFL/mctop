@@ -1,5 +1,6 @@
 #include <mctop_crawler.h>
 #include <mctop_mem.h>
+#include <mctop_profiler.h>
 #include <mctop.h>
 
 const int test_num_threads = 2;
@@ -71,86 +72,40 @@ ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluste
 
 
 UNUSED static uint64_t
-fai_prof(cache_line_t* cl, const volatile size_t reps)
+fai_prof(cache_line_t* cl, const size_t reps, mctop_prof_t* profiler)
 {
   volatile uint64_t c = 0;
-  PFDI(0);
+  MCTOP_PROF_START(profiler, ticks_start);
   c = IAF_U64(cl->word);
-  PFDO(0, reps);
+  MCTOP_PROF_STOP(profiler, ticks_start, reps);
   return c;
 }
 
 UNUSED static uint64_t
-cas_prof(cache_line_t* cl, const volatile size_t reps)
+cas_prof(cache_line_t* cl, const size_t reps, mctop_prof_t* profiler)
 {
   volatile uint64_t c = 0;
-  PFDI(0);
+  MCTOP_PROF_START(profiler, ticks_start);
   c = CAS_U64(cl->word, 0, 1);
-  PFDO(0, reps);
+  MCTOP_PROF_STOP(profiler, ticks_start, reps);
   return c;
 }
 
-#define ATOMIC_OP(a, b) cas_prof(a, b)
-
-static ticks
-spin_time(size_t n)
-{
-  volatile ticks __s = getticks();
-  volatile size_t sum = 0;
-  for (volatile size_t i = 0; i < n; i++)
-    {
-      sum += i;
-    }
-  volatile ticks __e = getticks();
-  return __e - __s;
-}
-
-static int
-dvfs_scale_up(const size_t n_reps, const double ratio, double* dur)
-{
-  const double is_dvfs_ratio = 0.9;
-  const uint max_tries = 16;
-  uint tries = max_tries;
-
-  clock_t s = clock();
-  ticks times[2];
-  times[0] = spin_time(n_reps);
-  times[1] = spin_time(n_reps);
-  ticks prev = times[1], last = prev;
-  if (times[1] < (ratio * times[0]))
-    {
-      ticks cmp = prev;
-      do
-	{
-	  cmp = prev;
-	  last = spin_time(n_reps);
-	  prev = last;
-	}
-      while (tries-- > 0 && last < (ratio * cmp));
-    }
-  clock_t e = clock();
-
-  if (dur != NULL)
-    {
-      *dur = 1000.0 * (e - s) / (double) CLOCKS_PER_SEC;
-    }
-  return (last < (is_dvfs_ratio * times[0]));
-}
+#define ATOMIC_OP(a, b, c) cas_prof(a, b, c)
 
 static void
-hw_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid)
+hw_warmup(cache_line_t* cl, const size_t warmup_reps, barrier2_t* barrier2, const int tid, mctop_prof_t* profiler)
 {
   for (size_t rep = 0; rep < (warmup_reps + 1); rep++)
     {
       if (tid == 0)
 	{
 	  barrier2_cross(barrier2, tid, rep);
-	  ATOMIC_OP(cl, rep);
+	  ATOMIC_OP(cl, rep, profiler);
 	}
       else
 	{
-	  ATOMIC_OP(cl, rep);
-	  /* ATOMIC_OP_NO_PROF(cl); */
+	  ATOMIC_OP(cl, rep, profiler);
 	  barrier2_cross(barrier2, tid, rep);      
 	}
     }
@@ -205,7 +160,9 @@ crawl(void* param)
   const int _do_dvfs = test_dvfs;
   int max_stdev = test_max_stdev;
 
-  PFDINIT(_num_reps);
+  mctop_prof_t* profiler = mctop_prof_create(_num_reps);
+  mctop_prof_stats_t* stats = malloc_assert(sizeof(mctop_prof_stats_t));
+
   volatile size_t sum = 0;
 
   for (int x = 0; x < _num_hw_ctx; x++)
@@ -214,8 +171,6 @@ crawl(void* param)
       if (tid == 0)
 	{
 	  set_cpu(x); 
-	  PFDTERM_INIT(_num_reps);
-
 	  if (_do_dvfs)
 	    {
 	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
@@ -264,9 +219,9 @@ crawl(void* param)
       size_t history_med[2] = { 0 };
       for (int y = x + 1; y < _num_hw_ctx; y++)
 	{
-	  ID1_DO(set_cpu(y); PFDTERM_INIT(_num_reps));
+	  ID1_DO(set_cpu(y););
 
-	  hw_warmup(cache_line, _num_warmup_reps, barrier2, tid);
+	  hw_warmup(cache_line, _num_warmup_reps, barrier2, tid, profiler);
 
 	  for (size_t rep = 0; rep < _num_reps; rep++)
 	    {
@@ -274,19 +229,21 @@ crawl(void* param)
 	      if (likely(tid == 0))
 		{
 		  barrier2_cross(barrier2, tid, rep);
-		  sum += ATOMIC_OP(cache_line, rep);
+		  sum += ATOMIC_OP(cache_line, rep, profiler);
 		}
 	      else
 		{
-		  sum += ATOMIC_OP(cache_line, rep);
+		  sum += ATOMIC_OP(cache_line, rep, profiler);
 		  barrier2_cross(barrier2, tid, rep);      
 		}
 	    }
 
-	  abs_deviation_t ad;							
-	  get_abs_deviation(pfd_store[0], _num_reps, &ad);
-	  double stdev = 100 * (1 - (ad.avg - ad.std_dev) / ad.avg);
-	  size_t median = ad.median;
+	  /* mctop_prof_stats */
+	  mctop_prof_stats_calc(profiler, stats);
+	  /* abs_deviation_t ad;							 */
+	  /* get_abs_deviation(pfd_store[0], _num_reps, &ad); */
+	  double stdev = stats->std_dev_perc;
+	  size_t median = stats->median;
 	  if (likely(tid == 0))
 	    {
 	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
@@ -351,7 +308,9 @@ crawl(void* param)
 	    }
 	}
     }
-  PFDTERM();
+
+  mctop_prof_free(profiler);
+  free(stats);
   return NULL;
 }
 

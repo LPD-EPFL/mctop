@@ -3,8 +3,6 @@
 
 #include <inttypes.h>
 
-#define COMPILER_BARRIER() __asm volatile ("" ::: "memory")
-
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
 

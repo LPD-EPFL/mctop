@@ -15,10 +15,10 @@ default: mctop
 
 all: mctop mctop_latency
 
-MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/helper.o ${SRCPATH}/barrier.o ${SRCPATH}/pfd.o ${SRCPATH}/cdf.o \
-	${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o
-INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/helper.h ${SRCPATH}/barrier.o ${INCLUDE}/pfd.h ${INCLUDE}/cdf.h \
-	${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
+MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o \
+	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o
+INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
+	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
 
 mctop: 	${MCTOP_OBJS} ${INCLUDES}
 	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS}

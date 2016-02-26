@@ -12,7 +12,6 @@
 
 #include <helper.h>
 #include <barrier.h>
-#include <pfd.h>
 #include <cdf.h>
 #include <darray.h>
 #include <mctop.h>
