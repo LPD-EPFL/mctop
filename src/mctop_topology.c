@@ -682,7 +682,7 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
 	      socket->mem_latencies[n] = lats[n];
 	    }
 	  socket->local_node = local_node;
-	  topo->node_to_socket[socket->local_node] = socket->id;
+	  topo->node_to_socket[socket->local_node] = s;
 	}
     }
 }
