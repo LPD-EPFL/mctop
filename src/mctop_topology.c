@@ -169,7 +169,6 @@ mctop_free(mctopo_t* topo)
   /* free siblings */
   for (int l = topo->socket_level + 1; l < topo->n_levels; l++)
     {
-      printf("FREE: siblings lvl %u\n", l);
       sibling_t* sibling = mctop_get_first_sibling_lvl(topo, l);
       do
 	{
@@ -183,7 +182,6 @@ mctop_free(mctopo_t* topo)
   /* free groups */
   for (int l = 1; l < topo->socket_level; l++)
     {
-      printf("FREE: groups lvl %u\n", l);
       hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
       do
 	{
