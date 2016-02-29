@@ -700,34 +700,6 @@ mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo)
     }
 }
 
-
-void
-mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
-{
-  const size_t test_mem_size = 128 * 1024 * 1024LL;
-  const size_t test_mem_reps = 5e6;
-
-  for (int s = 0; s < topo->n_sockets; s++)
-    {
-      uint hwc_id = mctop_get_first_hwc_socket(mctop_get_socket(topo, s))->id;
-      mctop_run_on_socket(topo, s);
-      for (int n = 0; n < topo->n_sockets; n++)
-	{
-	  volatile uint64_t* mem = numa_alloc_onnode(test_mem_size, n);
-	  ll_random_create(mem, test_mem_size);
-	  volatile uint64_t* l = mem;
-	  ll_random_traverse(l, test_mem_reps >> 8);
-
-	  uint64_t lat = ll_random_traverse(l, test_mem_reps);
-	  mem_lat_table[hwc_id][n] = lat;
-
-	  numa_free((void*) mem, test_mem_size);
-	}
-    }
-
-  mctopo_mem_latencies_add(topo, mem_lat_table);
-}
-
 void 
 mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
 {

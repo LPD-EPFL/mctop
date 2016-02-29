@@ -11,8 +11,8 @@ struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 				uint64_t** mem_lat_table, const uint n_sockets,
 				cdf_cluster_t* cc, const int is_smt);
 struct mctopo* mctop_load(const char* mct_file);
-void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
 void mctopo_mem_bandwidth_add(struct mctopo* topo, double** mem_bw_table);
+void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 
 void mctopo_print(struct mctopo* topo);
 
@@ -166,5 +166,9 @@ mctop_print_id(uint id)
 int mctop_run_on_socket_ref(socket_t* socket);
 int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
 int mctop_run_on_node(mctopo_t* topo, const uint node_n);
+
+void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
+void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
+void table_free(void** m, const size_t cols);
 
 #endif	/* __H_MCTOP__ */

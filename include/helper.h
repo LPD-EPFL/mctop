@@ -159,13 +159,8 @@ pow2roundup (uint32_t x)
   return x + 1;
 }
 
-
 uint64_t ll_random_traverse(volatile uint64_t* list, const size_t reps);
 void ll_random_create(volatile uint64_t* mem, const size_t size);
-
-void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
-void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
-void table_free(void** m, const size_t cols);
 
 
 #endif	/* _HELPER_H_ */

@@ -17,7 +17,7 @@ all: mctop mctop_latency
 
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o \
 	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o \
-	${SRCPATH}/mctop_load.o
+	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
 
@@ -27,14 +27,14 @@ mctop: 	${MCTOP_OBJS} ${INCLUDES}
 mctop_latency: ${SRCPATH}/mctop_latency.o ${SRCPATH}/helper.o ${INCLUDES}
 	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mctop_latency.o ${SRCPATH}/helper.o -o mctop_latency ${LDFLAGS}
 
-MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o \
+MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o \
 	${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 	ar cr libmctop.a ${MCTOPLIB_OBJS}
 
 mct_load: ${SRCPATH}/mct_load.o libmctop.a ${INCLUDES}
-	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_load.o -o mct_load ${LDFLAGS} -lmctop
+	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_load.o -o mct_load -lmctop ${LDFLAGS}
 clean:
 	rm src/*.o
 
