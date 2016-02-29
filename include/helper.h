@@ -75,30 +75,6 @@ static inline ticks getticks()
 }
 #endif
 
-static inline void*
-malloc_assert(size_t size)
-{
-  void* m = malloc(size);
-  assert(m != NULL);
-  return m;
-}
-
-static inline void*
-realloc_assert(void* old, size_t size)
-{
-  void* m = realloc(old, size);
-  assert(m != NULL);
-  return m;
-}
-
-static inline void*
-calloc_assert(size_t n, size_t size)
-{
-  void* m = calloc(n, size);
-  assert(m != NULL);
-  return m;
-}
-
 static inline void
 print_id(size_t id, const char* format, ...)
 {

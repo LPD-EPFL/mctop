@@ -14,6 +14,9 @@ void mctopo_fix_horizontal_links(mctopo_t* topo);
 void mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 
+extern void cdf_cluster_free(cdf_cluster_t* cc);
+extern cdf_cluster_t* cdf_cluster_create_empty(const int n_clusters);
+
 mctopo_t*
 mctopo_construct(uint64_t** lat_table_norm, 
 		 const size_t N,

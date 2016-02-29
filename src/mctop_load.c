@@ -5,26 +5,34 @@ mctopo_t*
 mctop_load(const char* mct_file)
 {
   clock_t cstart = clock();
-  char file_open[100];
-  if (mct_file == NULL)
+  char file_open[100], hostname[100];
+  if (mct_file != NULL)
     {
-      char hostname[50];
-      if (gethostname(hostname, 50) != 0)
+      sprintf(file_open, "%s", mct_file);
+    }
+  else
+    {
+      if (gethostname(hostname, 100) != 0)
 	{
 	  perror("MCTOP Error: Could not get hostname!");
 	}
       sprintf(file_open, "./desc/%s.mct", hostname);
     }
-  else
-    {
-      sprintf(file_open, "%s", mct_file);
-    }
-  
+
   FILE* ifile = fopen(file_open, "r");
   if (ifile == NULL)
     {
-      fprintf(stderr, "MCTOP Error: Cannot open %s file!\n", file_open);
-      return NULL;
+      sprintf(file_open, "/usr/share/mctop/%s.mct", hostname);
+      ifile = fopen(file_open, "r");
+      if (ifile == NULL)
+	{
+	  fprintf(stderr, "MCTOP Error: Cannot find MCT file!\n");
+	  return NULL;
+	}
+      else
+	{
+	  fprintf(stderr, "MCTOP Info: Opened %s!\n", file_open);
+	}
     }
 
   uint n_hwcs, n_sockets, is_smt;
@@ -127,6 +135,7 @@ mctop_load(const char* mct_file)
   table_free((void**) lat_table, n_hwcs);
   table_free((void**) mem_lat_table, n_hwcs);
   table_free((void**) mem_bw_table, n_hwcs);
+  fclose(ifile);
 
   double dur = (clock() - cstart) / (double) CLOCKS_PER_SEC;
   printf("MCTOP Info: Topology loaded in %.3f ms\n", 1000 * dur);

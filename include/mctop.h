@@ -3,18 +3,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <helper.h>
-#include <cdf.h>
-
-struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
-				uint64_t** mem_lat_table, const uint n_sockets,
-				cdf_cluster_t* cc, const int is_smt);
-struct mctopo* mctop_load(const char* mct_file);
-void mctopo_mem_bandwidth_add(struct mctopo* topo, double** mem_bw_table);
-void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
-
-void mctopo_print(struct mctopo* topo);
+#include <stdint.h>
+#include <assert.h>
+#include <unistd.h>
 
 #define MCTOP_LVL_ID_MULTI 10000
 
@@ -115,6 +106,50 @@ typedef struct hw_context
 
 
 /* ******************************************************************************** */
+/* CDF fucntions */
+/* ******************************************************************************** */
+
+typedef struct cdf_point
+{
+  uint64_t val;
+  double percentile;
+} cdf_point_t;
+
+typedef struct cdf
+{
+  size_t n_points;
+  cdf_point_t* points;
+} cdf_t;
+
+typedef struct cdf_cluster_point
+{
+  int idx;
+  size_t size;
+  uint64_t val_min;
+  uint64_t val_max;
+  uint64_t median;
+} cdf_cluster_point_t;
+
+typedef struct cdf_cluster
+{
+  size_t n_clusters;
+  cdf_cluster_point_t* clusters;
+} cdf_cluster_t;
+
+
+/* ******************************************************************************** */
+/* MCTOP CONSTRUCTION IF */
+/* ******************************************************************************** */
+
+struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
+				uint64_t** mem_lat_table, const uint n_sockets,
+				struct cdf_cluster* cc, const int is_smt);
+struct mctopo* mctop_load(const char* mct_file);
+void mctopo_mem_bandwidth_add(struct mctopo* topo, double** mem_bw_table);
+void mctopo_mem_latencies_add(struct mctopo* topo, uint64_t** mem_lat_table);
+void mctopo_print(struct mctopo* topo);
+
+/* ******************************************************************************** */
 /* MCTOP CONTROL IF */
 /* ******************************************************************************** */
 
@@ -167,8 +202,35 @@ int mctop_run_on_socket_ref(socket_t* socket);
 int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
 int mctop_run_on_node(mctopo_t* topo, const uint node_n);
 
+/* ******************************************************************************** */
+/* AUX functions */
+/* ******************************************************************************** */
 void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
 void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
 void table_free(void** m, const size_t cols);
+
+static inline void*
+malloc_assert(size_t size)
+{
+  void* m = malloc(size);
+  assert(m != NULL);
+  return m;
+}
+
+static inline void*
+realloc_assert(void* old, size_t size)
+{
+  void* m = realloc(old, size);
+  assert(m != NULL);
+  return m;
+}
+
+static inline void*
+calloc_assert(size_t n, size_t size)
+{
+  void* m = calloc(n, size);
+  assert(m != NULL);
+  return m;
+}
 
 #endif	/* __H_MCTOP__ */

@@ -10,6 +10,7 @@
 #define __H_CDF__
 
 #include <helper.h>
+#include "mctop.h"
 
 #define XSTR(s)                         STR(s)
 #define STR(s)                          #s
@@ -17,33 +18,6 @@
 
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
-
-typedef struct cdf_point
-{
-  uint64_t val;
-  double percentile;
-} cdf_point_t;
-
-typedef struct cdf
-{
-  size_t n_points;
-  cdf_point_t* points;
-} cdf_t;
-
-typedef struct cdf_cluster_point
-{
-  int idx;
-  size_t size;
-  uint64_t val_min;
-  uint64_t val_max;
-  uint64_t median;
-} cdf_cluster_point_t;
-
-typedef struct cdf_cluster
-{
-  size_t n_clusters;
-  cdf_cluster_point_t* clusters;
-} cdf_cluster_t;
 
 cdf_t* cdf_calc(uint64_t* vals, size_t n_vals);
 void cdf_free(cdf_t* cdf);

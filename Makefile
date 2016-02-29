@@ -31,13 +31,21 @@ MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o \
 	${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
-	ar cr libmctop.a ${MCTOPLIB_OBJS}
+	ar cr libmctop.a ${MCTOPLIB_OBJS} ${INCLUDE}/mctop.h
 
 mct_load: ${SRCPATH}/mct_load.o libmctop.a ${INCLUDES}
 	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_load.o -o mct_load -lmctop ${LDFLAGS}
 clean:
-	rm src/*.o
+	rm src/*.o *.a
 
 $(SRCPATH)/%.o:: $(SRCPATH)/%.c 
 	cc $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
+
+IPATH := /usr/share/mctop/
+
+install: libmctop.a
+	sudo mkdir -p ${IPATH}
+	sudo cp desc/* ${IPATH}
+	sudo cp libmctop.a /usr/lib/
+	sudo cp include/mctop.h /usr/include/
