@@ -13,7 +13,7 @@ VFLAGS = -D_GNU_SOURCE
 
 default: mctop
 
-all: mctop mctop_latency
+all: mctop mct_load mctop_latency
 
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o \
 	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o \

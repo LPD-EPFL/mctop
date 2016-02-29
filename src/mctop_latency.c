@@ -1,8 +1,6 @@
 #include <mctop_crawler.h>
 #include <mctop.h>
 
-void ll_random_create(volatile uint64_t* mem, const size_t size);
-
 int
 main(int argc, char **argv) 
 {
@@ -138,48 +136,4 @@ main(int argc, char **argv)
     }
 }
 
-
-
-
-
-/* ******************************************************************************** */
-/* help functions */
-/* ******************************************************************************** */
-
-void
-ll_random_create(volatile uint64_t* mem, const size_t size)
-{
-  const size_t size_cl = size / CACHE_LINE_SIZE;
-  const size_t per_cl = CACHE_LINE_SIZE / sizeof(uint64_t);
-  uint8_t* used = calloc_assert(size_cl, sizeof(uint8_t));
-  unsigned long* seeds = seeds_create();
-  seeds[0] = 0x0123456789ABCDLL;
-  seeds[1] = 0xA023457689BAC0LL;
-  seeds[2] = 0xB0245736F9BAC1LL;
-
-  size_t idx = 0;
-  size_t used_num = 0;
-  while (used_num < size_cl - 1)
-    {
-      used[idx] = 1;
-      used_num++;
-
-      size_t nxt;
-      do
-	{
-	  nxt = (marsaglia_rand(seeds) % size_cl);
-	}
-      while (used[nxt]);
-
-      size_t nxt_8 = (nxt * per_cl);
-      size_t idx_8 = (idx * per_cl);
-      mem[idx_8] = (uint64_t) (mem + nxt_8);
-      idx = nxt;
-    }
-
-  mem[idx * per_cl] = (uint64_t) mem;
-
-  free(seeds);
-  free(used);
-}
 
