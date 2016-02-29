@@ -71,7 +71,7 @@ mctop_load(const char* mct_file)
       int ret = fscanf(ifile, "%s %u", discard[0], &ns);
       if (ret != 2)
 	{
-	  fprintf(stderr, "MCTOP Warning: No mem. latency measurements in %s!\n", file_open);
+	  fprintf(stderr, "MCTOP Warning: No memory latency measurements in %s!\n", file_open);
 	  has_mem_lat = 0;
 	}
       else
@@ -99,7 +99,7 @@ mctop_load(const char* mct_file)
       int ret = fscanf(ifile, "%s %u", discard[0], &ns);
       if (ret != 2)
 	{
-	  fprintf(stderr, "MCTOP Warning: No mem. latency measurements in %s!\n", file_open);
+	  fprintf(stderr, "MCTOP Warning: No memory bandwidth measurements in %s!\n", file_open);
 	  has_mem_bw = 0;
 	}
       else

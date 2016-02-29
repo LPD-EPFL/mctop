@@ -20,6 +20,7 @@ size_t test_num_cache_lines = 1024;
 size_t test_cdf_cluster_offset = 25;
 int test_num_clusters_hint = 0;
 cache_line_t* test_cache_line = NULL;
+int test_mem_augment = 0;
 
 typedef enum
   {
@@ -63,7 +64,7 @@ const char* mctop_test_mem_type_desc[4] =
     "Latency only on topology",
     "Latency+Bandwidth on topology",
   };
-mctop_test_mem_type_t test_do_mem = ON_TOPO;
+mctop_test_mem_type_t test_do_mem = ON_TOPO_BW;
 int test_mem_on_demand = 0;
 const size_t test_mem_reps = 1e6;
 const size_t test_mem_size = 128 * 1024 * 1024LL;
@@ -545,6 +546,7 @@ main(int argc, char **argv)
       {"num-clusters",              required_argument, NULL, 'i'},
       {"repetitions",               required_argument, NULL, 'r'},
       {"format",                    required_argument, NULL, 'f'},
+      {"augment",                   no_argument,       NULL, 'a'},
       {"verbose",                   no_argument,       NULL, 'v'},
       {NULL, 0, NULL, 0}
     };
@@ -554,7 +556,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:i:", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:i:a", long_options, &i);
 
       if(c == -1)
 	break;
@@ -596,6 +598,9 @@ main(int argc, char **argv)
 		 "  -i, --num-clusters <int>\n"
 		 "        Hint on how many latency groups to look for (default=disabled). For example, on a 2-socket\n"
 		 "        Intel server with HyperThreads, we expect 4 groups (i.e., hyperthread, core, socket, cross socket)."
+		 "  -a, --augment\n"
+		 "        Augment an existing MCT description file with memory measurements (default=" XSTR(DEFAULT_AUGMENT) ")\n"
+		 "        If the MCT file already contains memory measurements mctop with return w/o any effects.\n"
 		 ">>> AUXILLIARY SETTINGS\n"
 		 "  -h, --help\n"
 		 "        Print this message\n"
@@ -624,6 +629,9 @@ main(int argc, char **argv)
 	case 'i':
 	  test_num_clusters_hint = atoi(optarg);
 	  break;
+	case 'a':
+	  test_mem_augment = 1;
+	  break;
 	case 'v':
 	  test_verbose = 1;
 	  break;
@@ -635,6 +643,11 @@ main(int argc, char **argv)
 	}
     }
 
+  if (test_mem_augment)
+    {
+      test_format = MCT_FILE;
+      test_do_mem = ON_TOPO_BW;
+    }
 
   if (test_num_sockets < 0)
     {
@@ -646,18 +659,26 @@ main(int argc, char **argv)
     {
       perror("MCTOP Error: Could not get hostname!");
     }
+  
 
   printf("# MCTOP Settings:\n");
   printf("#   Machine name   : %s\n", hostname);
   printf("#   Output         : %s\n", test_format_desc[test_format]);
-  printf("#   Repetitions    : %zu\n", test_num_reps);
-  printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
-  printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
-  printf("#   # Cores        : %d\n", test_num_hw_ctx);
-  printf("#   # Sockets      : %d\n", test_num_sockets);
-  printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
-  printf("#   CPU DVFS       : %d (Freq. up in %zu ms)\n", test_dvfs, !test_dvfs ? 0 : (size_t) dvfs_up_dur);
-  printf("# Progress\n");
+  if (!test_mem_augment)
+    {
+      printf("#   Repetitions    : %zu\n", test_num_reps);
+      printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
+      printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
+      printf("#   # Cores        : %d\n", test_num_hw_ctx);
+      printf("#   # Sockets      : %d\n", test_num_sockets);
+      printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
+      printf("#   CPU DVFS       : %d (Freq. up in %zu ms)\n", test_dvfs, !test_dvfs ? 0 : (size_t) dvfs_up_dur);
+      printf("# Progress\n");
+    }
+  else
+    {
+      printf("#   Augmenting with memory measurements\n");
+    }
 
   pthread_t threads_mem[test_num_sockets];
   pthread_t threads[test_num_threads];
@@ -665,7 +686,7 @@ main(int argc, char **argv)
   pthread_attr_init(&attr);  /* Initialize and set thread detached attribute */
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-  if (test_do_mem == ON_TIME)
+  if (!test_mem_augment && test_do_mem == ON_TIME)
     {
       node_mem = calloc_assert(test_num_sockets, sizeof(uint64_t*));
 
@@ -704,106 +725,115 @@ main(int argc, char **argv)
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
 
   lat_table = calloc_assert(test_num_hw_ctx * test_num_hw_ctx, sizeof(ticks));
-  if (test_do_mem != NO_MEM)
+  if (test_mem_augment || test_do_mem != NO_MEM)
     {
       mem_lat_table = (ticks**) table_calloc(test_num_hw_ctx, test_num_sockets, sizeof(ticks));
     }
 
+  mctopo_t* topo = NULL;
 #define MCTOP_PREDEFINED_LAT_TABLE 0
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
-  for(int t = 0; t < test_num_threads; t++)
+  if (!test_mem_augment)
     {
-      tds[t].id = t;
-      tds[t].n_threads = test_num_threads;
-      tds[t].barrier = barrier;
-      tds[t].barrier2 = barrier2;
-      int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
-      if (rc)
+      for(int t = 0; t < test_num_threads; t++)
 	{
-	  printf("ERROR; return code from pthread_create() is %d\n", rc);
-	  exit(-1);
+	  tds[t].id = t;
+	  tds[t].n_threads = test_num_threads;
+	  tds[t].barrier = barrier;
+	  tds[t].barrier2 = barrier2;
+	  int rc = pthread_create(&threads[t], &attr, crawl, tds + t);
+	  if (rc)
+	    {
+	      printf("ERROR; return code from pthread_create() is %d\n", rc);
+	      exit(-1);
+	    }
 	}
-    }
     
     
-  for(int t = 0; t < test_num_threads; t++) 
-    {
-      void* status;
-      int rc = pthread_join(threads[t], &status);
-      if (rc) 
+      for(int t = 0; t < test_num_threads; t++) 
 	{
-	  printf("ERROR; return code from pthread_join() is %d\n", rc);
+	  void* status;
+	  int rc = pthread_join(threads[t], &status);
+	  if (rc) 
+	    {
+	      printf("ERROR; return code from pthread_join() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
+
+      if (test_format != MCT_FILE)
+	{
+	  print_lat_table(lat_table, test_num_hw_ctx, test_num_sockets, test_format, AR_1D, 0, hostname);
+	}
+
+      const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
+      cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
+      /* cdf_print(cdf); */
+      cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset, test_num_clusters_hint);
+      if (cc == NULL)
+	{
+	  fprintf(stderr, "*** Error: Could not create an appropriate clusterings of cores. Rerun mctop with:\n"
+		  "\t1. more repetitions (-r)\n"
+		  "\t2. on time mem. latency measurements (-m1)\n");
 	  exit(-1);
 	}
-    }
 
+      cdf_cluster_print(cc);
+      ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
 
-
-  if (test_format != MCT_FILE)
-    {
-      print_lat_table(lat_table, test_num_hw_ctx, test_num_sockets, test_format, AR_1D, 0, hostname);
-    }
-
-  const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
-  cdf_t* cdf = cdf_calc(lat_table, lat_table_size);
-  /* cdf_print(cdf); */
-  cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset, test_num_clusters_hint);
-  if (cc == NULL)
-    {
-      fprintf(stderr, "*** Error: Could not create an appropriate clusterings of cores. Rerun mctop with:\n"
-	      "\t1. more repetitions (-r)\n"
-	      "\t2. on time mem. latency measurements (-m1)\n");
-      exit(-1);
-    }
-
-  cdf_cluster_print(cc);
-  ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-
-  ticks min_lat = cdf_cluster_get_min_latency(cc);
-  int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
-  if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
-    {
-      fprintf(stderr, "** Cannot find 2 hw contects to check for STM! Single core machine?\n");
-    }
-
-  /* SMT detection */
-  for(int t = 0; t < test_num_smt_threads; t++)
-    {
-      tds[t].id = t;
-      tds[t].n_threads = test_num_smt_threads;
-      tds[t].barrier = barrier;
-      tds[t].barrier2 = barrier2;
-      tds[t].hw_context = possible_smt_hwcs[t];
-      int rc = pthread_create(&threads[t], &attr, is_smt, tds + t);
-      if (rc)
+      ticks min_lat = cdf_cluster_get_min_latency(cc);
+      int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
+      if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
 	{
-	  printf("ERROR; return code from pthread_create() is %d\n", rc);
-	  exit(-1);
+	  fprintf(stderr, "** Cannot find 2 hw contects to check for STM! Single core machine?\n");
 	}
-    }
+
+      /* SMT detection */
+      for(int t = 0; t < test_num_smt_threads; t++)
+	{
+	  tds[t].id = t;
+	  tds[t].n_threads = test_num_smt_threads;
+	  tds[t].barrier = barrier;
+	  tds[t].barrier2 = barrier2;
+	  tds[t].hw_context = possible_smt_hwcs[t];
+	  int rc = pthread_create(&threads[t], &attr, is_smt, tds + t);
+	  if (rc)
+	    {
+	      printf("ERROR; return code from pthread_create() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
     
-  int is_smt_cpu = 0;
-  for(int t = 0; t < test_num_smt_threads; t++) 
+      int is_smt_cpu = 0;
+      for(int t = 0; t < test_num_smt_threads; t++) 
+	{
+	  void* status;
+	  int rc = pthread_join(threads[t], &status);
+	  if (rc) 
+	    {
+	      printf("ERROR; return code from pthread_join() is %d\n", rc);
+	      exit(-1);
+	    }
+	  if (t == 0)
+	    {
+	      is_smt_cpu = *(int *) status;
+	      free(status);
+	    }
+	}
+
+      printf("## CPU is SMT: %d\n", is_smt_cpu);
+
+      print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, is_smt_cpu, hostname);
+
+      topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
+      table_free((void**) lat_table_norm, test_num_hw_ctx);
+      cdf_cluster_free(cc);
+      cdf_free(cdf);
+    } 
+  else  /* test_mem_augment == 1 */
     {
-      void* status;
-      int rc = pthread_join(threads[t], &status);
-      if (rc) 
-	{
-	  printf("ERROR; return code from pthread_join() is %d\n", rc);
-	  exit(-1);
-	}
-      if (t == 0)
-	{
-	  is_smt_cpu = *(int *) status;
-	  free(status);
-	}
+      topo = mctop_load(NULL);
     }
-
-  printf("## CPU is SMT: %d\n", is_smt_cpu);
-
-  print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, is_smt_cpu, hostname);
-
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
 
 #else
   int is_smt_cpu = is_smt1;
@@ -822,13 +852,22 @@ main(int argc, char **argv)
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
 #endif
 
+  int mem_lat_new = 1;
   if (test_do_mem >= ON_TOPO)
     {
-      printf("## Calculating memory latencies on topology\n");
-      mctopo_mem_latencies_calc(topo, mem_lat_table);
+      if (!test_mem_augment || !mctop_has_mem_lat(topo))
+	{
+	  printf("## Calculating memory latencies on topology\n");
+	  mctopo_mem_latencies_calc(topo, mem_lat_table);
+	}
+      else
+	{
+	  printf("## Topology already contains memory latencies!\n");
+	  mem_lat_new = 0;
+	}
     }
 
-  if (test_do_mem)
+  if (test_do_mem && mem_lat_new)
     {
       print_mem_lat_table(mem_lat_table, test_num_hw_ctx, test_num_sockets, test_format, hostname);
     }
@@ -836,45 +875,52 @@ main(int argc, char **argv)
 
   if (test_do_mem == ON_TOPO_BW)
     {
-      mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
-      uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
-      printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
-      pthread_t threads_mem_bw[test_num_mem_bw_threads];
-      pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
-      pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
-
-      thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
-      for(int t = 0; t < test_num_mem_bw_threads; t++)
+      if (!mctop_has_mem_bw(topo))
 	{
-	  tds_mem_bw[t].id = t;
-	  tds_mem_bw[t].n_threads = test_num_mem_bw_threads;
-	  tds_mem_bw[t].barrier = barrier_mem_bw;
-	  tds_mem_bw[t].topo = topo;
-	  int rc = pthread_create(&threads_mem_bw[t], &attr, mem_bandwidth, tds_mem_bw + t);
-	  if (rc)
+	  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
+	  printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
+	  pthread_t threads_mem_bw[test_num_mem_bw_threads];
+	  pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
+	  pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
+
+	  thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
+	  for(int t = 0; t < test_num_mem_bw_threads; t++)
 	    {
-	      printf("ERROR; return code from pthread_create() is %d\n", rc);
-	      exit(-1);
+	      tds_mem_bw[t].id = t;
+	      tds_mem_bw[t].n_threads = test_num_mem_bw_threads;
+	      tds_mem_bw[t].barrier = barrier_mem_bw;
+	      tds_mem_bw[t].topo = topo;
+	      int rc = pthread_create(&threads_mem_bw[t], &attr, mem_bandwidth, tds_mem_bw + t);
+	      if (rc)
+		{
+		  printf("ERROR; return code from pthread_create() is %d\n", rc);
+		  exit(-1);
+		}
 	    }
-	}
     
-      for(int t = 0; t < test_num_mem_bw_threads; t++) 
-	{
-	  void* status;
-	  int rc = pthread_join(threads_mem_bw[t], &status);
-	  if (rc) 
+	  for(int t = 0; t < test_num_mem_bw_threads; t++) 
 	    {
-	      printf("ERROR; return code from pthread_join() is %d\n", rc);
-	      exit(-1);
+	      void* status;
+	      int rc = pthread_join(threads_mem_bw[t], &status);
+	      if (rc) 
+		{
+		  printf("ERROR; return code from pthread_join() is %d\n", rc);
+		  exit(-1);
+		}
 	    }
+	  free(tds_mem_bw);
+	  free(barrier_mem_bw);
+
+	  mctopo_mem_bandwidth_add(topo, mem_bw_table);
+	  print_mem_bw_table(mem_bw_table, test_num_sockets, test_format, hostname);
+
+	  table_free((void**) mem_bw_table, test_num_sockets);
 	}
-      free(tds_mem_bw);
-      free(barrier_mem_bw);
-
-      mctopo_mem_bandwidth_add(topo, mem_bw_table);
-      print_mem_bw_table(mem_bw_table, test_num_sockets, test_format, hostname);
-
-      table_free((void**) mem_bw_table, test_num_sockets);
+      else
+	{
+	  printf("## Topology already contains memory bandwidths!\n");
+	}
     }
 
   /* Free attribute and wait for the other threads */
@@ -899,9 +945,6 @@ main(int argc, char **argv)
       free(mem_lat_table);
     }
 
-  table_free((void**) lat_table_norm, test_num_hw_ctx);
-  cdf_cluster_free(cc);
-  cdf_free(cdf);
   free(tds);
   free(barrier2);
   free(lat_table);

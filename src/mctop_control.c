@@ -74,6 +74,23 @@ mctop_get_num_hwc_per_socket(mctopo_t* topo)
   return topo->sockets[0].n_hwcs;
 }
 
+
+
+
+inline uint
+mctop_has_mem_lat(mctopo_t* topo)
+{
+  return topo->has_mem >= LATENCY;
+}
+
+inline uint
+mctop_has_mem_bw(mctopo_t* topo)
+{
+  return topo->has_mem == BANDWIDTH;
+}
+
+
+
 int
 mctop_run_on_socket_ref(socket_t* socket)
 {

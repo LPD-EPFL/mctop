@@ -165,6 +165,8 @@ size_t mctop_get_num_nodes(mctopo_t* topo);
 size_t mctop_get_num_cores_per_socket(mctopo_t* topo);
 size_t mctop_get_num_hwc_per_socket(mctopo_t* topo);
 
+uint mctop_has_mem_lat(mctopo_t* topo);
+uint mctop_has_mem_bw(mctopo_t* topo);
 
 static inline uint
 mctop_create_id(uint seq_id, uint lvl)
