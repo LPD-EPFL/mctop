@@ -9,7 +9,7 @@ main(int argc, char **argv)
     {
       mctopo_print(topo);
       mctop_run_on_node(topo, 0);
+      mctop_free(topo);
     }
-
   return 0;
 }

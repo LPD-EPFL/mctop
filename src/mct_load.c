@@ -41,6 +41,6 @@ main(int argc, char **argv)
 
   mctopo_t* topo = mctop_load(NULL);
   mctopo_print(topo);
-
+  mctop_free(topo);
   return 0;
 }

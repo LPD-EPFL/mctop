@@ -882,7 +882,7 @@ main(int argc, char **argv)
 
   mctopo_print(topo);
 
-
+  mctop_free(topo);
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (test_do_mem == ON_TIME)
     {

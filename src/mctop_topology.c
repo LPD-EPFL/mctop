@@ -164,6 +164,75 @@ mctopo_construct(uint64_t** lat_table_norm,
 }
 
 void
+mctop_free(mctopo_t* topo)
+{
+  /* free siblings */
+  for (int l = topo->socket_level + 1; l < topo->n_levels; l++)
+    {
+      printf("FREE: siblings lvl %u\n", l);
+      sibling_t* sibling = mctop_get_first_sibling_lvl(topo, l);
+      do
+	{
+	  sibling_t* next = sibling->next;
+	  free(sibling);
+	  sibling = next;
+	}
+      while (sibling != NULL);
+    }
+
+  /* free groups */
+  for (int l = 1; l < topo->socket_level; l++)
+    {
+      printf("FREE: groups lvl %u\n", l);
+      hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
+      do
+	{
+	  hwc_gs_t* next = gs->next;
+	  free(gs->hwcs);
+	  free(gs->children);
+	  free(gs);
+	  gs = next;
+	}
+      while (gs != NULL);
+    }
+
+  /* free socket stuff */
+  for (int s = 0; s < topo->n_sockets; s++)
+    {
+      socket_t* socket = topo->sockets + s;
+      free(socket->hwcs);
+      free(socket->children);
+      if (socket->n_siblings > 0)
+	{
+	  free(socket->siblings);
+	}
+      if (topo->has_mem >= LATENCY)
+	{
+	  free(socket->mem_latencies);
+	}
+      if (topo->has_mem == BANDWIDTH)
+	{
+	  free(socket->mem_bandwidths);
+	}
+    }
+
+  /* free topo */
+  free(topo->latencies);
+  free(topo->sockets);
+  free(topo->hwcs);
+  if (topo->n_siblings > 0)
+    {
+      free(topo->siblings);
+    }
+  if (topo->has_mem)
+    {
+      free(topo->node_to_socket);
+    }
+  free(topo);
+  topo = NULL;
+}
+
+void
 mctopo_print(mctopo_t* topo)
 {
 #define PD_0 "|||||||||"
