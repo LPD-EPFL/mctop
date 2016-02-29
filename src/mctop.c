@@ -832,7 +832,7 @@ main(int argc, char **argv)
     } 
   else  /* test_mem_augment == 1 */
     {
-      topo = mctop_load(NULL);
+      topo = mctopo_load(NULL);
     }
 
 #else
@@ -928,7 +928,7 @@ main(int argc, char **argv)
 
   mctopo_print(topo);
 
-  mctop_free(topo);
+  mctopo_free(topo);
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (test_do_mem == ON_TIME)
     {

@@ -164,7 +164,7 @@ mctopo_construct(uint64_t** lat_table_norm,
 }
 
 void
-mctop_free(mctopo_t* topo)
+mctopo_free(mctopo_t* topo)
 {
   /* free siblings */
   for (int l = topo->socket_level + 1; l < topo->n_levels; l++)

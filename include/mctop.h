@@ -144,8 +144,8 @@ typedef struct cdf_cluster
 mctopo_t* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 			   uint64_t** mem_lat_table, const uint n_sockets,
 			   cdf_cluster_t* cc, const int is_smt);
-mctopo_t* mctop_load(const char* mct_file);
-void mctop_free(mctopo_t* topo);
+mctopo_t* mctopo_load(const char* mct_file);
+void mctopo_free(mctopo_t* topo);
 void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 void mctopo_print(mctopo_t* topo);

@@ -2,7 +2,7 @@
 #include <time.h>
 
 mctopo_t*
-mctop_load(const char* mct_file)
+mctopo_load(const char* mct_file)
 {
   clock_t cstart = clock();
   char file_open[100], hostname[100];
