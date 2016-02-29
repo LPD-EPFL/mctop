@@ -10,6 +10,7 @@
 struct mctopo* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 				uint64_t** mem_lat_table, const uint n_sockets,
 				cdf_cluster_t* cc, const int is_smt);
+struct mctopo* mctop_load(const char* mct_file);
 void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
 void mctopo_mem_bandwidth_add(struct mctopo* topo, double** mem_bw_table);
 

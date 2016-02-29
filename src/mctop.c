@@ -83,7 +83,7 @@ ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
 void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
-void print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format, array_format_t format, const char* h);
+void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
 void print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_format, const char* hostname);
 
@@ -643,7 +643,7 @@ main(int argc, char **argv)
   char hostname[50];
   if (gethostname(hostname, 50) != 0)
     {
-      perror("MCTOP: Could not get hostname!");
+      perror("MCTOP Error: Could not get hostname!");
     }
 
   printf("# MCTOP Settings:\n");
@@ -740,7 +740,7 @@ main(int argc, char **argv)
 
   if (test_format != MCT_FILE)
     {
-      print_lat_table(lat_table, test_num_hw_ctx, test_num_sockets, test_format, AR_1D, hostname);
+      print_lat_table(lat_table, test_num_hw_ctx, test_num_sockets, test_format, AR_1D, 0, hostname);
     }
 
   const size_t lat_table_size = test_num_hw_ctx * test_num_hw_ctx;
@@ -757,7 +757,7 @@ main(int argc, char **argv)
 
   cdf_cluster_print(cc);
   ticks** lat_table_norm = lat_table_normalized_create(lat_table, test_num_hw_ctx, cc);
-  print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, hostname);
+
   ticks min_lat = cdf_cluster_get_min_latency(cc);
   int* possible_smt_hwcs = calloc_assert(test_num_smt_threads, sizeof(int));
   if (!lat_table_get_hwc_with_lat(lat_table_norm, test_num_hw_ctx, min_lat, possible_smt_hwcs))
@@ -799,6 +799,9 @@ main(int argc, char **argv)
     }
 
   printf("## CPU is SMT: %d\n", is_smt_cpu);
+
+  print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, is_smt_cpu, hostname);
+
   mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
 
 #else
@@ -926,7 +929,8 @@ cache_lines_destroy(cache_line_t* cl, const size_t size, const uint numa_lib)
 }
 
 void 
-print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format, array_format_t format, const char* hostname)
+print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format,
+		array_format_t format, uint is_smt, const char* hostname)
 {
   ticks* lat_table_1d = (ticks*) lt;
   ticks** lat_table_2d = (ticks**) lt;
@@ -984,7 +988,7 @@ print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format,
 	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
 	    ofp = stderr;
 	  }
-	fprintf(ofp, "#%s #HWCs %zu #Nodes %zu\n", hostname, n, n_sockets);
+	fprintf(ofp, "#%s #HWCs %zu #Nodes %zu SMT %u\n", hostname, n, n_sockets, is_smt);
 	for (int x = 0; x < n; x++)
 	  {
 	    for (int y = 0; y < n; y++)
