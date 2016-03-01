@@ -162,7 +162,7 @@ abs_sub(const size_t a, const size_t b)
 void*
 crawl(void* param)
 {
-  thread_local_data_t* tld = (thread_local_data_t*) param;
+  tld_t* tld = (tld_t*) param;
   const int tid = tld->id;
   pthread_barrier_t* barrier_sleep = tld->barrier;
   barrier2_t* barrier2 = tld->barrier2;
@@ -382,7 +382,7 @@ init_mem(void* param)
 void*
 is_smt(void* param)
 {
-  thread_local_data_t* tld = (thread_local_data_t*) param;
+  tld_t* tld = (tld_t*) param;
   const int tid = tld->id;
   const int hwc = tld->hw_context;
   barrier2_t* barrier2 = tld->barrier2;
@@ -470,7 +470,7 @@ mem_bw_estimate(volatile cache_line_t** mem, const uint n_streams, const size_t 
 void*
 mem_bandwidth(void* param)
 {
-  thread_local_data_t* tld = (thread_local_data_t*) param;
+  tld_t* tld = (tld_t*) param;
   const int tid = tld->id;
   const uint n_threads = tld->n_threads;
   pthread_barrier_t* barrier = tld->barrier;
@@ -719,7 +719,7 @@ main(int argc, char **argv)
     }
 
 
-  thread_local_data_t* tds = (thread_local_data_t*) malloc_assert(test_num_threads * sizeof(thread_local_data_t));
+  tld_t* tds = (tld_t*) malloc_assert(test_num_threads * sizeof(tld_t));
   barrier2_t* barrier2 = barrier2_create();
   pthread_barrier_t* barrier = malloc_assert(sizeof(pthread_barrier_t));
   pthread_barrier_init(barrier, NULL, test_num_smt_threads);
@@ -731,7 +731,7 @@ main(int argc, char **argv)
     }
 
   mctopo_t* topo = NULL;
-#define MCTOP_PREDEFINED_LAT_TABLE 0
+#define MCTOP_PREDEFINED_LAT_TABLE 1
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (!test_mem_augment)
     {
@@ -836,9 +836,9 @@ main(int argc, char **argv)
     }
 
 #else
-  int is_smt_cpu = is_smt1;
-  test_num_sockets = n_sockets1;
-  test_num_hw_ctx = n_hwcs1;
+  int is_smt_cpu = is_smt2;
+  test_num_sockets = n_sockets2;
+  test_num_hw_ctx = n_hwcs2;
   const int n = test_num_hw_ctx;
   ticks** lat_table_norm = (ticks**) table_malloc(n, n, sizeof(ticks));
 
@@ -846,10 +846,10 @@ main(int argc, char **argv)
     {
       for (int y = 0; y < test_num_hw_ctx; y++)
 	{
-	  lat_table_norm[x][y] = lat_table1[x][y];
+	  lat_table_norm[x][y] = lat_table2[x][y];
 	}
     }
-  mctopo_t* topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
+  topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
 #endif
 
   int mem_lat_new = 1;
@@ -884,7 +884,7 @@ main(int argc, char **argv)
 	  pthread_barrier_t* barrier_mem_bw = malloc_assert(sizeof(pthread_barrier_t));
 	  pthread_barrier_init(barrier_mem_bw, NULL, test_num_mem_bw_threads);
 
-	  thread_local_data_t* tds_mem_bw = (thread_local_data_t*) malloc_assert(test_num_mem_bw_threads * sizeof(thread_local_data_t));
+	  tld_t* tds_mem_bw = (tld_t*) malloc_assert(test_num_mem_bw_threads * sizeof(tld_t));
 	  for(int t = 0; t < test_num_mem_bw_threads; t++)
 	    {
 	      tds_mem_bw[t].id = t;

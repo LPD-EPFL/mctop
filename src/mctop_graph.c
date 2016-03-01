@@ -78,24 +78,38 @@ dot_gs_label(FILE* ofp, const uint n_tabs, const uint id)
 }
 
 static void
+dot_gs_label_id(FILE* ofp, const uint n_tabs, const uint id)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u [label=\"%u\"];\n", id, mctop_id_no_lvl(id));
+}
+
+static void
 dot_gs_link(FILE* ofp, const uint n_tabs, const uint id, const uint lat)
 {
   dot_tab(ofp, n_tabs);
   print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"]\n", id, id, lat, lat);
 }
 
+static void
+dot_gss_link(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"]\n", id0, id1, lat, lat);
+}
+
 void
-mctopo_dot_graph_socket_plot(mctopo_t* topo)
+mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 {
   char out_file[100];
-  sprintf(out_file, "dot/%s_socket.dot", dot_prefix);
+  sprintf(out_file, "dot/%s_intra_socket.dot", dot_prefix);
   FILE* ofp = fopen(out_file, "w+");
   if (ofp == NULL)
     {
       fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
     }
 
-  dot_graph(ofp, "socket");
+  dot_graph(ofp, "intra_socket");
   for (int lvl = 1; lvl <= topo->socket_level; lvl++)
     {
       if (lvl == 1 && lvl < topo->socket_level) /* have sub-groups in socket */
@@ -224,7 +238,47 @@ mctopo_dot_graph_socket_plot(mctopo_t* topo)
 }
 
 void
+mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
+{
+  char out_file[100];
+  sprintf(out_file, "dot/%s_cross_socket.dot", dot_prefix);
+  FILE* ofp = fopen(out_file, "w+");
+  if (ofp == NULL)
+    {
+      fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
+    }
+  dot_graph(ofp, "cross_socket");
+
+  dot_tab(ofp, 1); print2(ofp, "// Socket       lvl %u (max lvl %u)\n", topo->socket_level, topo->n_levels);
+  for (int i = 0; i < topo->n_sockets; i++)
+    {
+      dot_gs_label_id(ofp, 1, topo->sockets[i].id);
+    }
+
+  for (int lvl = topo->socket_level + 1; lvl < topo->n_levels; lvl++)
+    {
+      dot_tab(ofp, 1); print2(ofp, "// Cross-socket lvl %u (max lvl %u)\n", lvl, topo->n_levels);
+      for (int i = 0; i < topo->n_siblings; i++)
+	{
+	  sibling_t* sibling = topo->siblings[i];
+	  if (sibling->level == lvl)
+	    {
+	      dot_gss_link(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency);
+	    }
+	}
+    }
+
+  print2(ofp, "}\n");
+
+  if (ofp != NULL)
+    {
+      fclose(ofp);
+    }
+}
+
+void
 mctopo_dot_graph_plot(mctopo_t* topo)
 {
-  mctopo_dot_graph_socket_plot(topo);
+  mctopo_dot_graph_intra_socket_plot(topo);
+  mctopo_dot_graph_cross_socket_plot(topo);
 }

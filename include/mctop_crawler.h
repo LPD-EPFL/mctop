@@ -21,7 +21,7 @@ typedef volatile struct cache_line
   volatile uint64_t word[CACHE_LINE_SIZE / sizeof(uint64_t)];
 } cache_line_t;
 
-typedef struct thread_local_data
+typedef struct tld
 {
   int id;
   uint n_threads;
@@ -29,7 +29,7 @@ typedef struct thread_local_data
   barrier2_t* barrier2;
   pthread_barrier_t* barrier;
   mctopo_t* topo;
-} thread_local_data_t;
+} tld_t;
 
 size_t is_smt1 = 1;
 size_t n_hwcs1 = 96;

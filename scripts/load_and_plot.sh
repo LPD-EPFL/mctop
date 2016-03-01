@@ -15,6 +15,14 @@ outf=graphs;
 make ${tool} > /dev/null;
 ./${tool} -m desc/${un}.mct
 
-echo "## Ploting socket";
-dot -Tpdf ${inf}/dot_socket.dot > ${outf}/${un}_socket.pdf
-evince ${outf}/${un}_socket.pdf &
+target=intra_socket
+echo "## Ploting ${target}";
+dot -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
+evince ${outf}/${un}_${target}.pdf &
+
+# target=cross_socket
+# echo "## Ploting ${target}";
+# sfdp -x -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
+# # neato -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
+# # dot  -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
+# evince ${outf}/${un}_${target}.pdf &
