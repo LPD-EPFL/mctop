@@ -731,7 +731,7 @@ main(int argc, char **argv)
     }
 
   mctopo_t* topo = NULL;
-#define MCTOP_PREDEFINED_LAT_TABLE 1
+#define MCTOP_PREDEFINED_LAT_TABLE 0
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (!test_mem_augment)
     {
