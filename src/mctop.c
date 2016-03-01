@@ -67,7 +67,7 @@ const char* mctop_test_mem_type_desc[4] =
 mctop_test_mem_type_t test_do_mem = ON_TOPO_BW;
 int test_mem_on_demand = 0;
 const size_t test_mem_reps = 1e6;
-const size_t test_mem_size = 128 * 1024 * 1024LL;
+const size_t test_mem_size = 256 * 1024 * 1024LL;
 volatile uint64_t** node_mem;
 
 const uint test_mem_bw_num_streams = 2;
@@ -457,7 +457,6 @@ mem_bw_estimate(volatile cache_line_t** mem, const uint n_streams, const size_t 
   clock_gettime(CLOCK_REALTIME, &stop);
   struct timespec dur = timespec_diff(start, stop);
   double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
-
   if (dur_s == 9)
     {
       printf("%p%zu%p%zu", m0, sum[0], m1, sum[1]);
@@ -483,17 +482,20 @@ mem_bandwidth(void* param)
 
   for (int n = 0; n < mctop_get_num_nodes(topo); n++)
     {
-      mctop_run_on_node(topo, n);
-      VERBOSE(ID0_DO(printf(" ######## Run Node %d\n", n);););
+      mctop_run_on_socket_nm(topo, n);
+      VERBOSE(ID0_DO(printf(" ######## Run Socket %d\n", n);););
       for (int mem_on = 0; mem_on < mctop_get_num_nodes(topo); mem_on++)
 	{
 	  VERBOSE(ID0_DO(printf(" #### Mem Node %d\n", mem_on)););
 	  for (int s = 0; s < test_mem_bw_num_streams; s++)
 	    {
+	      numa_run_on_node(mem_on);
 	      mem_bw[s] = numa_alloc_onnode(test_mem_bw_size, mem_on);
 	      assert(mem_bw[s] != NULL);
 	      bzero((void*) mem_bw[s], test_mem_bw_size);
 	    }
+
+	  mctop_run_on_socket_nm(topo, n);
 
 	  pthread_barrier_wait(barrier);
 	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
@@ -1258,17 +1260,37 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
 
   for (int s = 0; s < topo->n_sockets; s++)
     {
+      VERBOSE(printf(" ######## Run Socket %d\n", s););
       uint hwc_id = mctop_get_first_hwc_socket(mctop_get_socket(topo, s))->id;
       mctop_run_on_socket(topo, s);
       for (int n = 0; n < topo->n_sockets; n++)
 	{
+	  VERBOSE(printf(" #### Mem Node %d\n", n););
 	  volatile uint64_t* mem = numa_alloc_onnode(test_mem_size, n);
+	  assert(mem != NULL);
 	  ll_random_create(mem, test_mem_size);
 	  volatile uint64_t* l = mem;
-	  ll_random_traverse(l, test_mem_reps >> 8);
 
-	  uint64_t lat = ll_random_traverse(l, test_mem_reps);
+	  volatile ticks __s = getticks();
+	  for (size_t r = 0; r < test_mem_reps >> 3; r++)
+	    {
+	      l = (uint64_t*) *l;
+	    }
+	  volatile ticks __e = getticks();
+	  uint64_t lat = (__e - __s) / test_mem_reps;
+	  VERBOSE(printf("  Latency       : warmup: %zu / ", lat););
+
+	  __s = getticks();
+	  for (size_t r = 0; r < test_mem_reps; r++)
+	    {
+	      l = (uint64_t*) *l;
+	    }
+	  __e = getticks();
+	  lat = (__e - __s) / test_mem_reps;
+	  VERBOSE(printf("normal: %zu\n", lat););
+
 	  mem_lat_table[hwc_id][n] = lat;
+	  assert(*l != 0);
 
 	  numa_free((void*) mem, test_mem_size);
 	}

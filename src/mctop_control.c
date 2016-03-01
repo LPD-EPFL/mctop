@@ -102,8 +102,8 @@ mctop_has_mem_bw(mctopo_t* topo)
 
 
 
-int
-mctop_run_on_socket_ref(socket_t* socket)
+static int
+mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem)
 {
   int ret = 0;
   if (socket == NULL)
@@ -119,7 +119,7 @@ mctop_run_on_socket_ref(socket_t* socket)
     }
 
   ret = numa_sched_setaffinity(0, bmask);
-  if (!ret && socket->topo->has_mem)
+  if (fix_mem && !ret && socket->topo->has_mem)
     {
       numa_set_preferred(socket->local_node);
     }
@@ -138,7 +138,18 @@ mctop_run_on_socket(mctopo_t* topo, const uint socket_n)
       return -EINVAL;
     }
   socket_t* socket = &topo->sockets[socket_n];
-  return mctop_run_on_socket_ref(socket);
+  return mctop_run_on_socket_ref(socket, 1);
+}
+
+int
+mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n)
+{
+  if (socket_n >= topo->n_sockets)
+    {
+      return -EINVAL;
+    }
+  socket_t* socket = &topo->sockets[socket_n];
+  return mctop_run_on_socket_ref(socket, 0);
 }
 
 int
@@ -151,5 +162,5 @@ mctop_run_on_node(mctopo_t* topo, const uint node_n)
 
   const uint socket_n = topo->node_to_socket[node_n];
   socket_t* socket = &topo->sockets[socket_n];
-  return mctop_run_on_socket_ref(socket);
+  return mctop_run_on_socket_ref(socket, 1);
 }

@@ -204,8 +204,8 @@ mctop_print_id(uint id)
 /* ******************************************************************************** */
 /* MCTOP Scheduling */
 /* ******************************************************************************** */
-int mctop_run_on_socket_ref(socket_t* socket);
 int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
+int mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n); /* doea not set preferred node */
 int mctop_run_on_node(mctopo_t* topo, const uint node_n);
 
 /* ******************************************************************************** */
