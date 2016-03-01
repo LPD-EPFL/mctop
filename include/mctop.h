@@ -149,6 +149,8 @@ void mctopo_free(mctopo_t* topo);
 void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 void mctopo_print(mctopo_t* topo);
+void mctopo_dot_graph_plot(mctopo_t* topo);
+
 
 /* ******************************************************************************** */
 /* MCTOP CONTROL IF */
@@ -158,6 +160,7 @@ socket_t* mctop_get_socket(mctopo_t* topo, const uint socket_n);
 uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 socket_t* mctop_get_first_socket(mctopo_t* topo);
 hwc_gs_t* mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl);
+hwc_gs_t* mctop_get_first_children_lvl(socket_t* socket, const uint lvl);
 hw_context_t* mctop_get_first_hwc_socket(socket_t* socket);
 sibling_t* mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl);
 

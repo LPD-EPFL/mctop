@@ -40,6 +40,12 @@ mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
   return cur;
 }
 
+hwc_gs_t*
+mctop_get_first_children_lvl(socket_t* socket, const uint lvl)
+{
+  return NULL;
+}
+
 inline socket_t*
 mctop_get_socket(mctopo_t* topo, const uint socket_n)
 {
