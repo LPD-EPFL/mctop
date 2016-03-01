@@ -11,18 +11,19 @@ echo "#### Graphs fro $un";
 tool=mct_load;
 inf=dot;
 outf=graphs;
+out_format=ps;
 
 make ${tool} > /dev/null;
 ./${tool} -m desc/${un}.mct
 
 target=intra_socket
 echo "## Ploting ${target}";
-dot -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
-evince ${outf}/${un}_${target}.pdf &
+dot -T${out_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${out_format}
+evince ${outf}/${un}_${target}.${out_format} &
 
 # target=cross_socket
 # echo "## Ploting ${target}";
-# sfdp -x -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
-# # neato -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
-# # dot  -Tpdf ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.pdf
-# evince ${outf}/${un}_${target}.pdf &
+# sfdp -x -T${out_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${out_format}
+# # neato -T${out_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${out_format}
+# # dot  -T${out_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${out_format}
+# evince ${outf}/${un}_${target}.${out_format} &

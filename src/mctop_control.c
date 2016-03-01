@@ -41,9 +41,14 @@ mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
 }
 
 hwc_gs_t*
-mctop_get_first_children_lvl(socket_t* socket, const uint lvl)
+mctop_get_first_child_lvl(socket_t* socket, const uint lvl)
 {
-  return NULL;
+  hwc_gs_t* cur = socket->children[0];
+  while (cur != NULL && cur->level != lvl)
+    {
+      cur = cur->children[0];
+    }
+  return cur;
 }
 
 inline socket_t*

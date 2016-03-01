@@ -37,9 +37,9 @@ dot_tab_print(FILE* ofp, const uint n_tabs, const char* print)
 }
 
 static void
-dot_graph(FILE* ofp, const char* title)
+dot_graph(FILE* ofp, const char* title, const uint id)
 {
-  print2(ofp, "graph mctop_%s\n{\n", title);
+  print2(ofp, "graph mctop_%s_%u\n{\n", title,id);
   print2(ofp, "\tlabelloc=\"t\";\n");
   print2(ofp, "\tcompound=true;\n");
   print2(ofp, "\tnode [shape=record];\n");
@@ -53,6 +53,7 @@ dot_subgraph(FILE* ofp, const uint n_tabs, const uint id)
 {
   dot_tab(ofp, n_tabs);
   print2(ofp, "subgraph cluster_%u\n", id);
+  dot_tab_print(ofp, n_tabs, "{\n");
 }
 
 static void
@@ -63,12 +64,11 @@ dot_socket(FILE* ofp, const uint n_tabs, const uint id, const uint lat)
 }
 
 static void
-dot_gs(FILE* ofp, const uint n_tabs, const uint id)
+dot_label(FILE* ofp, const uint n_tabs, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u", id);
+  print2(ofp, "label=\"%u cycles\";\n", lat);
 }
-
 
 static void
 dot_gs_label(FILE* ofp, const uint n_tabs, const uint id)
@@ -99,6 +99,45 @@ dot_gss_link(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const
 }
 
 void
+dot_gs_recurse(FILE* ofp, hwc_gs_t* gs, const uint n_tabs)
+{
+  if (gs->level == 1)
+    {
+      dot_gs_label(ofp, n_tabs, gs->id);
+      for (int i = 0; i < gs->n_children; i++)
+	{
+	  if (i > 0)
+	    {
+	      print2(ofp, "|");
+	    }
+	  print2(ofp, "%u", gs->children[i]->id);
+	}
+      print2(ofp, "\"];\n");
+      if (gs->type != SOCKET)
+	{
+	  dot_gs_link(ofp, n_tabs, gs->id, gs->latency);
+	}
+    }
+  else 
+    {
+      const uint new_subgraph = gs->type != SOCKET;
+      if (new_subgraph)
+	{
+	  dot_subgraph(ofp, n_tabs, gs->id);
+	  dot_label(ofp, n_tabs + 1, gs->latency);
+	}
+      for (int i = gs->n_children - 1; i >= 0; i--)
+	{
+	  dot_gs_recurse(ofp, gs->children[i], n_tabs + 1);
+	}
+      if (new_subgraph)
+	{
+	  dot_tab_print(ofp, n_tabs, "}\n");
+	}
+    }
+}
+
+void
 mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 {
   char out_file[100];
@@ -109,127 +148,65 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
       fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
     }
 
-  dot_graph(ofp, "intra_socket");
-  for (int lvl = 1; lvl <= topo->socket_level; lvl++)
+  for (int s = 0; s < topo->n_sockets; s++)
     {
-      if (lvl == 1 && lvl < topo->socket_level) /* have sub-groups in socket */
+      socket_t* socket = &topo->sockets[s];
+      dot_graph(ofp, "intra_socket", s);
+      dot_subgraph(ofp, 1, socket->id);
+      dot_socket(ofp, 2, socket->id, socket->latency);
+      dot_gs_recurse(ofp, socket, 1);
+      dot_tab_print(ofp, 1, "}\n");
+
+      dot_tab_print(ofp, 1, "node [color=gold4];\n");
+
+      if (topo->has_mem >= LATENCY)
 	{
-	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, lvl);
-	  while (gs != NULL)
+	  dot_tab(ofp, 1); print2(ofp, "//Memory latencies node %u\n", socket->id);
+	  for (int i = 0; i < socket->n_nodes; i++)
 	    {
-	      dot_gs_label(ofp, 1, gs->id);
-	      for (int i = 0; i < gs->n_children; i++)
+	      dot_tab(ofp, 1);
+	      if (i == socket->local_node)
 		{
-		  if (i > 0)
-		    {
-		      print2(ofp, "|");
-		    }
-		  print2(ofp, "%u", gs->children[i]->id);
+		  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\", color=\"red\"];\n", 
+			 i, socket->id, i, socket->mem_latencies[i]);
 		}
-	      print2(ofp, "\"];\n");
-	      dot_gs_link(ofp, 1, gs->id, gs->latency);
-
-	      gs = gs->next;
-	    }
-	}
-      else if (lvl == 1)
-	{
-	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, lvl);
-	  while (gs != NULL)
-	    {
-	      dot_subgraph(ofp, 1, gs->id);
-	      dot_tab_print(ofp, 1, "{\n");
-	      dot_socket(ofp, 2, gs->id, gs->latency);
-	      dot_gs_label(ofp, 2, gs->id);
-	      for (int i = 0; i < gs->n_children; i++)
+	      else
 		{
-		  if (i > 0)
-		    {
-		      print2(ofp, "|");
-		    }
-		  print2(ofp, "%u", gs->children[i]->id);
+		  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\"];\n", 
+			 i, socket->id, i, socket->mem_latencies[i]);
 		}
-	      print2(ofp, "\"];\n");
-	      dot_tab_print(ofp, 1, "}\n");
-	      gs = gs->next;
-	    }
-	}
-      else
-	{
-	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, lvl);
-	  while (gs != NULL)
-	    {
-	      dot_subgraph(ofp, 1, gs->id);
-	      dot_tab_print(ofp, 1, "{\n");
-	      dot_socket(ofp, 2, gs->id, gs->latency);
-	      for (int i = 0; i < gs->n_children; i++)
-		{
-		  dot_gs(ofp, 2, gs->children[i]->id);
-		  print2(ofp, "\n");
-		}
-	      dot_tab_print(ofp, 1, "}\n");
-	      gs = gs->next;
-	    }	  
-	}
 
-      if (lvl == topo->socket_level)
-	{
-	  dot_tab_print(ofp, 1, "node [color=gold4];\n");
-
-	  if (topo->has_mem >= LATENCY)
-	    {
-	      hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, lvl);
-	      while (gs != NULL)
+	      dot_tab(ofp, 1);
+	      if (socket->level == 1)
 		{
-		  dot_tab(ofp, 1); print2(ofp, "//Memory latencies node %u\n", gs->id);
-		  for (int i = 0; i < gs->n_nodes; i++)
+		  if (topo->has_mem == BANDWIDTH)
 		    {
-		      dot_tab(ofp, 1);
-		      if (i == gs->local_node)
-			{
-			  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\", color=\"red\"];\n", 
-				 i, gs->id, i, gs->mem_latencies[i]);
-			}
-		      else
-			{
-			  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\"];\n", 
-				 i, gs->id, i, gs->mem_latencies[i]);
-			}
-
-		      dot_tab(ofp, 1);
-		      if (topo->socket_level == 1)
-			{
-			  if (topo->has_mem == BANDWIDTH)
-			    {
-			      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-				     i, gs->id, gs->id, gs->id, gs->mem_bandwidths[i]);
-			    }
-			  else
-			    {
-			      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
-				     i, gs->id, gs->id, gs->id);
-			    }
-			}
-		      else
-			{
-			  if (topo->has_mem == BANDWIDTH)
-			    {
-			      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-				     i, gs->id, gs->children[0]->id, gs->id, gs->mem_bandwidths[i]);
-			    }
-			  else
-			    {
-			      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
-				     i, gs->id, gs->children[0]->id, gs->id);
-			    }
-			}
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
+			     i, socket->id, socket->id, socket->id, socket->mem_bandwidths[i]);
 		    }
-		  gs = gs->next;
+		  else
+		    {
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
+			     i, socket->id, socket->id, socket->id);
+		    }
+		}
+	      else
+		{
+		  if (topo->has_mem == BANDWIDTH)
+		    {
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
+			     i, socket->id, socket->children[0]->id, socket->id, socket->mem_bandwidths[i]);
+		    }
+		  else
+		    {
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
+			     i, socket->id, socket->children[0]->id, socket->id);
+		    }
 		}
 	    }
 	}
+      print2(ofp, "}\n");
     }
-  print2(ofp, "}\n");
 
   if (ofp != NULL)
     {
@@ -247,7 +224,7 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
     {
       fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
     }
-  dot_graph(ofp, "cross_socket");
+  dot_graph(ofp, "cross_socket", 0);
 
   dot_tab(ofp, 1); print2(ofp, "// Socket       lvl %u (max lvl %u)\n", topo->socket_level, topo->n_levels);
   for (int i = 0; i < topo->n_sockets; i++)
@@ -280,5 +257,5 @@ void
 mctopo_dot_graph_plot(mctopo_t* topo)
 {
   mctopo_dot_graph_intra_socket_plot(topo);
-  mctopo_dot_graph_cross_socket_plot(topo);
+  /* mctopo_dot_graph_cross_socket_plot(topo); */
 }
