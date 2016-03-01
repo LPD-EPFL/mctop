@@ -88,14 +88,28 @@ static void
 dot_gs_link(FILE* ofp, const uint n_tabs, const uint id, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"]\n", id, id, lat, lat);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id, id, lat, lat);
 }
 
 static void
 dot_gss_link(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"]\n", id0, id1, lat, lat);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id0, id1, lat, lat);
+}
+
+static void
+dot_gss_link_bw(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat, const double bw)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u (%.2fGB/s)\", weight=\"%u\"];\n", id0, id1, lat, bw, lat);
+}
+
+static void
+dot_gs_link_only_bw(FILE* ofp, const uint n_tabs, const uint id, const double bw)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%.2fGB/s\"];\n", id, id, bw);
 }
 
 void
@@ -240,8 +254,25 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
 	  sibling_t* sibling = topo->siblings[i];
 	  if (sibling->level == lvl)
 	    {
-	      dot_gss_link(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency);
+	      if (topo->has_mem == BANDWIDTH)
+		{
+		  double bw = sibling->left->mem_bandwidths[sibling->right->local_node];
+		  dot_gss_link_bw(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency, bw);
+		}
+	      else
+		{
+		  dot_gss_link(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency);
+		}
 	    }
+	}
+    }
+
+  if (topo->has_mem == BANDWIDTH)
+    {
+      for (int i = 0; i < topo->n_sockets; i++)
+	{
+	  socket_t* socket = &topo->sockets[i];
+	  dot_gs_link_only_bw(ofp, 1, socket->id, socket->mem_bandwidths[socket->local_node]);
 	}
     }
 
@@ -257,5 +288,5 @@ void
 mctopo_dot_graph_plot(mctopo_t* topo)
 {
   mctopo_dot_graph_intra_socket_plot(topo);
-  /* mctopo_dot_graph_cross_socket_plot(topo); */
+  mctopo_dot_graph_cross_socket_plot(topo);
 }
