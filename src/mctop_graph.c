@@ -288,7 +288,7 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo, const uint max_cross_socket_l
       else			/* create a separate group */
 	{
 	  dot_gs_label(ofp, 1, lvl);
-	  print2(ofp, "lvl %u\n(%u hops)\"];\n", lvl, lvl - topo->socket_level);
+	  print2(ofp, "lvl %u\\n(%u hops)\"];\n", lvl, lvl - topo->socket_level);
 	  dot_gss_link(ofp, 1, lvl, lvl, topo->latencies[lvl]);
 	}
     }
