@@ -157,7 +157,7 @@ void mctopo_free(mctopo_t* topo);
 void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 void mctopo_print(mctopo_t* topo);
-void mctopo_dot_graph_plot(mctopo_t* topo);
+void mctopo_dot_graph_plot(mctopo_t* topo,  const uint max_cross_socket_lvl);
 
 
 /* ******************************************************************************** */

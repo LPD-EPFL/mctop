@@ -7,12 +7,14 @@ main(int argc, char **argv)
 {
   char mct_file[100];
   uint manual_file = 0;
+  uint max_cross_socket_lvl = 0;
 
   struct option long_options[] = 
     {
       // These options don't set a flag
       {"help",                      no_argument,             NULL, 'h'},
       {"mct",                       required_argument,       NULL, 'm'},
+      {"l",                         required_argument,       NULL, 'l'},
       {NULL, 0, NULL, 0}
     };
 
@@ -21,7 +23,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:l:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -37,6 +39,9 @@ main(int argc, char **argv)
 	case 'm':
 	  sprintf(mct_file, "%s", optarg);
 	  manual_file = 1;
+	  break;
+	case 'l':
+	  max_cross_socket_lvl = atoi(optarg);
 	  break;
 	case 'h':
 	  exit(0);
@@ -61,7 +66,7 @@ main(int argc, char **argv)
   if (topo != NULL)
     {
       mctopo_print(topo);
-      mctopo_dot_graph_plot(topo);
+      mctopo_dot_graph_plot(topo, max_cross_socket_lvl);
 
       mctopo_free(topo);
     }

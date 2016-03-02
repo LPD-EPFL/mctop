@@ -4,9 +4,22 @@ un=$(uname -n);
 if [ $# -gt 0 ];
 then
     un=$1;
+    re='^[0-9]+$'
+    if [[ $un =~ $re ]];
+    then
+	print_lvl=$un
+	un=$(uname -n);
+    fi
+    shift;
 fi;
 
-echo "#### Graphs fro $un";
+if [ $# -gt 0 ];
+then
+    print_lvl=$1;
+    shift;
+fi;
+
+echo "#### Graphs from $un";
 
 tool=mct_load;
 inf=dot;
@@ -14,7 +27,7 @@ outf=graphs;
 out_format=ps;
 
 make ${tool} > /dev/null;
-./${tool} -m desc/${un}.mct
+./${tool} -m desc/${un}.mct -l$print_lvl
 
 target=intra_socket
 echo "## Ploting ${target}";
