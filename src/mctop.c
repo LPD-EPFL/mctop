@@ -21,6 +21,7 @@ int test_mem_augment = DEFAULT_MEM_AUGMENT;
 test_format_t test_format = DEFAULT_FORMAT;
 int test_verbose = DEFAULT_VERBOSE;
 mctop_test_mem_type_t test_do_mem = DEFAULT_DO_MEM;
+size_t test_mem_bw_size = DEFAULT_MEM_BW_SIZE;
 
 /* variables set by the main thread */
 uint test_dvfs = 0;
@@ -508,6 +509,7 @@ main(int argc, char **argv)
       {"help",                      no_argument,       NULL, 'h'},
       {"num-cores",                 required_argument, NULL, 'n'},
       {"mem",                       required_argument, NULL, 'm'},
+      {"mem-bw-size",               required_argument, NULL, 'M'},
       {"num-sockets",               required_argument, NULL, 's'},
       {"cdf-offset",                required_argument, NULL, 'c'},
       {"num-clusters",              required_argument, NULL, 'i'},
@@ -523,7 +525,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:i:a", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:M:i:a", long_options, &i);
 
       if(c == -1)
 	break;
@@ -563,6 +565,8 @@ main(int argc, char **argv)
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
 		 "        0: none, 1: c/c++ struct, 2: latency table, 3: MCT description file\n"
 		 ">>> SECONDARY SETTINGS\n"
+		 "  -M, --mem-bw-size <int>\n"
+		 "        Memory size chunks used for memory bandiwdth--in MBs (default=" XSTR(DEFAULT_MEM_BW_SIZE) ")\n"
 		 "  -n, --num-cores <int>\n"
 		 "        Up to how many hardware contexts to run on (default=all cores)\n"
 		 "  -s, --num-sockets <int>\n"
@@ -585,6 +589,9 @@ main(int argc, char **argv)
 	  break;
 	case 'm':
 	  test_do_mem = atoi(optarg);
+	  break;
+	case 'M':
+	  test_mem_bw_size = atoi(optarg);
 	  break;
 	case 's':
 	  test_num_sockets = atoi(optarg);
@@ -615,6 +622,7 @@ main(int argc, char **argv)
 	}
     }
 
+  test_mem_bw_size *= DEFAULT_MEM_BW_MULTI;
   test_num_warmup_reps = test_num_reps >> 4;
 
   if (test_mem_augment)
@@ -642,6 +650,7 @@ main(int argc, char **argv)
     {
       printf("#   Repetitions    : %zu\n", test_num_reps);
       printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
+      printf("#   Mem. size bw   : %llu MB\n", test_mem_bw_size / DEFAULT_MEM_BW_MULTI);
       printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
       printf("#   # Cores        : %d\n", test_num_hw_ctx);
       printf("#   # Sockets      : %d\n", test_num_sockets);

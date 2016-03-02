@@ -30,7 +30,6 @@ const double test_dvfs_ratio = 0.95;
 const size_t test_mem_reps = 1e6;
 const size_t test_mem_size = 256 * 1024 * 1024LL;
 const uint test_mem_bw_num_streams = 2;
-const size_t test_mem_bw_size = 256 * 1024 * 1024LL;
 const uint test_mem_bw_num_reps = 4;
 
 #define DEFAULT_NUM_REPS           5000
@@ -42,6 +41,8 @@ const uint test_mem_bw_num_reps = 4;
 #define DEFAULT_FORMAT             MCT_FILE
 #define DEFAULT_VERBOSE            0
 #define DEFAULT_DO_MEM             ON_TOPO_BW
+#define DEFAULT_MEM_BW_SIZE        256 /* in MB */
+#define DEFAULT_MEM_BW_MULTI       (1024 * 1024LL)
 
 typedef enum
   {
