@@ -1,5 +1,7 @@
 #!/bin/bash
 
+print_lvl=0;
+
 un=$(uname -n);
 if [ $# -gt 0 ];
 then
