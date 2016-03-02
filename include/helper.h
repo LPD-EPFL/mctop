@@ -90,7 +90,7 @@ static inline unsigned long*
 seeds_create() 
 {
   unsigned long* seeds;
-  seeds = (unsigned long*) memalign(CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  seeds = (unsigned long*) malloc(CACHE_LINE_SIZE);
   return seeds;
 }
 

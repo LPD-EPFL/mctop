@@ -125,7 +125,7 @@ mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem)
     }
   numa_bitmask_free(bmask);
 #else
-#  warning mctop_run_on_socket_n fix me
+  ret = mctop_run_on_node(socket->topo, socket->local_node);
 #endif
   return ret;
 }
@@ -155,6 +155,7 @@ mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n)
 int
 mctop_run_on_node(mctopo_t* topo, const uint node_n)
 {
+#if __x86_64__
   if (node_n >= topo->n_sockets)
     {
       return -EINVAL;
@@ -163,4 +164,11 @@ mctop_run_on_node(mctopo_t* topo, const uint node_n)
   const uint socket_n = topo->node_to_socket[node_n];
   socket_t* socket = &topo->sockets[socket_n];
   return mctop_run_on_socket_ref(socket, 1);
+#elif __sparc
+  lgrp_id_t root = lgrp_root(lgrp_cookie);
+  lgrp_id_t lgrp_array[SPART_LGRP_MAX_NODES];
+  int ret = lgrp_children(lgrp_cookie, root, lgrp_array, SPART_LGRP_MAX_NODES);
+  ret = ret && lgrp_affinity_set(P_LWPID, P_MYID, lgrp_array[node_n], LGRP_AFF_STRONG);
+  return ret;
+#endif
 }

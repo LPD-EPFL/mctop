@@ -7,6 +7,14 @@
 #include <assert.h>
 #include <unistd.h>
 
+#ifdef __x86_64__
+#  include <numa.h>
+#elif defined(__sparc__)
+#  include <sys/lgrp_user.h>
+#  include <numa_sparc.h>
+#endif
+
+
 #define MCTOP_LVL_ID_MULTI 10000
 
 typedef enum

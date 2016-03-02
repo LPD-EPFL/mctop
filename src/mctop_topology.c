@@ -1,6 +1,5 @@
 #include <mctop.h>
 #include <darray.h>
-#include <numa.h>
 
 cdf_cluster_t* mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N);
 

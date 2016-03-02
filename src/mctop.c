@@ -2,6 +2,13 @@
 #include <mctop_mem.h>
 #include <mctop_profiler.h>
 #include <mctop.h>
+#include <atomics.h>
+#include <strings.h>
+#include <time.h>
+
+#if __sparc
+#  include <numa_sparc.h>
+#endif
 
 const int test_num_threads = 2;
 const int test_num_smt_threads = 2;
@@ -536,6 +543,10 @@ main(int argc, char **argv)
   test_num_hw_ctx = get_num_hw_ctx();
   double dvfs_up_dur;
   test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, &dvfs_up_dur);
+
+#if defined(__sparc__)
+  lgrp_cookie = lgrp_init(LGRP_VIEW_OS);
+#endif
 
   struct option long_options[] = 
     {
