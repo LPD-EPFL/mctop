@@ -10,80 +10,34 @@
 #  include <numa_sparc.h>
 #endif
 
-const int test_num_threads = 2;
-const int test_num_smt_threads = 2;
-size_t test_num_reps = 10000;
-const size_t test_num_smt_reps = 1e7;
-const size_t test_num_dvfs_reps = 5e6;
-const double test_smt_ratio = 0.75;
-const double test_dvfs_ratio = 0.95;
-uint test_dvfs = 0;
+size_t test_num_reps = DEFAULT_NUM_REPS;
 volatile int dvfs_up_hwc_ready = -1; /* which hw context is ready by the dvfs up thread */
+size_t test_max_stdev = DEFAULT_MAX_STDEV;
+size_t test_max_stdev_max = 2 * DEFAULT_MAX_STDEV;
+size_t test_num_cache_lines = DEFAULT_NUM_CACHE_LINES;
+size_t test_cdf_cluster_offset = DEFAULT_CLUSTER_OFFS;
+int test_num_clusters_hint = DEFAULT_HINT;
+int test_mem_augment = DEFAULT_MEM_AUGMENT;
+test_format_t test_format = DEFAULT_FORMAT;
+int test_verbose = DEFAULT_VERBOSE;
+mctop_test_mem_type_t test_do_mem = DEFAULT_DO_MEM;
 
-size_t test_num_warmup_reps = 10000 >> 4;
-size_t test_max_stdev = 7;
-size_t test_max_stdev_max = 14;
-size_t test_num_cache_lines = 1024;
-size_t test_cdf_cluster_offset = 25;
-int test_num_clusters_hint = 0;
-cache_line_t* test_cache_line = NULL;
-int test_mem_augment = 0;
-
-typedef enum
-  {
-    NONE,
-    C_STRUCT,
-    LAT_TABLE,
-    MCT_FILE,
-  } test_format_t;
-const char* test_format_desc[] =
-  {
-    "None",
-    "C struct",
-    "Table",
-    "MCT description file",
-  };
-typedef enum
-  {
-    AR_1D,
-    AR_2D,
-  } array_format_t;
-test_format_t test_format = MCT_FILE;
-int test_verbose = 0;
+/* variables set by the main thread */
+uint test_dvfs = 0;
+size_t test_num_warmup_reps = 0;
+int test_num_sockets = -1;	/* num nodes / sockets */
 int test_num_hw_ctx;
 ticks* lat_table = NULL;
 ticks** mem_lat_table = NULL;
-volatile int high_stdev_retry = 0;
-
-int test_num_sockets = -1;	/* num nodes / sockets */
-
-typedef enum 
-  {
-    NO_MEM,			/* no mem. lat measurements */
-    ON_TIME,			/* mem. lat measurements in // with comm. latencies */
-    ON_TOPO,			/* mem. lat measurements based on topology */
-    ON_TOPO_BW,			/* mem. lat + bw measurements based on topology */
-  } mctop_test_mem_type_t;
-const char* mctop_test_mem_type_desc[4] =
-  {
-    "No",
-    "Latency only while communicating",
-    "Latency only on topology",
-    "Latency+Bandwidth on topology",
-  };
-mctop_test_mem_type_t test_do_mem = ON_TOPO_BW;
-int test_mem_on_demand = 0;
-const size_t test_mem_reps = 1e6;
-const size_t test_mem_size = 256 * 1024 * 1024LL;
 volatile uint64_t** node_mem;
-
-const uint test_mem_bw_num_streams = 2;
-const size_t test_mem_bw_size = 256 * 1024 * 1024LL;
-const uint test_mem_bw_num_reps = 4;
-volatile uint32_t mem_bw_barrier = 0;
-volatile double* mem_bw_gbps;
+int test_mem_on_demand = 0;
 double** mem_bw_table;
 
+/* variables set by worker threads */
+cache_line_t* test_cache_line = NULL;
+volatile int high_stdev_retry = 0;
+volatile uint32_t mem_bw_barrier = 0;
+volatile double* mem_bw_gbps;
 
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
@@ -585,22 +539,26 @@ main(int argc, char **argv)
 	case 'h':
 	  printf("mctop  Copyright (C) 2016  Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>\n"
 		 "This program comes with ABSOLUTELY NO WARRANTY.\n"
-		 ".\n"
+		 "mctop infres the topology of any multi-core bases solely on latency and bandwidth measurements.\n"
+		 ""
 		 "Usage: ./mctop [options...]\n"
 		 "\n"
 		 "Options:\n"
 		 ">>> BASIC SETTINGS\n"
 		 "  -r, --repetitions <int>\n"
-		 "        Number of repetitions per iteration (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
+		 "        Number of repetitions per iteration for core-to-core latency measurements (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
 		 "  -m, --mem <int>\n"
-		 "        Do (NUMA) memory latency measurements (default=" XSTR(DEFAULT_MEM) ")\n"
+		 "        Do (NUMA) memory latency measurements (default=" XSTR(DEFAULT_DO_MEM) ")\n"
 		 "        0: no mem. latency measurements\n"
 		 "        1: do mem. latency measurements while measuring communication latencies (slow)\n"
 		 "        2: do mem. latency measurements per-node after constructing the topology\n"
 		 "        3: do mem. latency and bandwidth measurements per-node after constructing the topology\n"
 		 "  -c, --cdf-offset <int>\n"
 		 "        How many cycles should the min and the max elements of two adjacent core\n"
-		 "        clusters differ to consider them distinct? (default=" XSTR(DEFAULT_NUM_REPS) ")\n"
+		 "        clusters differ to consider them distinct? (default=" XSTR(DEFAULT_CLUSTER_OFFS) ")\n"
+		 "        For example, in an Intel machine, HyperThreads in a core give ~35 cycles latency, while\n"
+		 "        two cores within a socket communicate in ~100 cycles. If you set -c80, mctop will probably\n"
+		 "        consider that these two latencies belong to the same group.\n"
 		 "  -f, --format <int>\n"
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
 		 "        0: none, 1: c/c++ struct, 2: latency table, 3: MCT description file\n"
@@ -611,9 +569,9 @@ main(int argc, char **argv)
 		 "        How many sockets (i.e., NUMA nodes) to assume if -n is given (default=all sockets)\n"
 		 "  -i, --num-clusters <int>\n"
 		 "        Hint on how many latency groups to look for (default=disabled). For example, on a 2-socket\n"
-		 "        Intel server with HyperThreads, we expect 4 groups (i.e., hyperthread, core, socket, cross socket)."
+		 "        Intel server with HyperThreads, we expect 4 groups (i.e., hyperthread, core, socket, cross socket).\n"
 		 "  -a, --augment\n"
-		 "        Augment an existing MCT description file with memory measurements (default=" XSTR(DEFAULT_AUGMENT) ")\n"
+		 "        Augment an existing MCT description file with memory measurements (default=" XSTR(DEFAULT_MEM_AUGMENT) ")\n"
 		 "        If the MCT file already contains memory measurements mctop with return w/o any effects.\n"
 		 ">>> AUXILLIARY SETTINGS\n"
 		 "  -h, --help\n"
@@ -656,6 +614,8 @@ main(int argc, char **argv)
 	  exit(1);
 	}
     }
+
+  test_num_warmup_reps = test_num_reps >> 4;
 
   if (test_mem_augment)
     {
