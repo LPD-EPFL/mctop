@@ -1,5 +1,6 @@
 #include <mctop.h>
 #include <stdarg.h>
+#include <math.h>
 
 const char* dot_prefix = "dot";
 
@@ -84,28 +85,45 @@ dot_gs_label_id(FILE* ofp, const uint n_tabs, const uint id)
   print2(ofp, "gs_%u [label=\"%u\"];\n", id, mctop_id_no_lvl(id));
 }
 
+
+static uint dot_min_lat = 0;
+const uint dot_weigh_multi = 10000;
+
+static uint
+dot_weight_calc(const uint lat)
+{
+  return dot_weigh_multi / (lat - dot_min_lat);
+}
+
 static void
 dot_gs_link(FILE* ofp, const uint n_tabs, const uint id, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id, id, lat, lat);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id, id, lat, dot_weight_calc(lat));
 }
 
 static void
 dot_gss_link(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id0, id1, lat, lat);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u\", weight=\"%u\"];\n", id0, id1, lat, dot_weight_calc(lat));
+}
+
+static void
+dot_gss_link_invis(FILE* ofp, const uint n_tabs, const uint id0, const uint id1)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u -- gs_%u [style=invis];\n", id0, id1);
 }
 
 static void
 dot_gss_link_bw(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat, const double bw)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%u (%.2fGB/s)\", weight=\"%u\"];\n", id0, id1, lat, bw, lat);
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u (%.2fGB/s)\", weight=\"%u\"];\n", id0, id1, lat, bw, dot_weight_calc(lat));
 }
 
-static void
+__attribute__((unused)) static void
 dot_gs_link_only_bw(FILE* ofp, const uint n_tabs, const uint id, const double bw)
 {
   dot_tab(ofp, n_tabs);
@@ -124,7 +142,7 @@ dot_gs_recurse(FILE* ofp, hwc_gs_t* gs, const uint n_tabs)
 	    {
 	      print2(ofp, "|");
 	    }
-	  print2(ofp, "%u", gs->children[i]->id);
+	  print2(ofp, "%03u", gs->children[i]->id);
 	}
       print2(ofp, "\"];\n");
       if (gs->type != SOCKET)
@@ -151,6 +169,49 @@ dot_gs_recurse(FILE* ofp, hwc_gs_t* gs, const uint n_tabs)
     }
 }
 
+static uint
+do_dont_link_cores_every(const uint n_cores)
+{
+  uint root = sqrt(n_cores);
+  uint every = root;
+  uint tries = 0;
+  do
+    {
+      uint tot = every * root;
+      if (tot == n_cores) { break; }
+      else if (tot < n_cores) { every++; }
+      else { every--; }
+
+      tries++;
+      if (tries == 16) { root++; }
+      else if (tries == 32) { root -= 2; }
+      else if (tries == 48) { root++;  break; }
+    }
+  while (1);
+  return root;
+}
+
+static void
+dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
+{
+  if (socket->level > 1)
+    {
+      uint n_cores = mctop_socket_get_num_cores(socket);
+      uint every = do_dont_link_cores_every(n_cores);
+      hwc_gs_t* pgs = NULL;
+      hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
+      for (int i = 1; i <  n_cores; i++)
+	{
+	  pgs = gs;
+	  gs = gs->next;
+	  if (i % every != 0)
+	    {
+	      dot_gss_link_invis(ofp, 1, pgs->id, gs->id);
+	    }
+	}
+    }
+}
+
 void
 mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 {
@@ -171,7 +232,9 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
       dot_gs_recurse(ofp, socket, 1);
       dot_tab_print(ofp, 1, "}\n");
 
-      dot_tab_print(ofp, 1, "node [color=gold4];\n");
+      dot_gs_add_invisible_links(ofp, socket);
+
+      dot_tab_print(ofp, 1, "node [color=red4];\n");
 
       if (topo->has_mem >= LATENCY)
 	{
@@ -219,8 +282,11 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 		}
 	    }
 	}
+
       print2(ofp, "}\n");
+      break;
     }
+
 
   if (ofp != NULL)
     {
@@ -229,7 +295,7 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 }
 
 void
-mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
+mctopo_dot_graph_cross_socket_plot(mctopo_t* topo, const uint max_cross_socket_lvl)
 {
   char out_file[100];
   sprintf(out_file, "dot/%s_cross_socket.dot", dot_prefix);
@@ -238,7 +304,15 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
     {
       fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
     }
+
+  if (topo->socket_level < topo->n_levels)
+    {
+      dot_min_lat = topo->latencies[topo->socket_level + 1] - 1;
+      printf(" [ set dot_min_lat = %u]\n", dot_min_lat);
+    }
+
   dot_graph(ofp, "cross_socket", 0);
+  dot_tab_print(ofp, 1, "node [color=red4];\n");
 
   dot_tab(ofp, 1); print2(ofp, "// Socket       lvl %u (max lvl %u)\n", topo->socket_level, topo->n_levels);
   for (int i = 0; i < topo->n_sockets; i++)
@@ -248,25 +322,35 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
 
   for (int lvl = topo->socket_level + 1; lvl < topo->n_levels; lvl++)
     {
-      dot_tab(ofp, 1); print2(ofp, "// Cross-socket lvl %u (max lvl %u)\n", lvl, topo->n_levels);
-      for (int i = 0; i < topo->n_siblings; i++)
+      if (max_cross_socket_lvl == 0 || lvl < max_cross_socket_lvl)
 	{
-	  sibling_t* sibling = topo->siblings[i];
-	  if (sibling->level == lvl)
+	  dot_tab(ofp, 1); print2(ofp, "// Cross-socket lvl %u (max lvl %u)\n", lvl, topo->n_levels);
+	  for (int i = 0; i < topo->n_siblings; i++)
 	    {
-	      if (topo->has_mem == BANDWIDTH)
+	      sibling_t* sibling = topo->siblings[i];
+	      if (sibling->level == lvl)
 		{
-		  double bw = sibling->left->mem_bandwidths[sibling->right->local_node];
-		  dot_gss_link_bw(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency, bw);
-		}
-	      else
-		{
-		  dot_gss_link(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency);
+		  if (topo->has_mem == BANDWIDTH)
+		    {
+		      double bw = sibling->left->mem_bandwidths[sibling->right->local_node];
+		      dot_gss_link_bw(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency, bw);
+		    }
+		  else
+		    {
+		      dot_gss_link(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency);
+		    }
 		}
 	    }
 	}
+      else			/* create a separate group */
+	{
+	  dot_gs_label(ofp, 1, lvl);
+	  print2(ofp, "lvl %u\\n(%u hops)\"];\n", lvl, lvl - topo->socket_level);
+	  dot_gss_link(ofp, 1, lvl, lvl, topo->latencies[lvl]);
+	}
     }
 
+#if MCTOP_GRAPH_BW_SELF == 1
   if (topo->has_mem == BANDWIDTH)
     {
       for (int i = 0; i < topo->n_sockets; i++)
@@ -275,6 +359,7 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
 	  dot_gs_link_only_bw(ofp, 1, socket->id, socket->mem_bandwidths[socket->local_node]);
 	}
     }
+#endif	/* MCTOP_GRAPH_BW_SELF == 1 */
 
   print2(ofp, "}\n");
 
@@ -285,8 +370,8 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo)
 }
 
 void
-mctopo_dot_graph_plot(mctopo_t* topo)
+mctopo_dot_graph_plot(mctopo_t* topo, const uint max_cross_socket_lvl)
 {
   mctopo_dot_graph_intra_socket_plot(topo);
-  mctopo_dot_graph_cross_socket_plot(topo);
+  mctopo_dot_graph_cross_socket_plot(topo, max_cross_socket_lvl);
 }

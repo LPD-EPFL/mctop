@@ -32,6 +32,7 @@
 *.x86_64
 *~
 /.nfs0000000006da006300000015
+/core
 /cscope.files
 /mct_load
 /mctop

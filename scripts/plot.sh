@@ -1,29 +1,14 @@
 #!/bin/bash
 
-print_lvl=0;
-
 un=$(uname -n);
 if [ $# -gt 0 ];
 then
     un=$1;
-    re='^[0-9]+$'
-    if [[ $un =~ $re ]];
-    then
-	print_lvl=$un
-	un=$(uname -n);
-    fi
-    shift;
-fi;
-
-if [ $# -gt 0 ];
-then
-    print_lvl=$1;
     shift;
 fi;
 
 echo "#### Graphs from $un";
 
-tool=mct_load;
 inf=dot;
 outf=graphs;
 dot_format=ps;
@@ -45,3 +30,4 @@ sfdp -x -T${dot_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${dot
 # dot  -T${dot_format} ${inf}/dot_${target}.dot > ${outf}/${un}_${target}.${dot_format}
 epstopdf ${outf}/${un}_${target}.${dot_format}
 evince ${outf}/${un}_${target}.${out_format} &
+
