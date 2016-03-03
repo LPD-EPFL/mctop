@@ -22,15 +22,15 @@
 
 const int test_num_threads         = 2;
 const int test_num_smt_threads     = 2;
-const size_t test_num_smt_reps = 1e7;
-const size_t test_num_dvfs_reps = 5e6;
-const double test_smt_ratio = 0.75;
-const double test_dvfs_ratio = 0.95;
+const size_t test_num_smt_reps     = 1e7;
+const size_t test_num_dvfs_reps    = 5e6;
+const double test_smt_ratio        = 0.8;
+const double test_dvfs_ratio       = 0.95;
 
-const size_t test_mem_reps = 1e6;
-const size_t test_mem_size = 256 * 1024 * 1024LL;
+const size_t test_mem_reps         = 1e6;
+const size_t test_mem_size         = 256 * 1024 * 1024LL;
 const uint test_mem_bw_num_streams = 2;
-const uint test_mem_bw_num_reps = 4;
+const uint test_mem_bw_num_reps    = 4;
 
 #define DEFAULT_NUM_REPS           2000
 #define DEFAULT_MAX_STDEV          7

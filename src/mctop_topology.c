@@ -224,6 +224,10 @@ mctopo_free(mctopo_t* topo)
   if (topo->has_mem)
     {
       free(topo->node_to_socket);
+      if (topo->has_mem == BANDWIDTH)
+	{
+	  free(topo->mem_bandwidths);
+	}
     }
   free(topo);
   topo = NULL;
@@ -778,6 +782,7 @@ void
 mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
 {
   topo->has_mem = BANDWIDTH;
+  topo->mem_bandwidths = malloc_assert(topo->n_sockets * sizeof(double));
   for (int s = 0; s < topo->n_sockets; s++)
     {
       socket_t* socket = topo->sockets + s;
@@ -786,5 +791,6 @@ mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
 	{
 	  socket->mem_bandwidths[n] = mem_bw_table[s][n];
 	}
+      topo->mem_bandwidths[socket->local_node] = socket->mem_bandwidths[socket->local_node];
     }
 }

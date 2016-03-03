@@ -66,6 +66,7 @@ typedef struct mctopo
   struct hw_context* hwcs;	/* pointers to hwcs */
   uint n_siblings;		/* total number of sibling relationships */
   struct sibling** siblings;	/* pointers to sibling relationships */
+  double* mem_bandwidths;	/* Mem. bandwidth of each socket */
 } mctopo_t;
 
 typedef struct hwc_gs		/* group / socket */
@@ -254,5 +255,28 @@ calloc_assert(size_t n, size_t size)
   assert(m != NULL);
   return m;
 }
+
+/* ******************************************************************************** */
+/* MCTOP Allocator */
+/* ******************************************************************************** */
+
+typedef enum 
+  {
+    MCTOPO_ALLOC_MIN_LAT,
+    MCTOPO_ALLOC_MIN_LAT_CORES,
+  } mctopo_alloc_policy;
+
+typedef struct mctopo_alloc
+{
+  mctopo_t* topo;
+  uint n_hwcs;
+  mctopo_alloc_policy policy;
+  uint32_t cur;
+  uint hwcs[0];
+} mctopo_alloc_t;
+
+mctopo_alloc_t* mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy policy);
+void mctopo_alloc_free(mctopo_alloc_t* alloc);
+
 
 #endif	/* __H_MCTOP__ */
