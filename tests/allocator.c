@@ -70,7 +70,10 @@ main(int argc, char **argv)
       mctopo_print(topo);
 
       mctopo_alloc_t* alloc = mctopo_alloc_create(topo, test_num_threads, test_policy);
-
+      for (int i = 0; i < test_num_threads; i++)
+	{
+	  mctopo_alloc_pin(alloc);
+	}
       mctopo_alloc_free(alloc);
 
       mctopo_free(topo);

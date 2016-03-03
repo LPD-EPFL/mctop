@@ -155,7 +155,7 @@ crawl(void* param)
       clock_t _clock_start = clock();
       if (tid == 0)
 	{
-	  set_cpu(x); 
+	  mctop_set_cpu(x); 
 	  if (_do_dvfs)
 	    {
 	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
@@ -204,7 +204,7 @@ crawl(void* param)
       size_t history_med[2] = { 0 };
       for (int y = x + 1; y < _num_hw_ctx; y++)
 	{
-	  ID1_DO(set_cpu(y););
+	  ID1_DO(mctop_set_cpu(y););
 
 	  hw_warmup(cache_line, _num_warmup_reps, barrier2, tid, profiler);
 
@@ -352,7 +352,7 @@ is_smt(void* param)
   barrier2_t* barrier2 = tld->barrier2;
   pthread_barrier_t* barrier = tld->barrier;
 
-  set_cpu(hwc);
+  mctop_set_cpu(hwc);
   spin_time(test_num_smt_reps >> 8);
   barrier2_cross_explicit(barrier2, tid, 0);
 

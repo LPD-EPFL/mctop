@@ -792,7 +792,7 @@ mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table)
 	{
 	  socket->mem_bandwidths[n] = mem_bw_table[s][n];
 	}
-      topo->mem_bandwidths[socket->local_node] = socket->mem_bandwidths[socket->local_node];
+      topo->mem_bandwidths[s] = socket->mem_bandwidths[socket->local_node];
     }
 
   mctopo_fix_siblings_by_bandwidth(topo);
@@ -822,7 +822,7 @@ mctopo_fix_siblings_by_bandwidth(mctopo_t* topo)
 		{
 		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
 		  socket_t* sob = mctop_sibling_get_other_socket(sib, socket);
-		  if (mctop_socket_get_bw_to(socket, soa) < mctop_socket_get_bw_to(socket, sob))
+		  if (mctop_socket_get_bw_to(socket, sob) > mctop_socket_get_bw_to(socket, soa))
 		    {
 		      socket->siblings[i] = sib;
 		      socket->siblings[i + 1] = sia;

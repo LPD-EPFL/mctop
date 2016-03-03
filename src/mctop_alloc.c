@@ -112,6 +112,12 @@ mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy polic
   mctopo_alloc_t* alloc = malloc(sizeof(mctopo_alloc_t) + (n_hwcs * sizeof(uint)));
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
+  if (n_hwcs > topo->n_hwcs)
+    {
+      fprintf(stderr, "MCTOP Warning: Asking for %u hw contexts. This processor has %u contexts.\n",
+	      n_hwcs, topo->n_hwcs);
+      alloc->n_hwcs = topo->n_hwcs;
+    }
   alloc->policy = policy;
   alloc->cur = 0;
   switch (policy)
@@ -130,4 +136,49 @@ void
 mctopo_alloc_free(mctopo_alloc_t* alloc)
 {
   free(alloc);
+}
+
+
+#ifdef __sparc__		/* SPARC */
+#  include <atomic.h>
+#  define CAS_U64(a,b,c) atomic_cas_64(a,b,c)
+#  define FAI_U32(a) (atomic_inc_32_nv(a) - 1)
+#elif defined(__tile__)		/* TILER */
+#  include <arch/atomic.h>
+#  include <arch/cycle.h>
+#  define FAI_U32(a) arch_atomic_increment(a)
+#elif __x86_64__
+#  define FAI_U32(a) __sync_fetch_and_add(a, 1)
+#else
+#  error "Unsupported Architecture"
+#endif
+
+/* pin to ALL hw contexts contained in alloc */
+int
+mctopo_alloc_pin_all(mctopo_alloc_t* alloc)
+{
+  struct bitmask* bmask = numa_bitmask_alloc(alloc->topo->n_hwcs);
+  for (int i = 0; i < alloc->n_hwcs; i++)
+    {
+      bmask = numa_bitmask_setbit(bmask, alloc->hwcs[i]);
+    }
+
+  int ret = numa_sched_setaffinity(0, bmask);
+  numa_bitmask_free(bmask);
+  return ret;
+}
+
+/* pin to ONE hw context contained in alloc */
+int
+mctopo_alloc_pin(mctopo_alloc_t* alloc)
+{
+  uint hwcid = FAI_U32(&alloc->cur);
+  if (hwcid < alloc->n_hwcs)
+    {
+      hwcid = alloc->hwcs[hwcid];
+      int ret = mctop_set_cpu(hwcid);
+      mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+      return ret;
+    }
+  return 0;
 }

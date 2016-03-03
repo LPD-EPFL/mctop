@@ -33,7 +33,6 @@
 
 #define CACHE_LINE_SIZE 64
 
-extern int set_cpu(int cpu);
 extern int get_num_hw_ctx();
 struct timespec timespec_diff(struct timespec start, struct timespec end);
 uint64_t spin_time(size_t n);

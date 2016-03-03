@@ -123,6 +123,23 @@ mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket)
 }
 
 
+/* hwcid ************************************************************************ */
+
+int
+mctop_hwcid_fix_numa_node(mctopo_t* topo, const uint hwcid)
+{
+  if (likely(topo->has_mem))
+    {
+      hw_context_t* hwc = &topo->hwcs[hwcid];
+      printf("# HWID %u, SOCKET %u, numa_set_preferred(%u)\n",
+	     hwcid, hwc->socket->id, hwc->socket->local_node);
+      numa_set_preferred(hwc->socket->local_node);
+      return 1;
+    }
+
+  return 0;
+}
+
 
 /* queries ************************************************************************ */
 
@@ -143,7 +160,6 @@ mctop_has_mem_bw(mctopo_t* topo)
 {
   return topo->has_mem == BANDWIDTH;
 }
-
 
 
 static int
@@ -215,4 +231,45 @@ mctop_run_on_node(mctopo_t* topo, const uint node_n)
   ret = ret && lgrp_affinity_set(P_LWPID, P_MYID, lgrp_array[node_n], LGRP_AFF_STRONG);
   return ret;
 #endif
+}
+
+
+
+/*  */
+
+int
+mctop_set_cpu(int cpu) 
+{
+  int ret = 1;
+#if defined(__sparc__)
+  if (processor_bind(P_LWPID, P_MYID, cpu, NULL) == -1)
+    {
+      /* printf("Problem with setting processor affinity: %s\n", */
+      /* 	     strerror(errno)); */
+      ret = 0;
+    }
+#elif defined(__tile__)
+  if (tmc_cpus_set_my_cpu(tmc_cpus_find_nth_cpu(&cpus, cpu)) < 0)
+    {
+      tmc_task_die("Failure in 'tmc_cpus_set_my_cpu()'.");
+    }
+
+  if (cpu != tmc_cpus_get_my_cpu())
+    {
+      PRINT("******* i am not CPU %d", tmc_cpus_get_my_cpu());
+    }
+
+#else
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  CPU_SET(cpu, &mask);
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) != 0)
+    {
+      /* printf("Problem with setting processor affinity: %s\n", */
+      /* 	     strerror(errno)); */
+      ret = 0;
+    }
+#endif
+
+  return ret;
 }

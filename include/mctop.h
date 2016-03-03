@@ -191,6 +191,9 @@ uint mctop_has_mem_bw(mctopo_t* topo);
 /* sibling getters ***************************************************************** */
 socket_t* mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket);
 
+/* optimizing ********************************************************************** */
+int mctop_hwcid_fix_numa_node(mctopo_t* topo, const uint hwcid);
+
 
 static inline uint
 mctop_create_id(uint seq_id, uint lvl)
@@ -282,5 +285,11 @@ typedef struct mctopo_alloc
 mctopo_alloc_t* mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy policy);
 void mctopo_alloc_free(mctopo_alloc_t* alloc);
 
+int mctopo_alloc_pin(mctopo_alloc_t* alloc);
+int mctopo_alloc_pin_all(mctopo_alloc_t* alloc);
+
+
+
+extern int mctop_set_cpu(int cpu);
 
 #endif	/* __H_MCTOP__ */

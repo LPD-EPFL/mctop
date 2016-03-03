@@ -49,7 +49,7 @@ main(int argc, char **argv)
 
   for (int i = 0; i < 4; i++)
     {
-      set_cpu(i);
+      mctop_set_cpu(i);
       volatile uint64_t* mem = malloc(test_mem_size);
       ll_random_create(mem, test_mem_size);
       volatile uint64_t* l = mem;
@@ -91,7 +91,7 @@ main(int argc, char **argv)
     {
       for (int i = 0; i < numa_num_task_nodes(); i++)
 	{
-	  set_cpu(x);
+	  mctop_set_cpu(x);
 	  volatile uint64_t* mem = numa_alloc_onnode(test_mem_size, i);
 	  ll_random_create(mem, test_mem_size);
 	  volatile uint64_t* l = mem;
@@ -118,7 +118,7 @@ main(int argc, char **argv)
 
       for (int i = 0; i < numa_num_task_nodes(); i++)
 	{
-	  set_cpu(i);
+	  mctop_set_cpu(i);
 	  volatile uint64_t* l = mem;
 	  const uint mem_lat_reps = 1e6;
 	  volatile ticks __s = getticks();
