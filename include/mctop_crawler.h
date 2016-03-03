@@ -32,7 +32,7 @@ const size_t test_mem_size = 256 * 1024 * 1024LL;
 const uint test_mem_bw_num_streams = 2;
 const uint test_mem_bw_num_reps = 4;
 
-#define DEFAULT_NUM_REPS           5000
+#define DEFAULT_NUM_REPS           2000
 #define DEFAULT_MAX_STDEV          7
 #define DEFAULT_NUM_CACHE_LINES    1024
 #define DEFAULT_CLUSTER_OFFS       20

@@ -145,7 +145,7 @@ mctopo_construct(uint64_t** lat_table_norm,
 
   if (n_sockets_found != n_sockets)
     {
-      fprintf(stderr, "** Warning: Found %u sockets instead of %u that was expected.\n"
+      fprintf(stderr, "MCTOP Warning: Found %u sockets instead of %u that was expected.\n"
 	      "            The generated topology is probably INCORRECT!.\n", n_sockets_found, n_sockets);
     }
 
