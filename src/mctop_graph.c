@@ -1,5 +1,6 @@
 #include <mctop.h>
 #include <stdarg.h>
+#include <math.h>
 
 const char* dot_prefix = "dot";
 
@@ -109,6 +110,13 @@ dot_gss_link(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const
 }
 
 static void
+dot_gss_link_invis(FILE* ofp, const uint n_tabs, const uint id0, const uint id1)
+{
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "gs_%u -- gs_%u [style=invis];\n", id0, id1);
+}
+
+static void
 dot_gss_link_bw(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat, const double bw)
 {
   dot_tab(ofp, n_tabs);
@@ -134,7 +142,7 @@ dot_gs_recurse(FILE* ofp, hwc_gs_t* gs, const uint n_tabs)
 	    {
 	      print2(ofp, "|");
 	    }
-	  print2(ofp, "%u", gs->children[i]->id);
+	  print2(ofp, "%03u", gs->children[i]->id);
 	}
       print2(ofp, "\"];\n");
       if (gs->type != SOCKET)
@@ -161,6 +169,49 @@ dot_gs_recurse(FILE* ofp, hwc_gs_t* gs, const uint n_tabs)
     }
 }
 
+static uint
+do_dont_link_cores_every(const uint n_cores)
+{
+  uint root = sqrt(n_cores);
+  uint every = root;
+  uint tries = 0;
+  do
+    {
+      uint tot = every * root;
+      if (tot == n_cores) { break; }
+      else if (tot < n_cores) { every++; }
+      else { every--; }
+
+      tries++;
+      if (tries == 16) { root++; }
+      else if (tries == 32) { root -= 2; }
+      else if (tries == 48) { root++;  break; }
+    }
+  while (1);
+  return root;
+}
+
+static void
+dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
+{
+  if (socket->level > 1)
+    {
+      uint n_cores = mctop_socket_get_num_cores(socket);
+      uint every = do_dont_link_cores_every(n_cores);
+      hwc_gs_t* pgs = NULL;
+      hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
+      for (int i = 1; i <  n_cores; i++)
+	{
+	  pgs = gs;
+	  gs = gs->next;
+	  if (i % every != 0)
+	    {
+	      dot_gss_link_invis(ofp, 1, pgs->id, gs->id);
+	    }
+	}
+    }
+}
+
 void
 mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 {
@@ -181,7 +232,9 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
       dot_gs_recurse(ofp, socket, 1);
       dot_tab_print(ofp, 1, "}\n");
 
-      dot_tab_print(ofp, 1, "node [color=gold4];\n");
+      dot_gs_add_invisible_links(ofp, socket);
+
+      dot_tab_print(ofp, 1, "node [color=red4];\n");
 
       if (topo->has_mem >= LATENCY)
 	{
@@ -229,8 +282,11 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 		}
 	    }
 	}
+
       print2(ofp, "}\n");
+      break;
     }
+
 
   if (ofp != NULL)
     {
@@ -256,6 +312,7 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo, const uint max_cross_socket_l
     }
 
   dot_graph(ofp, "cross_socket", 0);
+  dot_tab_print(ofp, 1, "node [color=red4];\n");
 
   dot_tab(ofp, 1); print2(ofp, "// Socket       lvl %u (max lvl %u)\n", topo->socket_level, topo->n_levels);
   for (int i = 0; i < topo->n_sockets; i++)

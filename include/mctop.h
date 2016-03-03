@@ -78,6 +78,7 @@ typedef struct hwc_gs		/* group / socket */
   struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
   uint n_hwcs;			/* num. of hwcs descendants */
   struct hw_context** hwcs;	/* descendant hwcs */
+  uint n_cores;			/* num. of physical cores (if !smt = n_hwcs */
   uint n_children;		/* num. of hwc_group descendants */
   struct hwc_gs** children;	/* pointer to children hwcgroup */
   struct hwc_gs* next;		/* link groups of a level to a list */
@@ -164,18 +165,25 @@ void mctopo_dot_graph_plot(mctopo_t* topo,  const uint max_cross_socket_lvl);
 /* MCTOP CONTROL IF */
 /* ******************************************************************************** */
 
+/* topo getters ******************************************************************* */
 socket_t* mctop_get_socket(mctopo_t* topo, const uint socket_n);
-uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 socket_t* mctop_get_first_socket(mctopo_t* topo);
+hwc_gs_t* mctop_get_first_gs_core(mctopo_t* topo);
 hwc_gs_t* mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl);
-hwc_gs_t* mctop_get_first_child_lvl(socket_t* socket, const uint lvl);
-hw_context_t* mctop_get_first_hwc_socket(socket_t* socket);
 sibling_t* mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl);
 
 size_t mctop_get_num_nodes(mctopo_t* topo);
 size_t mctop_get_num_cores_per_socket(mctopo_t* topo);
 size_t mctop_get_num_hwc_per_socket(mctopo_t* topo);
 
+/* socket getters ***************************************************************** */
+hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
+hwc_gs_t* mctop_socket_get_first_gs_core(socket_t* socket);
+hwc_gs_t* mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl);
+size_t mctop_socket_get_num_cores(socket_t* socket);
+
+/* queries ************************************************************************ */
+uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 uint mctop_has_mem_lat(mctopo_t* topo);
 uint mctop_has_mem_bw(mctopo_t* topo);
 

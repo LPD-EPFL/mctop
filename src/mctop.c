@@ -1241,7 +1241,7 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
   for (int s = 0; s < topo->n_sockets; s++)
     {
       VERBOSE(printf(" ######## Run Socket %d\n", s););
-      uint hwc_id = mctop_get_first_hwc_socket(mctop_get_socket(topo, s))->id;
+      uint hwc_id = mctop_socket_get_first_hwc(mctop_get_socket(topo, s))->id;
       mctop_run_on_socket(topo, s);
       for (int n = 0; n < topo->n_sockets; n++)
 	{

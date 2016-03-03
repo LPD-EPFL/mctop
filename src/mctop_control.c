@@ -4,10 +4,12 @@
 #  include <numa.h>
 #endif
 
-inline uint
-mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b)
+/* topo getters ******************************************************************* */
+
+inline socket_t*
+mctop_get_socket(mctopo_t* topo, const uint socket_n)
 {
-  return (a->type == HW_CONTEXT && b->type == HW_CONTEXT && a->parent == b->parent);
+  return topo->sockets + socket_n;
 }
 
 inline socket_t*
@@ -15,6 +17,29 @@ mctop_get_first_socket(mctopo_t* topo)
 {
   return topo->sockets;
 }
+
+hwc_gs_t*
+mctop_get_first_gs_core(mctopo_t* topo)
+{
+  hwc_gs_t* gs = topo->sockets[0].children[0];
+  while (gs && gs->type != CORE)
+    {
+      gs = gs->children[0];
+    }
+  return gs;
+}
+
+inline hwc_gs_t*
+mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
+{
+  hwc_gs_t* cur = mctop_get_first_socket(topo);
+  while (cur != NULL && cur->level != lvl)
+    {
+      cur = cur->children[0];
+    }
+  return cur;
+}
+
 
 inline sibling_t*
 mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl)
@@ -29,54 +54,17 @@ mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl)
   return NULL;
 }
 
-inline hwc_gs_t*
-mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
-{
-  hwc_gs_t* cur = mctop_get_first_socket(topo);
-  while (cur != NULL && cur->level != lvl)
-    {
-      cur = cur->children[0];
-    }
-  return cur;
-}
-
-hwc_gs_t*
-mctop_get_first_child_lvl(socket_t* socket, const uint lvl)
-{
-  hwc_gs_t* cur = socket->children[0];
-  while (cur != NULL && cur->level != lvl)
-    {
-      cur = cur->children[0];
-    }
-  return cur;
-}
-
-inline socket_t*
-mctop_get_socket(mctopo_t* topo, const uint socket_n)
-{
-  return topo->sockets + socket_n;
-}
-
-inline hw_context_t*
-mctop_get_first_hwc_socket(socket_t* socket)
-{
-  return socket->hwcs[0];
-}
-
-inline size_t
-mctop_get_num_cores_per_socket(mctopo_t* topo)
-{
-  if (topo->is_smt)
-    {
-      return (topo->n_hwcs / topo->n_sockets / topo->n_hwcs_per_core);
-    }
-  return (topo->n_hwcs / topo->n_sockets);
-}
 
 inline size_t
 mctop_get_num_nodes(mctopo_t* topo)
 {
   return topo->n_sockets;
+}
+
+inline size_t
+mctop_get_num_cores_per_socket(mctopo_t* topo)
+{
+  return topo->sockets[0].n_cores;
 }
 
 size_t
@@ -86,7 +74,50 @@ mctop_get_num_hwc_per_socket(mctopo_t* topo)
 }
 
 
+/* socket getters ***************************************************************** */
 
+inline hw_context_t*
+mctop_socket_get_first_hwc(socket_t* socket)
+{
+  return socket->hwcs[0];
+}
+
+hwc_gs_t*
+mctop_socket_get_first_gs_core(socket_t* socket)
+{
+  hwc_gs_t* gs = socket->children[0];
+  while (gs && gs->type != CORE)
+    {
+      gs = gs->children[0];
+    }
+  return gs;
+}
+
+hwc_gs_t*
+mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl)
+{
+  hwc_gs_t* cur = socket->children[0];
+  while (cur != NULL && cur->level != lvl)
+    {
+      cur = cur->children[0];
+    }
+  return cur;
+}
+
+size_t
+mctop_socket_get_num_cores(socket_t* socket)
+{
+  return socket->n_cores;
+}
+
+
+/* queries ************************************************************************ */
+
+inline uint
+mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b)
+{
+  return (a->type == HW_CONTEXT && b->type == HW_CONTEXT && a->parent == b->parent);
+}
 
 inline uint
 mctop_has_mem_lat(mctopo_t* topo)

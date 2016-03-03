@@ -115,11 +115,11 @@ mctopo_construct(uint64_t** lat_table_norm,
       for (int x = 0; x < n_sockets; x++)
 	{
 	  socket_t* sx = mctop_get_socket(topo, x);
-	  uint hwc_x = mctop_get_first_hwc_socket(sx)->id;
+	  uint hwc_x = mctop_socket_get_first_hwc(sx)->id;
 	  for (int y = x + 1; y < n_sockets; y++)
 	    {
 	      socket_t* sy = mctop_get_socket(topo, y);
-	      uint hwc_y = mctop_get_first_hwc_socket(sy)->id;
+	      uint hwc_y = mctop_socket_get_first_hwc(sy)->id;
 	      lat_table_socket[x][y] = lat_table_socket[y][x] = lat_table_norm[hwc_x][hwc_y];
 	    }
 	}
@@ -583,6 +583,11 @@ mctopo_fix_children_links(mctopo_t* topo)
 	      DARRAY_FOR_EACH(contents, c)
 		{
 		  gsp->children[c] = (hwc_gs_t*) DARRAY_GET_N(contents, c);
+		}
+
+	      if (gsp->children[0]->type == CORE) /* set n_cores for socket */
+		{
+		  socket->n_cores = gsp->n_children;
 		}
 
 	      darray_empty(contents);
