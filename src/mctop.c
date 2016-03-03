@@ -13,7 +13,6 @@
 size_t test_num_reps = DEFAULT_NUM_REPS;
 volatile int dvfs_up_hwc_ready = -1; /* which hw context is ready by the dvfs up thread */
 size_t test_max_stdev = DEFAULT_MAX_STDEV;
-size_t test_max_stdev_max = 2 * DEFAULT_MAX_STDEV;
 size_t test_num_cache_lines = DEFAULT_NUM_CACHE_LINES;
 size_t test_cdf_cluster_offset = DEFAULT_CLUSTER_OFFS;
 int test_num_clusters_hint = DEFAULT_HINT;
@@ -24,6 +23,7 @@ mctop_test_mem_type_t test_do_mem = DEFAULT_DO_MEM;
 size_t test_mem_bw_size = DEFAULT_MEM_BW_SIZE;
 
 /* variables set by the main thread */
+size_t test_max_stdev_max;
 uint test_dvfs = 0;
 size_t test_num_warmup_reps = 0;
 int test_num_sockets = -1;	/* num nodes / sockets */
@@ -209,7 +209,9 @@ crawl(void* param)
 
 	  for (size_t rep = 0; rep < _num_reps; rep++)
 	    {
+#ifndef __sparc
 	      barrier2_cross_explicit(barrier2, tid, 5);
+#endif
 	      if (likely(tid == 0))
 		{
 		  barrier2_cross(barrier2, tid, rep);
@@ -218,14 +220,11 @@ crawl(void* param)
 	      else
 		{
 		  sum += ATOMIC_OP(cache_line, rep, profiler);
-		  barrier2_cross(barrier2, tid, rep);      
+		  barrier2_cross(barrier2, tid, rep);
 		}
 	    }
 
-	  /* mctop_prof_stats */
 	  mctop_prof_stats_calc(profiler, stats);
-	  /* abs_deviation_t ad;							 */
-	  /* get_abs_deviation(pfd_store[0], _num_reps, &ad); */
 	  double stdev = stats->std_dev_perc;
 	  size_t median = stats->median;
 	  if (likely(tid == 0))
@@ -511,6 +510,7 @@ main(int argc, char **argv)
       {"mem",                       required_argument, NULL, 'm'},
       {"mem-bw-size",               required_argument, NULL, 'M'},
       {"num-sockets",               required_argument, NULL, 's'},
+      {"max-stdev",                 required_argument, NULL, 'd'},
       {"cdf-offset",                required_argument, NULL, 'c'},
       {"num-clusters",              required_argument, NULL, 'i'},
       {"repetitions",               required_argument, NULL, 'r'},
@@ -525,7 +525,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:M:i:a", long_options, &i);
+      c = getopt_long(argc, argv, "hvn:c:r:f:s:m:M:i:ad:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -561,6 +561,9 @@ main(int argc, char **argv)
 		 "        For example, in an Intel machine, HyperThreads in a core give ~35 cycles latency, while\n"
 		 "        two cores within a socket communicate in ~100 cycles. If you set -c80, mctop will probably\n"
 		 "        consider that these two latencies belong to the same group.\n"
+		 "  -d, --max-stdev <int>\n"
+		 "        Max standard deviation allowed in the latency measurements between hw contexts (default=" XSTR(DEFAULT_MAX_STDEV) ")\n"
+		 "        If the deviation is more than this maximum, the measurements are repeated.\n"
 		 "  -f, --format <int>\n"
 		 "        Output format (default=" XSTR(DEFAULT_FORMAT) "). Supported formats:\n"
 		 "        0: none, 1: c/c++ struct, 2: latency table, 3: MCT description file\n"
@@ -605,6 +608,9 @@ main(int argc, char **argv)
 	case 'c':
 	  test_cdf_cluster_offset = atoi(optarg);
 	  break;
+	case 'd':
+	  test_max_stdev = atoi(optarg);
+	  break;
 	case 'i':
 	  test_num_clusters_hint = atoi(optarg);
 	  break;
@@ -624,6 +630,7 @@ main(int argc, char **argv)
 
   test_mem_bw_size *= DEFAULT_MEM_BW_MULTI;
   test_num_warmup_reps = test_num_reps >> 4;
+  test_max_stdev_max = 2 * test_max_stdev;
 
   if (test_mem_augment)
     {
@@ -634,6 +641,11 @@ main(int argc, char **argv)
   if (test_num_sockets < 0)
     {
       test_num_sockets = numa_num_task_nodes();
+      if (test_num_sockets <= 0)
+	{
+	  fprintf(stderr, "MCTOP Warning: Manually setting the num. of sockets to 1 (got %d)!\n", test_num_sockets);
+	  test_num_sockets = 1;
+	}
     }
 
   char hostname[50];
@@ -652,6 +664,7 @@ main(int argc, char **argv)
       printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
       printf("#   Mem. size bw   : %llu MB\n", test_mem_bw_size / DEFAULT_MEM_BW_MULTI);
       printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
+      printf("#   Max std dev    : %zu\n", test_max_stdev);
       printf("#   # Cores        : %d\n", test_num_hw_ctx);
       printf("#   # Sockets      : %d\n", test_num_sockets);
       printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
