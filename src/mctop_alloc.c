@@ -72,16 +72,6 @@ mctopo_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
   MA_DP("\n");
 }
 
-static socket_t*
-mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket)
-{
-  if (sibling->left == socket)
-    {
-      return sibling->right;
-    }
-  return sibling->left;
-}
-
 static void
 mctopo_alloc_prep_min_lat(mctopo_alloc_t* alloc, uint smt_first)
 {

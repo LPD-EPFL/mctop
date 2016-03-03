@@ -110,6 +110,19 @@ mctop_socket_get_num_cores(socket_t* socket)
   return socket->n_cores;
 }
 
+/* sibling getters ***************************************************************** */
+
+socket_t*
+mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket)
+{
+  if (sibling->left == socket)
+    {
+      return sibling->right;
+    }
+  return sibling->left;
+}
+
+
 
 /* queries ************************************************************************ */
 

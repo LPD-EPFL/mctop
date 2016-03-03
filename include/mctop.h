@@ -188,6 +188,10 @@ uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
 uint mctop_has_mem_lat(mctopo_t* topo);
 uint mctop_has_mem_bw(mctopo_t* topo);
 
+/* sibling getters ***************************************************************** */
+socket_t* mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket);
+
+
 static inline uint
 mctop_create_id(uint seq_id, uint lvl)
 {
