@@ -822,7 +822,7 @@ mctopo_fix_siblings_by_bandwidth(mctopo_t* topo)
 		{
 		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
 		  socket_t* sob = mctop_sibling_get_other_socket(sib, socket);
-		  if (mctop_socket_get_bw_to(soa, socket) < mctop_socket_get_bw_to(sob, socket))
+		  if (mctop_socket_get_bw_to(socket, soa) < mctop_socket_get_bw_to(socket, sob))
 		    {
 		      socket->siblings[i] = sib;
 		      socket->siblings[i + 1] = sia;
