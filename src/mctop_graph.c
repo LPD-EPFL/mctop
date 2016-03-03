@@ -46,7 +46,6 @@ dot_graph(FILE* ofp, const char* title, const uint id)
   print2(ofp, "\tnode [shape=record];\n");
   print2(ofp, "\tnode [color=gray];\n");
   print2(ofp, "\tedge [fontcolor=blue];\n");
-
 }
 
 static void
@@ -284,7 +283,6 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 	}
 
       print2(ofp, "}\n");
-      break;
     }
 
 
