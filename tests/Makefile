@@ -8,6 +8,8 @@ CFLAGS += -Wall -std=c99
 
 LDFLAGS = -lmctop -lrt -lm -pthread -lnuma 
 
+ $(info !! Using as the libmctop.a and mctop.h installed in /usr/..)
+
 default: run_on_node0
 
 all: 
@@ -19,6 +21,6 @@ clean:
 	rm *.o
 
 %.o:: %.c 
-	cc $(CFLAGS) $(VFLAGS) -o $@ -c $<
+	cc $(CFLAGS) $(VFLAGS) -I${INCLUDES} -o $@ -c $<
 
 

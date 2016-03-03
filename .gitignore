@@ -32,8 +32,10 @@
 *.x86_64
 *~
 /.nfs0000000006da006300000015
+/allocator
 /core
 /cscope.files
 /mct_load
 /mctop
 /mctop_latency
+/run_on_node0
