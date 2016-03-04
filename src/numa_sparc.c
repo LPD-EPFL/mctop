@@ -6,7 +6,7 @@
 
 #include <numa_sparc.h>
 
-extern int set_cpu(int cpu);
+extern int mctop_set_cpu(int cpu);
 
 lgrp_cookie_t lgrp_cookie;
 
@@ -37,39 +37,40 @@ numa_set_preferred(uint node)
 void*
 numa_alloc_onnode(size_t size, uint node)
 {
-  int core = numa_to_core[node];
-  uint core_prev = getcpuid();
+  /* int core = numa_to_core[node]; */
+  /* uint core_prev = getcpuid(); */
 
-  if (core < 0)
-    {
-      int c = 0;
-      while (1)
-	{
-	  if (!set_cpu(c))
-	    {
-	      break;
-	    }
+  /* if (core < 0) */
+  /*   { */
+  /*     int c = 0; */
+  /*     while (1) */
+  /* 	{ */
+  /* 	  if (!set_cpu(c)) */
+  /* 	    { */
+  /* 	      break; */
+  /* 	    } */
 
-	  int node_home = gethomelgroup() - 1;
-	  if (node_home == node)
-	    {
-	      numa_to_core[node] = c;
-	      set_cpu(c);
-	      break;
-	    }
-	  c++;
-	}
-    }
-  else
-    {
-      set_cpu(core);
-    }
+  /* 	  int node_home = gethomelgroup() - 1; */
+  /* 	  if (node_home == node) */
+  /* 	    { */
+  /* 	      numa_to_core[node] = c; */
+  /* 	      set_cpu(c); */
+  /* 	      break; */
+  /* 	    } */
+  /* 	  c++; */
+  /* 	} */
+  /*   } */
+  /* else */
+  /*   { */
+  /*     set_cpu(core); */
+  /*   } */
+  /* void* m = malloc(size); */
+  /* if (m != NULL) */
+  /*   { */
+  /*     bzero(m, size); */
+  /*   } */
+  /* set_cpu(core_prev); */
   void* m = malloc(size);
-  if (m != NULL)
-    {
-      bzero(m, size);
-    }
-  set_cpu(core_prev);
   return m;
 }
 
@@ -82,7 +83,7 @@ numa_run_on_node(uint node)
       int c = 0;
       while (1)
 	{
-	  if (!set_cpu(c))
+	  if (!mctop_set_cpu(c))
 	    {
 	      break;
 	    }
@@ -91,7 +92,7 @@ numa_run_on_node(uint node)
 	  if (node_home == node)
 	    {
 	      numa_to_core[node] = c;
-	      set_cpu(c);
+	      mctop_set_cpu(c);
 	      break;
 	    }
 	  c++;
@@ -99,7 +100,7 @@ numa_run_on_node(uint node)
     }
   else
     {
-      set_cpu(core);
+      mctop_set_cpu(core);
     }
 
   return 1;

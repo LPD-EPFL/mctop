@@ -44,7 +44,7 @@ void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
 
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
-void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
+inline void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
@@ -671,7 +671,7 @@ main(int argc, char **argv)
     {
       printf("#   Repetitions    : %zu\n", test_num_reps);
       printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
-      printf("#   Mem. size bw   : %llu MB\n", test_mem_bw_size / DEFAULT_MEM_BW_MULTI);
+      printf("#   Mem. size bw   : %lu MB\n", test_mem_bw_size / DEFAULT_MEM_BW_MULTI);
       printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
       printf("#   Max std dev    : %zu\n", test_max_stdev);
       printf("#   # Cores        : %d\n", test_num_hw_ctx);

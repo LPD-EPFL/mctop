@@ -20,15 +20,16 @@ mctop_mem_alloc_local(size_t size, int node)
     }
   else
     {
-      mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-#ifdef __sparc__
-      if (mem != MAP_FAILED)
-	{
-	  int r = madvise((caddr_t) mem, size, MADV_ACCESS_LWP);
-	  assert(r == 0 && "madvise failed");
-	}
-#endif
-      assert(mem != MAP_FAILED);
+      mem = malloc(size);
+/*       mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0); */
+/* #ifdef __sparc__ */
+/*       if (mem != MAP_FAILED) */
+/* 	{ */
+/* 	  int r = madvise((caddr_t) mem, size, MADV_ACCESS_LWP); */
+/* 	  assert(r == 0 && "madvise failed"); */
+/* 	} */
+/* #endif */
+//      assert(mem != MAP_FAILED);
     }
 
   assert(mem != NULL);
@@ -46,7 +47,8 @@ mctop_mem_free(void* mem, size_t size, int numa_lib)
     }
   else
     {
-      int r = munmap(mem, size);
-      assert(r == 0 && "munmap failed");
+      //      int r = munmap(mem, size);
+      //      assert(r == 0 && "munmap failed");
+      free(mem);
     }
 }

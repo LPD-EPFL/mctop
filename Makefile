@@ -25,6 +25,11 @@ CC = /opt/csw/bin/gcc
 CFLAGS += -m64 -mcpu=v9 -mtune=v9
 endif
 
+ifeq ($(UNAME), ol-collab1)
+CC = /usr/sfw/bin/gcc
+CFLAGS += -m64 -mcpu=v9 -mtune=v9
+endif
+
 OS_NAME = $(shell uname -s)
 
 ifeq ($(OS_NAME), Linux)
