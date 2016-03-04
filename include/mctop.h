@@ -66,7 +66,8 @@ typedef struct mctopo
   struct hw_context* hwcs;	/* pointers to hwcs */
   uint n_siblings;		/* total number of sibling relationships */
   struct sibling** siblings;	/* pointers to sibling relationships */
-  double* mem_bandwidths;	/* Mem. bandwidth of each socket */
+  double* mem_bandwidths;	/* Mem. bandwidth of each socket, maximum */
+  double* mem_bandwidths1;	/* Mem. bandwidth of each socket, single threaded */
 } mctopo_t;
 
 typedef struct hwc_gs		/* group / socket */
@@ -90,7 +91,8 @@ typedef struct hwc_gs		/* group / socket */
   uint local_node;		/* local NUMA mem. node */
   uint n_nodes;			/* num of nodes = topo->n_sockets */
   uint* mem_latencies;		/* mem. latencies to NUMA nodes */
-  double* mem_bandwidths;	/* mem. bandwidts to NUMA nodes */
+  double* mem_bandwidths;	/* mem. bandwidths to NUMA nodes, maximum */
+  double* mem_bandwidths1;	/* mem. bandwidths to NUMA nodes, single threaded */
 } hwc_gs_t;
 
 typedef struct sibling
@@ -156,7 +158,7 @@ mctopo_t* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
 			   cdf_cluster_t* cc, const int is_smt);
 mctopo_t* mctopo_load(const char* mct_file);
 void mctopo_free(mctopo_t* topo);
-void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table);
+void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table, double** mem_bw_table1);
 void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
 void mctopo_print(mctopo_t* topo);
 void mctopo_dot_graph_plot(mctopo_t* topo,  const uint max_cross_socket_lvl);

@@ -33,6 +33,7 @@ ticks** mem_lat_table = NULL;
 volatile uint64_t** node_mem;
 int test_mem_on_demand = 0;
 double** mem_bw_table;
+double** mem_bw_table1;		/* single-threaded */
 
 /* variables set by worker threads */
 cache_line_t* test_cache_line = NULL;
@@ -44,11 +45,11 @@ void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
 
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
-inline void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
+static void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
-void print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_format, const char* hostname);
+void print_mem_bw_tables(double** mem_bw_t, double** mem_bw_t1, size_t n_sockets, test_format_t test_format, const char* hostname);
 
 ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
 void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
@@ -466,6 +467,15 @@ mem_bandwidth(void* param)
 	  mctop_run_on_socket_nm(topo, n);
 
 	  pthread_barrier_wait(barrier);
+	  if (tid == 0)
+	    {
+	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
+	      double bw_gbps = mem_bw_estimate(mem_bw, test_mem_bw_num_streams, n_cls, test_mem_bw_num_reps);
+	      mem_bw_table1[n][mem_on] = bw_gbps;
+	    }
+	  pthread_barrier_wait(barrier);
+
+	  pthread_barrier_wait(barrier);
 	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
 	  mini_barrier(&mem_bw_barrier, n_threads);
 
@@ -880,9 +890,11 @@ main(int argc, char **argv)
 
   if (test_do_mem == ON_TOPO_BW)
     {
-      if (!mctop_has_mem_bw(topo))
+#warning forcing mem. bw
+      if (1 || !mctop_has_mem_bw(topo))
 	{
 	  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  mem_bw_table1 = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
 	  uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
 	  printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
 	  pthread_t threads_mem_bw[test_num_mem_bw_threads];
@@ -917,10 +929,11 @@ main(int argc, char **argv)
 	  free(tds_mem_bw);
 	  free(barrier_mem_bw);
 
-	  mctopo_mem_bandwidth_add(topo, mem_bw_table);
-	  print_mem_bw_table(mem_bw_table, test_num_sockets, test_format, hostname);
+	  mctopo_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
+	  print_mem_bw_tables(mem_bw_table, mem_bw_table1, test_num_sockets, test_format, hostname);
 
 	  table_free((void**) mem_bw_table, test_num_sockets);
+	  table_free((void**) mem_bw_table1, test_num_sockets);
 	}
       else
 	{
@@ -1138,7 +1151,8 @@ print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_form
 }
 
 void
-print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_format, const char* hostname)
+print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sockets,
+		    test_format_t test_format, const char* hostname)
 {
   if (test_format != NONE)
     {
@@ -1198,6 +1212,14 @@ print_mem_bw_table(double** mem_bw_table, size_t n_sockets, test_format_t test_f
 	    for (int y = 0; y < n_sockets; y++)
 	      {
 		fprintf(ofp, "%-4d %-4d %f\n", x, y, mem_bw_table[x][y]);
+	      }
+	  }
+	fprintf(ofp, "#Mem_bw1 %zu\n", n_sockets);
+	for (int x = 0; x < n_sockets; x++)
+	  {
+	    for (int y = 0; y < n_sockets; y++)
+	      {
+		fprintf(ofp, "%-4d %-4d %f\n", x, y, mem_bw_table1[x][y]);
 	      }
 	  }
 	if (ofp_open)

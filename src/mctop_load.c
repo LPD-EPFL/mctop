@@ -48,6 +48,7 @@ mctopo_load(const char* mct_file)
   uint64_t** lat_table = (uint64_t**) table_malloc(n_hwcs, n_hwcs, sizeof(uint64_t));
   uint64_t** mem_lat_table = (uint64_t**) table_calloc(n_hwcs, n_hwcs, sizeof(uint64_t));
   double** mem_bw_table = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
+  double** mem_bw_table1 = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
 
   uint correct = 1, has_lat = 1;;
   for (uint x = 0; x < (n_hwcs * n_hwcs); x++)
@@ -99,7 +100,7 @@ mctopo_load(const char* mct_file)
       int ret = fscanf(ifile, "%s %u", discard[0], &ns);
       if (ret != 2)
 	{
-	  fprintf(stderr, "MCTOP Warning: No memory bandwidth measurements in %s!\n", file_open);
+	  fprintf(stderr, "MCTOP Warning: No max memory bandwidth measurements in %s!\n", file_open);
 	  has_mem_bw = 0;
 	}
       else
@@ -121,6 +122,34 @@ mctopo_load(const char* mct_file)
 	}
     }
 
+  if (correct)
+    {
+      uint ns;
+      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
+      if (ret != 2)
+	{
+	  fprintf(stderr, "MCTOP Warning: No single-threaded memory bandwidth measurements in %s!\n", file_open);
+	  has_mem_bw = 0;
+	}
+      else
+	{
+	  for (uint x = 0; x < (n_sockets * n_sockets); x++)
+	    {
+	      uint xc, yc;
+	      double bw;
+	      int ret = fscanf(ifile, "%u %u %lf", &xc, &yc, &bw);
+	      if (ret != 3)
+		{
+		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
+		  has_mem_bw = 0;
+		  correct = 0;
+		  break;
+		}
+	      mem_bw_table1[xc][yc] = bw;
+	    }
+	}
+    }
+
   mctopo_t* topo = NULL;
   if (correct && has_lat)
     {
@@ -128,13 +157,14 @@ mctopo_load(const char* mct_file)
       topo = mctopo_construct(lat_table, n_hwcs, mlat, n_sockets, NULL, is_smt);
       if (has_mem_bw)
 	{
-	  mctopo_mem_bandwidth_add(topo, mem_bw_table);
+	  mctopo_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
 	}
     }
 
   table_free((void**) lat_table, n_hwcs);
   table_free((void**) mem_lat_table, n_hwcs);
   table_free((void**) mem_bw_table, n_hwcs);
+  table_free((void**) mem_bw_table1, n_hwcs);
   fclose(ifile);
 
   double dur = (clock() - cstart) / (double) CLOCKS_PER_SEC;
