@@ -84,7 +84,8 @@ cdf_print(cdf_t* cdf)
 cdf_cluster_t*
 cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
 {
-  uint tries = 25;
+  int direction = 0;
+  uint stop = 0;
   int sensitivity = sens;
   cdf_cluster_t* cc = NULL;
 
@@ -136,9 +137,15 @@ cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
 
       if (target_n_clusters && n_clusters != target_n_clusters)
 	{
-	  cdf_cluster_print(cc);
+	  //	  cdf_cluster_print(cc);
 	  cdf_cluster_free(cc);
-	  sensitivity -= (target_n_clusters - n_clusters);
+	  int dir = (target_n_clusters - n_clusters);
+	  if ((direction < 0 && dir > 0) || (direction > 0 && dir < 0))
+	    {
+	      stop = 1;
+	    }
+	  direction = dir;
+	  sensitivity -= dir;
 	  fprintf(stderr, "## Warning: Found %zu clusters, expected %u. Retrying with sensitivity: %-2u!\n",
 		  n_clusters, target_n_clusters, sensitivity);
 	  cc = NULL;
@@ -148,7 +155,7 @@ cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
 	  break;
 	}
     }
-  while (sensitivity > 0 && tries-- > 0);
+  while (sensitivity > 0 && !stop);
 
   return cc;
 }
