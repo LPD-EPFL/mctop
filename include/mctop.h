@@ -265,6 +265,8 @@ calloc_assert(size_t n, size_t size)
   return m;
 }
 
+extern int mctop_set_cpu(int cpu);
+
 /* ******************************************************************************** */
 /* MCTOP Allocator */
 /* ******************************************************************************** */
@@ -275,11 +277,19 @@ typedef enum
     MCTOPO_ALLOC_MIN_LAT_CORES,
   } mctopo_alloc_policy;
 
+static const char* mctopo_alloc_policy_desc[] = 
+{ 
+  "MCTOPO_ALLOC_MIN_LAT",
+  "MCTOPO_ALLOC_MIN_LAT_CORES",
+};
+
 typedef struct mctopo_alloc
 {
   mctopo_t* topo;
-  uint n_hwcs;
   mctopo_alloc_policy policy;
+  uint n_hwcs;
+  uint n_sockets;
+  socket_t** sockets;
   uint max_latency;
   double min_bandwidth;
   uint32_t cur;
@@ -288,12 +298,11 @@ typedef struct mctopo_alloc
 
 mctopo_alloc_t* mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy policy);
 void mctopo_alloc_free(mctopo_alloc_t* alloc);
+void mctopo_alloc_print(mctopo_alloc_t* alloc);
+
 
 int mctopo_alloc_pin(mctopo_alloc_t* alloc);
 int mctopo_alloc_pin_all(mctopo_alloc_t* alloc);
-
-
-
-extern int mctop_set_cpu(int cpu);
+int mctopo_alloc_get_hwc_id();
 
 #endif	/* __H_MCTOP__ */
