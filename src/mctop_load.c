@@ -1,8 +1,8 @@
 #include <mctop.h>
 #include <time.h>
 
-mctopo_t*
-mctopo_load(const char* mct_file)
+mctop_t*
+mctop_load(const char* mct_file)
 {
   clock_t cstart = clock();
   char file_open[100], hostname[100];
@@ -150,14 +150,14 @@ mctopo_load(const char* mct_file)
 	}
     }
 
-  mctopo_t* topo = NULL;
+  mctop_t* topo = NULL;
   if (correct && has_lat)
     {
       uint64_t** mlat = (has_mem_lat) ? mem_lat_table : NULL;
-      topo = mctopo_construct(lat_table, n_hwcs, mlat, n_sockets, NULL, is_smt);
+      topo = mctop_construct(lat_table, n_hwcs, mlat, n_sockets, NULL, is_smt);
       if (has_mem_bw)
 	{
-	  mctopo_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
+	  mctop_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
 	}
     }
 

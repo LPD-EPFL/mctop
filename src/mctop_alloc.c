@@ -4,7 +4,7 @@
 #define MA_DP printf
 
 static int
-mctopo_find_double_max(double* arr, const uint n)
+mctop_find_double_max(double* arr, const uint n)
 {
   if (arr != NULL)
     {
@@ -18,7 +18,7 @@ mctopo_find_double_max(double* arr, const uint n)
 	      max_i = i;
 	    }
 	}
-      MA_DP("-- mctopo_find_double_max: choosing %d with bw %f GB/s\n", max_i, max);
+      MA_DP("-- mctop_find_double_max: choosing %d with bw %f GB/s\n", max_i, max);
       return max_i;
     }
   return 0;
@@ -28,7 +28,7 @@ mctopo_find_double_max(double* arr, const uint n)
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
 static void
-mctopo_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
+mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
 {
   MA_DP("-- Socket #%u getting (smt %u): ", socket->id, smt_first);
   
@@ -74,12 +74,12 @@ mctopo_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
 }
 
 static void
-mctopo_alloc_prep_min_lat(mctopo_alloc_t* alloc, uint smt_first)
+mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, uint smt_first)
 {
-  mctopo_t* topo = alloc->topo;
+  mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
-  uint socket_i = mctopo_find_double_max(topo->mem_bandwidths, topo->n_sockets);
+  uint socket_i = mctop_find_double_max(topo->mem_bandwidths, topo->n_sockets);
   socket_t* socket = &topo->sockets[socket_i];
   socket_t* socket_start = socket;
   darray_t* sockets = darray_create();
@@ -91,7 +91,7 @@ mctopo_alloc_prep_min_lat(mctopo_alloc_t* alloc, uint smt_first)
   while (1)
     {
       darray_add(sockets, (uintptr_t) socket);
-      mctopo_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first);
+      mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first);
       hwc_i += socket->n_hwcs;
       if (hwc_i >= alloc->n_hwcs)
 	{
@@ -131,10 +131,10 @@ mctopo_alloc_prep_min_lat(mctopo_alloc_t* alloc, uint smt_first)
   darray_free(sockets);
 }
 
-mctopo_alloc_t*
-mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy policy)
+mctop_alloc_t*
+mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy)
 {
-  mctopo_alloc_t* alloc = malloc(sizeof(mctopo_alloc_t) + (n_hwcs * sizeof(uint)));
+  mctop_alloc_t* alloc = malloc(sizeof(mctop_alloc_t) + (n_hwcs * sizeof(uint)));
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
   if (n_hwcs > topo->n_hwcs)
@@ -147,21 +147,21 @@ mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy polic
   alloc->cur = 0;
   switch (policy)
     {
-    case MCTOPO_ALLOC_MIN_LAT:
-      mctopo_alloc_prep_min_lat(alloc, 1);
+    case MCTOP_ALLOC_MIN_LAT:
+      mctop_alloc_prep_min_lat(alloc, 1);
       break;
-    case MCTOPO_ALLOC_MIN_LAT_CORES:
-      mctopo_alloc_prep_min_lat(alloc, 0);
+    case MCTOP_ALLOC_MIN_LAT_CORES:
+      mctop_alloc_prep_min_lat(alloc, 0);
       break;
     }
   return alloc;
 }
 
 void
-mctopo_alloc_print(mctopo_alloc_t* alloc)
+mctop_alloc_print(mctop_alloc_t* alloc)
 {
   printf("#### MCTOP Allocator\n");
-  printf("## Policy          : %s\n", mctopo_alloc_policy_desc[alloc->policy]);
+  printf("## Policy          : %s\n", mctop_alloc_policy_desc[alloc->policy]);
   printf("## HW Contexts     : %u\n", alloc->n_hwcs);
   printf("## Max latency     : %-5u cycles\n", alloc->max_latency);
   printf("## Min bandwidth   : %-5.2f GB/s\n", alloc->min_bandwidth);
@@ -180,7 +180,7 @@ mctopo_alloc_print(mctopo_alloc_t* alloc)
 }
 
 void
-mctopo_alloc_free(mctopo_alloc_t* alloc)
+mctop_alloc_free(mctop_alloc_t* alloc)
 {
   free(alloc);
 }
@@ -189,7 +189,7 @@ mctopo_alloc_free(mctopo_alloc_t* alloc)
 static __thread int __mctop_hwc_id = -1;
 
 inline int
-mctopo_alloc_get_hwc_id()
+mctop_alloc_get_hwc_id()
 {
   return __mctop_hwc_id;
 }
@@ -210,7 +210,7 @@ mctopo_alloc_get_hwc_id()
 
 /* pin to ALL hw contexts contained in alloc */
 int
-mctopo_alloc_pin_all(mctopo_alloc_t* alloc)
+mctop_alloc_pin_all(mctop_alloc_t* alloc)
 {
   struct bitmask* bmask = numa_bitmask_alloc(alloc->topo->n_hwcs);
   for (int i = 0; i < alloc->n_hwcs; i++)
@@ -226,7 +226,7 @@ mctopo_alloc_pin_all(mctopo_alloc_t* alloc)
 
 /* pin to ONE hw context contained in alloc */
 int
-mctopo_alloc_pin(mctopo_alloc_t* alloc)
+mctop_alloc_pin(mctop_alloc_t* alloc)
 {
   uint hwcid = FAI_U32(&alloc->cur);
   if (hwcid < alloc->n_hwcs)

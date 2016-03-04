@@ -53,22 +53,22 @@ main(int argc, char **argv)
 	}
     }
 
-  mctopo_t* topo;
+  mctop_t* topo;
   if (manual_file)
     {
-      topo = mctopo_load(mct_file);
+      topo = mctop_load(mct_file);
     }
   else
     {
-      topo = mctopo_load(NULL);
+      topo = mctop_load(NULL);
     }
 
   if (topo != NULL)
     {
-      mctopo_print(topo);
-      mctopo_dot_graph_plot(topo, max_cross_socket_lvl);
+      mctop_print(topo);
+      mctop_dot_graph_plot(topo, max_cross_socket_lvl);
 
-      mctopo_free(topo);
+      mctop_free(topo);
     }
   return 0;
 }

@@ -7,7 +7,7 @@ main(int argc, char **argv)
   char mct_file[100];
   uint manual_file = 0;
   uint test_num_threads = 2;
-  mctopo_alloc_policy test_policy = 0;
+  mctop_alloc_policy test_policy = 0;
 
   struct option long_options[] = 
     {
@@ -55,30 +55,30 @@ main(int argc, char **argv)
 	}
     }
 
-  mctopo_t* topo;
+  mctop_t* topo;
   if (manual_file)
     {
-      topo = mctopo_load(mct_file);
+      topo = mctop_load(mct_file);
     }
   else
     {
-      topo = mctopo_load(NULL);
+      topo = mctop_load(NULL);
     }
 
   if (topo)
     {
-      mctopo_print(topo);
+      mctop_print(topo);
 
-      mctopo_alloc_t* alloc = mctopo_alloc_create(topo, test_num_threads, test_policy);
+      mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_policy);
       for (int i = 0; i < test_num_threads; i++)
 	{
-	  //	  mctopo_alloc_pin(alloc);
+	  //	  mctop_alloc_pin(alloc);
 	}
 
-      mctopo_alloc_print(alloc);
-      mctopo_alloc_free(alloc);
+      mctop_alloc_print(alloc);
+      mctop_alloc_free(alloc);
 
-      mctopo_free(topo);
+      mctop_free(topo);
     }
   return 0;
 }

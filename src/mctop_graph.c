@@ -212,7 +212,7 @@ dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
 }
 
 void
-mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
+mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 {
   char out_file[100];
   sprintf(out_file, "dot/%s_intra_socket.dot", dot_prefix);
@@ -293,7 +293,7 @@ mctopo_dot_graph_intra_socket_plot(mctopo_t* topo)
 }
 
 void
-mctopo_dot_graph_cross_socket_plot(mctopo_t* topo, const uint max_cross_socket_lvl)
+mctop_dot_graph_cross_socket_plot(mctop_t* topo, const uint max_cross_socket_lvl)
 {
   char out_file[100];
   sprintf(out_file, "dot/%s_cross_socket.dot", dot_prefix);
@@ -368,8 +368,8 @@ mctopo_dot_graph_cross_socket_plot(mctopo_t* topo, const uint max_cross_socket_l
 }
 
 void
-mctopo_dot_graph_plot(mctopo_t* topo, const uint max_cross_socket_lvl)
+mctop_dot_graph_plot(mctop_t* topo, const uint max_cross_socket_lvl)
 {
-  mctopo_dot_graph_intra_socket_plot(topo);
-  mctopo_dot_graph_cross_socket_plot(topo, max_cross_socket_lvl);
+  mctop_dot_graph_intra_socket_plot(topo);
+  mctop_dot_graph_cross_socket_plot(topo, max_cross_socket_lvl);
 }

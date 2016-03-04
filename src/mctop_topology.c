@@ -1,24 +1,24 @@
 #include <mctop.h>
 #include <darray.h>
 
-cdf_cluster_t* mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N);
+cdf_cluster_t* mctop_infer_clustering(uint64_t** lat_table_norm, const size_t N);
 
-mctopo_t* mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt);
-hwc_group_t* mctop_hwc_group_create(mctopo_t* t, uint n_hwcs, darray_t* ids, uint id, uint lvl, uint lat, const int has_smt);
-socket_t* mctop_socket_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, 
+mctop_t* mctop_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt);
+hwc_group_t* mctop_hwc_group_create(mctop_t* t, uint n_hwcs, darray_t* ids, uint id, uint lvl, uint lat, const int has_smt);
+socket_t* mctop_socket_create(mctop_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, 
 			      uint lvl, uint lat, uint64_t** mem_lat_table, const int is_smt);
-void mctop_siblings_create(mctopo_t* topo, uint socket_x_id, uint socket_y_id, uint* seq_id, uint lvl, uint latency);
-void mctopo_fix_children_links(mctopo_t* topo);
-void mctopo_fix_horizontal_links(mctopo_t* topo);
-static void mctopo_fix_siblings_by_bandwidth(mctopo_t* topo);
-void mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo);
-void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
+void mctop_siblings_create(mctop_t* topo, uint socket_x_id, uint socket_y_id, uint* seq_id, uint lvl, uint latency);
+void mctop_fix_children_links(mctop_t* topo);
+void mctop_fix_horizontal_links(mctop_t* topo);
+static void mctop_fix_siblings_by_bandwidth(mctop_t* topo);
+void mctop_fix_n_hwcs_per_core_smt(mctop_t* topo);
+void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
 
 extern void cdf_cluster_free(cdf_cluster_t* cc);
 extern cdf_cluster_t* cdf_cluster_create_empty(const int n_clusters);
 
-mctopo_t*
-mctopo_construct(uint64_t** lat_table_norm, 
+mctop_t*
+mctop_construct(uint64_t** lat_table_norm, 
 		 const size_t N,
 		 uint64_t** mem_lat_table,
 		 const uint n_sockets,
@@ -28,13 +28,13 @@ mctopo_construct(uint64_t** lat_table_norm,
   int free_cc = 0;
   if (cc == NULL)
     {
-      cc = mctopo_infer_clustering(lat_table_norm, N);
+      cc = mctop_infer_clustering(lat_table_norm, N);
       free_cc = 1;
     }
 
   const uint hwc_per_socket = N / n_sockets;
   uint n_sockets_found = 0;
-  mctopo_t* topo = mctopo_create(n_sockets, cc, N, is_smt);
+  mctop_t* topo = mctop_create(n_sockets, cc, N, is_smt);
 
   uint8_t* processed = malloc_assert(N * sizeof(uint8_t));
   darray_t* group = darray_create();
@@ -150,10 +150,10 @@ mctopo_construct(uint64_t** lat_table_norm,
 	      "            The generated topology is probably INCORRECT!.\n", n_sockets_found, n_sockets);
     }
 
-  mctopo_fix_children_links(topo);
-  mctopo_fix_horizontal_links(topo);
-  mctopo_fix_n_hwcs_per_core_smt(topo);
-  mctopo_mem_latencies_add(topo, mem_lat_table);
+  mctop_fix_children_links(topo);
+  mctop_fix_horizontal_links(topo);
+  mctop_fix_n_hwcs_per_core_smt(topo);
+  mctop_mem_latencies_add(topo, mem_lat_table);
 
   if (free_cc)
     {
@@ -164,7 +164,7 @@ mctopo_construct(uint64_t** lat_table_norm,
 }
 
 void
-mctopo_free(mctopo_t* topo)
+mctop_free(mctop_t* topo)
 {
   /* free siblings */
   for (int l = topo->socket_level + 1; l < topo->n_levels; l++)
@@ -237,7 +237,7 @@ mctopo_free(mctopo_t* topo)
 }
 
 void
-mctopo_print(mctopo_t* topo)
+mctop_print(mctop_t* topo)
 {
 #define PD_0 "|||||||||"
 #define PD_1 "||||||"
@@ -354,7 +354,7 @@ mctopo_print(mctopo_t* topo)
 
 
 cdf_cluster_t*
-mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N)
+mctop_infer_clustering(uint64_t** lat_table_norm, const size_t N)
 {
   darray_t* clusters = darray_create();
   for (int x = 0; x < N; x++)
@@ -387,10 +387,10 @@ mctopo_infer_clustering(uint64_t** lat_table_norm, const size_t N)
 /* auxilliary */
 /* ******************************************************************************** */
 
-mctopo_t*
-mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt)
+mctop_t*
+mctop_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt)
 {
-  mctopo_t* topo = calloc_assert(1, sizeof(mctopo_t));
+  mctop_t* topo = calloc_assert(1, sizeof(mctop_t));
   topo->is_smt = is_smt;
   topo->has_mem = NO_MEMORY;
 
@@ -419,13 +419,13 @@ mctopo_create(uint n_sockets, cdf_cluster_t* cc, uint n_hwcs, const int is_smt)
 
 
 static inline hw_context_t*
-mctop_get_hwc_n(mctopo_t* topo, uint id)
+mctop_get_hwc_n(mctop_t* topo, uint id)
 {
   return (topo->hwcs + id);
 }
 
 hwc_group_t*
-mctop_hwc_group_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int has_smt)
+mctop_hwc_group_create(mctop_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_id, uint lvl, uint lat, const int has_smt)
 {
   hwc_group_t* group = calloc_assert(1, sizeof(hwc_group_t));
   group->id = mctop_create_id(seq_id, lvl);
@@ -466,7 +466,7 @@ mctop_hwc_group_create(mctopo_t* topo, uint n_hwcs, darray_t* hwc_ids, uint seq_
 
 
 socket_t*
-mctop_socket_create(mctopo_t* topo, 
+mctop_socket_create(mctop_t* topo, 
 		    uint n_hwcs, 
 		    darray_t* hwc_ids, 
 		    uint seq_id,
@@ -533,7 +533,7 @@ mctop_sibling_create(uint seq_id, uint lvl, uint latency, socket_t* left, socket
 }
 
 void
-mctop_siblings_create(mctopo_t* topo, uint socket_x_id, uint socket_y_id, uint* seq_id, uint lvl, uint latency)
+mctop_siblings_create(mctop_t* topo, uint socket_x_id, uint socket_y_id, uint* seq_id, uint lvl, uint latency)
 {
   socket_t* socket_x = mctop_get_socket(topo, socket_x_id);
   socket_t* socket_y = mctop_get_socket(topo, socket_y_id);
@@ -548,7 +548,7 @@ mctop_siblings_create(mctopo_t* topo, uint socket_x_id, uint socket_y_id, uint* 
 
 
 UNUSED static void
-mctopo_socket_fix_socket_refs(socket_t* socket)
+mctop_socket_fix_socket_refs(socket_t* socket)
 {
   for (int i = 0; i < socket->n_hwcs; i++)
     {
@@ -562,7 +562,7 @@ mctopo_socket_fix_socket_refs(socket_t* socket)
 }
 
 void
-mctopo_fix_children_links(mctopo_t* topo)
+mctop_fix_children_links(mctop_t* topo)
 {
   for (int s = 0; s < topo->n_sockets; s++)
     {
@@ -623,7 +623,7 @@ mctopo_fix_children_links(mctopo_t* topo)
 }
 
 void
-mctopo_fix_horizontal_links(mctopo_t* topo)
+mctop_fix_horizontal_links(mctop_t* topo)
 {
   darray_t* smt_hwcs = darray_create();
   hw_context_t* hwc_prev_socket = NULL;
@@ -735,7 +735,7 @@ mctopo_fix_horizontal_links(mctopo_t* topo)
 
 
 void
-mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
+mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table)
 {
   /* mem. latencies */
   if (mem_lat_table != NULL)
@@ -784,7 +784,7 @@ mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table)
 
 
 void
-mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo)
+mctop_fix_n_hwcs_per_core_smt(mctop_t* topo)
 {
   if (topo->is_smt)
     {
@@ -795,7 +795,7 @@ mctopo_fix_n_hwcs_per_core_smt(mctopo_t* topo)
 }
 
 void 
-mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table, double** mem_bw_table1)
+mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_table, double** mem_bw_table1)
 {
   topo->has_mem = BANDWIDTH;
   topo->mem_bandwidths = malloc_assert(topo->n_sockets * sizeof(double));
@@ -814,7 +814,7 @@ mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table, double** mem_bw_
       topo->mem_bandwidths1[s] = socket->mem_bandwidths1[socket->local_node];
     }
 
-  mctopo_fix_siblings_by_bandwidth(topo);
+  mctop_fix_siblings_by_bandwidth(topo);
 }
 
 static double
@@ -824,7 +824,7 @@ mctop_socket_get_bw_to(socket_t* from, socket_t* to)
 }
 
 static void
-mctopo_fix_siblings_by_bandwidth(mctopo_t* topo)
+mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 {
   for (int s = 0; s < topo->n_sockets; s++)
     {

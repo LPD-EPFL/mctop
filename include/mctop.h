@@ -51,7 +51,7 @@ typedef unsigned int uint;
 typedef struct hwc_gs socket_t;
 typedef struct hwc_gs hwc_group_t;
 
-typedef struct mctopo
+typedef struct mctop
 {
   uint n_levels;		/* num. of latency lvls */
   uint* latencies;		/* latency per level */
@@ -68,7 +68,7 @@ typedef struct mctopo
   struct sibling** siblings;	/* pointers to sibling relationships */
   double* mem_bandwidths;	/* Mem. bandwidth of each socket, maximum */
   double* mem_bandwidths1;	/* Mem. bandwidth of each socket, single threaded */
-} mctopo_t;
+} mctop_t;
 
 typedef struct hwc_gs		/* group / socket */
 {
@@ -84,7 +84,7 @@ typedef struct hwc_gs		/* group / socket */
   uint n_children;		/* num. of hwc_group descendants */
   struct hwc_gs** children;	/* pointer to children hwcgroup */
   struct hwc_gs* next;		/* link groups of a level to a list */
-  mctopo_t* topo;		/* link to topology */
+  mctop_t* topo;		/* link to topology */
   /* socket only info */
   uint n_siblings;		/* number of other sockets */
   struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st */
@@ -153,15 +153,15 @@ typedef struct cdf_cluster
 /* MCTOP CONSTRUCTION IF */
 /* ******************************************************************************** */
 
-mctopo_t* mctopo_construct(uint64_t** lat_table_norm, const size_t N,
+mctop_t* mctop_construct(uint64_t** lat_table_norm, const size_t N,
 			   uint64_t** mem_lat_table, const uint n_sockets,
 			   cdf_cluster_t* cc, const int is_smt);
-mctopo_t* mctopo_load(const char* mct_file);
-void mctopo_free(mctopo_t* topo);
-void mctopo_mem_bandwidth_add(mctopo_t* topo, double** mem_bw_table, double** mem_bw_table1);
-void mctopo_mem_latencies_add(mctopo_t* topo, uint64_t** mem_lat_table);
-void mctopo_print(mctopo_t* topo);
-void mctopo_dot_graph_plot(mctopo_t* topo,  const uint max_cross_socket_lvl);
+mctop_t* mctop_load(const char* mct_file);
+void mctop_free(mctop_t* topo);
+void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_table, double** mem_bw_table1);
+void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
+void mctop_print(mctop_t* topo);
+void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
 
 
 /* ******************************************************************************** */
@@ -169,15 +169,15 @@ void mctopo_dot_graph_plot(mctopo_t* topo,  const uint max_cross_socket_lvl);
 /* ******************************************************************************** */
 
 /* topo getters ******************************************************************* */
-socket_t* mctop_get_socket(mctopo_t* topo, const uint socket_n);
-socket_t* mctop_get_first_socket(mctopo_t* topo);
-hwc_gs_t* mctop_get_first_gs_core(mctopo_t* topo);
-hwc_gs_t* mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl);
-sibling_t* mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl);
+socket_t* mctop_get_socket(mctop_t* topo, const uint socket_n);
+socket_t* mctop_get_first_socket(mctop_t* topo);
+hwc_gs_t* mctop_get_first_gs_core(mctop_t* topo);
+hwc_gs_t* mctop_get_first_gs_at_lvl(mctop_t* topo, const uint lvl);
+sibling_t* mctop_get_first_sibling_lvl(mctop_t* topo, const uint lvl);
 
-size_t mctop_get_num_nodes(mctopo_t* topo);
-size_t mctop_get_num_cores_per_socket(mctopo_t* topo);
-size_t mctop_get_num_hwc_per_socket(mctopo_t* topo);
+size_t mctop_get_num_nodes(mctop_t* topo);
+size_t mctop_get_num_cores_per_socket(mctop_t* topo);
+size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
 
 /* socket getters ***************************************************************** */
 hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
@@ -187,14 +187,14 @@ size_t mctop_socket_get_num_cores(socket_t* socket);
 
 /* queries ************************************************************************ */
 uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
-uint mctop_has_mem_lat(mctopo_t* topo);
-uint mctop_has_mem_bw(mctopo_t* topo);
+uint mctop_has_mem_lat(mctop_t* topo);
+uint mctop_has_mem_bw(mctop_t* topo);
 
 /* sibling getters ***************************************************************** */
 socket_t* mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket);
 
 /* optimizing ********************************************************************** */
-int mctop_hwcid_fix_numa_node(mctopo_t* topo, const uint hwcid);
+int mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid);
 
 
 static inline uint
@@ -230,9 +230,9 @@ mctop_print_id(uint id)
 /* ******************************************************************************** */
 /* MCTOP Scheduling */
 /* ******************************************************************************** */
-int mctop_run_on_socket(mctopo_t* topo, const uint socket_n);
-int mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n); /* doea not set preferred node */
-int mctop_run_on_node(mctopo_t* topo, const uint node_n);
+int mctop_run_on_socket(mctop_t* topo, const uint socket_n);
+int mctop_run_on_socket_nm(mctop_t* topo, const uint socket_n); /* doea not set preferred node */
+int mctop_run_on_node(mctop_t* topo, const uint node_n);
 
 /* ******************************************************************************** */
 /* AUX functions */
@@ -273,20 +273,20 @@ extern int mctop_set_cpu(int cpu);
 
 typedef enum 
   {
-    MCTOPO_ALLOC_MIN_LAT,
-    MCTOPO_ALLOC_MIN_LAT_CORES,
-  } mctopo_alloc_policy;
+    MCTOP_ALLOC_MIN_LAT,
+    MCTOP_ALLOC_MIN_LAT_CORES,
+  } mctop_alloc_policy;
 
-static const char* mctopo_alloc_policy_desc[] = 
+__attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
 { 
-  "MCTOPO_ALLOC_MIN_LAT",
-  "MCTOPO_ALLOC_MIN_LAT_CORES",
+  "MCTOP_ALLOC_MIN_LAT",
+  "MCTOP_ALLOC_MIN_LAT_CORES",
 };
 
-typedef struct mctopo_alloc
+typedef struct mctop_alloc
 {
-  mctopo_t* topo;
-  mctopo_alloc_policy policy;
+  mctop_t* topo;
+  mctop_alloc_policy policy;
   uint n_hwcs;
   uint n_sockets;
   socket_t** sockets;
@@ -294,15 +294,15 @@ typedef struct mctopo_alloc
   double min_bandwidth;
   uint32_t cur;
   uint hwcs[0];
-} mctopo_alloc_t;
+} mctop_alloc_t;
 
-mctopo_alloc_t* mctopo_alloc_create(mctopo_t* topo, const uint n_hwcs, mctopo_alloc_policy policy);
-void mctopo_alloc_free(mctopo_alloc_t* alloc);
-void mctopo_alloc_print(mctopo_alloc_t* alloc);
+mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy);
+void mctop_alloc_free(mctop_alloc_t* alloc);
+void mctop_alloc_print(mctop_alloc_t* alloc);
 
 
-int mctopo_alloc_pin(mctopo_alloc_t* alloc);
-int mctopo_alloc_pin_all(mctopo_alloc_t* alloc);
-int mctopo_alloc_get_hwc_id();
+int mctop_alloc_pin(mctop_alloc_t* alloc);
+int mctop_alloc_pin_all(mctop_alloc_t* alloc);
+int mctop_alloc_get_hwc_id();
 
 #endif	/* __H_MCTOP__ */

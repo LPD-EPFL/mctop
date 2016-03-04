@@ -94,7 +94,7 @@ typedef struct tld
   int hw_context;
   barrier2_t* barrier2;
   pthread_barrier_t* barrier;
-  mctopo_t* topo;
+  mctop_t* topo;
 } tld_t;
 
 size_t is_smt1 = 1;

@@ -7,19 +7,19 @@
 /* topo getters ******************************************************************* */
 
 inline socket_t*
-mctop_get_socket(mctopo_t* topo, const uint socket_n)
+mctop_get_socket(mctop_t* topo, const uint socket_n)
 {
   return topo->sockets + socket_n;
 }
 
 inline socket_t*
-mctop_get_first_socket(mctopo_t* topo)
+mctop_get_first_socket(mctop_t* topo)
 {
   return topo->sockets;
 }
 
 hwc_gs_t*
-mctop_get_first_gs_core(mctopo_t* topo)
+mctop_get_first_gs_core(mctop_t* topo)
 {
   hwc_gs_t* gs = topo->sockets[0].children[0];
   while (gs && gs->type != CORE)
@@ -30,7 +30,7 @@ mctop_get_first_gs_core(mctopo_t* topo)
 }
 
 inline hwc_gs_t*
-mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
+mctop_get_first_gs_at_lvl(mctop_t* topo, const uint lvl)
 {
   hwc_gs_t* cur = mctop_get_first_socket(topo);
   while (cur != NULL && cur->level != lvl)
@@ -42,7 +42,7 @@ mctop_get_first_gs_at_lvl(mctopo_t* topo, const uint lvl)
 
 
 inline sibling_t*
-mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl)
+mctop_get_first_sibling_lvl(mctop_t* topo, const uint lvl)
 {
   for (int i = 0; i < topo->n_siblings; i++)
     {
@@ -56,19 +56,19 @@ mctop_get_first_sibling_lvl(mctopo_t* topo, const uint lvl)
 
 
 inline size_t
-mctop_get_num_nodes(mctopo_t* topo)
+mctop_get_num_nodes(mctop_t* topo)
 {
   return topo->n_sockets;
 }
 
 inline size_t
-mctop_get_num_cores_per_socket(mctopo_t* topo)
+mctop_get_num_cores_per_socket(mctop_t* topo)
 {
   return topo->sockets[0].n_cores;
 }
 
 size_t
-mctop_get_num_hwc_per_socket(mctopo_t* topo)
+mctop_get_num_hwc_per_socket(mctop_t* topo)
 {
   return topo->sockets[0].n_hwcs;
 }
@@ -126,7 +126,7 @@ mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket)
 /* hwcid ************************************************************************ */
 
 int
-mctop_hwcid_fix_numa_node(mctopo_t* topo, const uint hwcid)
+mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
 {
   if (likely(topo->has_mem))
     {
@@ -150,13 +150,13 @@ mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b)
 }
 
 inline uint
-mctop_has_mem_lat(mctopo_t* topo)
+mctop_has_mem_lat(mctop_t* topo)
 {
   return topo->has_mem >= LATENCY;
 }
 
 inline uint
-mctop_has_mem_bw(mctopo_t* topo)
+mctop_has_mem_bw(mctop_t* topo)
 {
   return topo->has_mem == BANDWIDTH;
 }
@@ -191,7 +191,7 @@ mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem)
 }
 
 int
-mctop_run_on_socket(mctopo_t* topo, const uint socket_n)
+mctop_run_on_socket(mctop_t* topo, const uint socket_n)
 {
   if (socket_n >= topo->n_sockets)
     {
@@ -202,7 +202,7 @@ mctop_run_on_socket(mctopo_t* topo, const uint socket_n)
 }
 
 int
-mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n)
+mctop_run_on_socket_nm(mctop_t* topo, const uint socket_n)
 {
   if (socket_n >= topo->n_sockets)
     {
@@ -213,7 +213,7 @@ mctop_run_on_socket_nm(mctopo_t* topo, const uint socket_n)
 }
 
 int
-mctop_run_on_node(mctopo_t* topo, const uint node_n)
+mctop_run_on_node(mctop_t* topo, const uint node_n)
 {
 #if __x86_64__
   if (node_n >= topo->n_sockets)

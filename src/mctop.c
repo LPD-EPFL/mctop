@@ -52,7 +52,7 @@ void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test
 void print_mem_bw_tables(double** mem_bw_t, double** mem_bw_t1, size_t n_sockets, test_format_t test_format, const char* hostname);
 
 ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
-void mctopo_mem_latencies_calc(struct mctopo* topo, uint64_t** mem_lat_table);
+void mctop_mem_latencies_calc(struct mctop* topo, uint64_t** mem_lat_table);
 
 
 UNUSED static uint64_t
@@ -438,7 +438,7 @@ mem_bandwidth(void* param)
   const int tid = tld->id;
   const uint n_threads = tld->n_threads;
   pthread_barrier_t* barrier = tld->barrier;
-  mctopo_t* topo = tld->topo;
+  mctop_t* topo = tld->topo;
   const uint n_cls = test_mem_bw_size / sizeof(cache_line_t);
 
   volatile cache_line_t** mem_bw = malloc_assert(test_mem_bw_num_streams * sizeof(cache_line_t*));
@@ -745,7 +745,7 @@ main(int argc, char **argv)
       mem_lat_table = (ticks**) table_calloc(test_num_hw_ctx, test_num_sockets, sizeof(ticks));
     }
 
-  mctopo_t* topo = NULL;
+  mctop_t* topo = NULL;
 #define MCTOP_PREDEFINED_LAT_TABLE 0
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (!test_mem_augment)
@@ -840,14 +840,14 @@ main(int argc, char **argv)
 
       print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, is_smt_cpu, hostname);
 
-      topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
+      topo = mctop_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
       table_free((void**) lat_table_norm, test_num_hw_ctx);
       cdf_cluster_free(cc);
       cdf_free(cdf);
     } 
   else  /* test_mem_augment == 1 */
     {
-      topo = mctopo_load(NULL);
+      topo = mctop_load(NULL);
     }
 
 #else
@@ -864,7 +864,7 @@ main(int argc, char **argv)
 	  lat_table_norm[x][y] = lat_table2[x][y];
 	}
     }
-  topo = mctopo_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
+  topo = mctop_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
 #endif
 
   int mem_lat_new = 1;
@@ -873,7 +873,7 @@ main(int argc, char **argv)
       if (!test_mem_augment || !mctop_has_mem_lat(topo))
 	{
 	  printf("## Calculating memory latencies on topology\n");
-	  mctopo_mem_latencies_calc(topo, mem_lat_table);
+	  mctop_mem_latencies_calc(topo, mem_lat_table);
 	}
       else
 	{
@@ -890,8 +890,7 @@ main(int argc, char **argv)
 
   if (test_do_mem == ON_TOPO_BW)
     {
-#warning forcing mem. bw
-      if (1 || !mctop_has_mem_bw(topo))
+      if (!mctop_has_mem_bw(topo))
 	{
 	  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
 	  mem_bw_table1 = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
@@ -929,7 +928,7 @@ main(int argc, char **argv)
 	  free(tds_mem_bw);
 	  free(barrier_mem_bw);
 
-	  mctopo_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
+	  mctop_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
 	  print_mem_bw_tables(mem_bw_table, mem_bw_table1, test_num_sockets, test_format, hostname);
 
 	  table_free((void**) mem_bw_table, test_num_sockets);
@@ -944,9 +943,9 @@ main(int argc, char **argv)
   /* Free attribute and wait for the other threads */
   pthread_attr_destroy(&attr);
 
-  mctopo_print(topo);
+  mctop_print(topo);
 
-  mctopo_free(topo);
+  mctop_free(topo);
 #if MCTOP_PREDEFINED_LAT_TABLE == 0
   if (test_do_mem == ON_TIME)
     {
@@ -1277,7 +1276,7 @@ lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc)
 }
 
 void
-mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
+mctop_mem_latencies_calc(mctop_t* topo, uint64_t** mem_lat_table)
 {
   const size_t test_mem_size = 128 * 1024 * 1024LL;
   const size_t test_mem_reps = 5e6;
@@ -1326,5 +1325,5 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
     }
 
   NOT_VERBOSE(printf("\n"););
-  mctopo_mem_latencies_add(topo, mem_lat_table);
+  mctop_mem_latencies_add(topo, mem_lat_table);
 }
