@@ -278,6 +278,8 @@ typedef struct mctopo_alloc
   mctopo_t* topo;
   uint n_hwcs;
   mctopo_alloc_policy policy;
+  uint max_latency;
+  double min_bandwidth;
   uint32_t cur;
   uint hwcs[0];
 } mctopo_alloc_t;

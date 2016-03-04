@@ -274,7 +274,7 @@ crawl(void* param)
 	  double sec = (_clock_stop - _clock_start) / (double) CLOCKS_PER_SEC;
 	  test_completion_time += sec;
 	  test_completion_perc += test_completion_perc_step;
-	  printf("\r %6.1f%% completed in %8.1f secs (step took %7.1f secs)",
+	  printf("\r# Progress : %6.1f%% completed in %8.1f secs (step took %7.1f secs)",
 	  	 test_completion_perc, test_completion_time, sec);
 	  fflush(stdout);
 	  assert(sum != 0);
@@ -446,7 +446,7 @@ mem_bandwidth(void* param)
 
   double progress_step = 100.0 / (topo->n_sockets * topo->n_sockets);
   uint progress = 0;
-  ID0_DO(NOT_VERBOSE(printf("# Progress \n")););
+  ID0_DO(NOT_VERBOSE(printf("# Progress : %6.1f%%", 0.0)); fflush(stdout));
 
   for (int n = 0; n < mctop_get_num_nodes(topo); n++)
     {
@@ -491,7 +491,7 @@ mem_bandwidth(void* param)
 		}
 	      VERBOSE(printf(") = %f GB/s\n", tot_bw););
 	      mem_bw_table[n][mem_on] = tot_bw;
-	      NOT_VERBOSE(printf("\r  %5.1f%%", ++progress * progress_step); fflush(stdout););
+	      NOT_VERBOSE(printf("\r# Progress : %6.1f%%", ++progress * progress_step); fflush(stdout););
 	    }
 	}
     }
@@ -671,14 +671,14 @@ main(int argc, char **argv)
     {
       printf("#   Repetitions    : %zu\n", test_num_reps);
       printf("#   Do-memory      : %s\n", mctop_test_mem_type_desc[test_do_mem]);
-      printf("#   Mem. size bw   : %lu MB\n", test_mem_bw_size / DEFAULT_MEM_BW_MULTI);
+      printf("#   Mem. size bw   : %zu MB\n", (size_t) (test_mem_bw_size / DEFAULT_MEM_BW_MULTI));
       printf("#   Cluster-offset : %zu\n", test_cdf_cluster_offset);
       printf("#   Max std dev    : %zu\n", test_max_stdev);
       printf("#   # Cores        : %d\n", test_num_hw_ctx);
       printf("#   # Sockets      : %d\n", test_num_sockets);
       printf("#   # Hint         : %d clusters\n", test_num_clusters_hint);
       printf("#   CPU DVFS       : %d (Freq. up in %zu ms)\n", test_dvfs, !test_dvfs ? 0 : (size_t) dvfs_up_dur);
-      printf("# Progress\n");
+      printf("# Progress : %6.1f%%", 0.0); fflush(stdout);
     }
   else
     {
@@ -1262,7 +1262,7 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
 
   double progress_step = 100.0 / (topo->n_sockets * topo->n_sockets);
   uint progress = 0;
-  NOT_VERBOSE(printf("# Progress \n"));
+  NOT_VERBOSE(printf("# Progress : %6.1f%%", 0.0); fflush(stdout));
 
   for (int s = 0; s < topo->n_sockets; s++)
     {
@@ -1299,7 +1299,7 @@ mctopo_mem_latencies_calc(mctopo_t* topo, uint64_t** mem_lat_table)
 	  assert(*l != 0);
 
 	  numa_free((void*) mem, test_mem_size);
-	  NOT_VERBOSE(printf("\r  %5.1f%%", ++progress * progress_step); fflush(stdout););
+	  NOT_VERBOSE(printf("\r# Progress : %6.1f%%", ++progress * progress_step); fflush(stdout););
 	}
     }
 
