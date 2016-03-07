@@ -272,9 +272,11 @@ extern int mctop_set_cpu(int cpu);
 /* MCTOP Allocator */
 /* ******************************************************************************** */
 
+#define MCTOP_ALLOC_ALL           -1
+
 typedef enum 
   {
-    MCTOP_ALLOC_MIN_LAT,            /* Minimize latency across used sockets. Use HWCs of same core first  */
+    MCTOP_ALLOC_MIN_LAT_HWCS,       /* Minimize latency across used sockets. Use HWCs of same core first  */
     MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first, */
                                     /* HWCs of that socket after and then proceed to the next socket. */
     MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
@@ -283,7 +285,7 @@ typedef enum
 
 __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
 { 
-  "MCTOP_ALLOC_MIN_LAT",
+  "MCTOP_ALLOC_MIN_LAT_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES",
 };
@@ -301,7 +303,7 @@ typedef struct mctop_alloc
   uint hwcs[0];
 } mctop_alloc_t;
 
-mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy);
+mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_per_socket, mctop_alloc_policy policy);
 void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
 

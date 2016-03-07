@@ -28,16 +28,16 @@ mctop_find_double_max(double* arr, const uint n)
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
 static uint
-mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, const uint hwc)
+mctop_socket_get_hwc_ids(socket_t* socket, const uint n_hwcs, uint* hwc_ids, const int smt_first, const uint hwc)
 {
   uint idx = 0;
   MA_DP("-- Socket #%u getting (smt %d): ", socket->id, smt_first);
   
   if (!socket->topo->is_smt) /* only physical cores by design */
     {
-      for (int i = 0; i < socket->n_hwcs; i++)
+      for (int i = 0; idx < n_hwcs && i < socket->n_hwcs; i++)
 	{
-	  hwc_ids[idx] = socket->hwcs[hwc]->id;
+	  hwc_ids[idx] = socket->hwcs[idx]->id;
 	  MA_DP("%-2u ", hwc_ids[idx]);
 	  idx++;
 	}
@@ -45,7 +45,7 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, c
   else if (smt_first < 0)	/* only physical cores */
     {
       hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
-      for (int i = 0; i < socket->n_cores; i++)
+      for (int i = 0; idx < n_hwcs && i < socket->n_cores; i++)
 	{
 	  hwc_ids[idx] = gs->hwcs[hwc]->id;
 	  MA_DP("%-2u ", hwc_ids[idx]);
@@ -55,10 +55,10 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, c
     }
   else if (smt_first == 0)	/* physical cores first */
     {
-      for (int ht = 0; ht < socket->topo->n_hwcs_per_core; ht++)
+      for (int ht = 0; idx < n_hwcs && ht < socket->topo->n_hwcs_per_core; ht++)
 	{
 	  hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
-	  for (int i = 0; i < socket->n_cores; i++)
+	  for (int i = 0; idx < n_hwcs && i < socket->n_cores; i++)
 	    {
 	      hwc_ids[idx] = gs->hwcs[ht]->id;
 	      MA_DP("%-2u ", hwc_ids[idx]);
@@ -70,9 +70,9 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, c
   else				/* HWCs first */
     {
       hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
-      for (int i = 0; i < socket->n_cores; i++)
+      for (int i = 0; idx < n_hwcs && i < socket->n_cores; i++)
 	{
-	  for (int ht = 0; ht < socket->topo->n_hwcs_per_core; ht++)
+	  for (int ht = 0; idx < n_hwcs && ht < socket->topo->n_hwcs_per_core; ht++)
 	    {
 	      hwc_ids[idx] = gs->hwcs[ht]->id;
 	      MA_DP("%-2u ", hwc_ids[idx]);
@@ -89,8 +89,9 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, c
 /* smt_first < 0  : only physical cores */
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
+/* n_hwcs_per_socket == MCTOP_ALLOC_ALL : all per-socket according to policy*/
 static void
-mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
+mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_first)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
@@ -100,6 +101,11 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
   socket_t* socket_start = socket;
   darray_t* sockets = darray_create();
 
+  if (n_hwcs_per_socket == MCTOP_ALLOC_ALL || n_hwcs_per_socket > socket->n_hwcs || n_hwcs_per_socket < 0)
+    {
+      n_hwcs_per_socket = socket->n_hwcs;
+    }      
+
   uint max_lat = topo->latencies[topo->socket_level];
   double min_bw = 1e9;
 
@@ -107,7 +113,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
   do
     {
       darray_add(sockets, (uintptr_t) socket);
-      hwc_i += mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first, 0);
+      hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs_per_socket, alloc_full + hwc_i, smt_first, 0);
       if (hwc_i >= alloc->n_hwcs)
 	{
 	  break;
@@ -132,6 +138,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
 	{
 	  max_lat = lat;
 	}
+
       double bw = socket->mem_bandwidths[socket_start->local_node];
       if (bw < min_bw)
 	{
@@ -150,7 +157,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
 	  DARRAY_FOR_EACH(sockets, i)
 	    {
 	      socket_t* socket = (socket_t*) DARRAY_GET_N(sockets, i);
-	      hwc_i += mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first, hwc);
+	      hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs_per_socket, alloc_full + hwc_i, smt_first, hwc);
 	    }
 	}
     }
@@ -173,7 +180,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
 }
 
 mctop_alloc_t*
-mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy)
+mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_per_socket, mctop_alloc_policy policy)
 {
   mctop_alloc_t* alloc = malloc(sizeof(mctop_alloc_t) + (n_hwcs * sizeof(uint)));
   alloc->topo = topo;
@@ -188,14 +195,14 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy)
   alloc->cur = 0;
   switch (policy)
     {
-    case MCTOP_ALLOC_MIN_LAT:
-      mctop_alloc_prep_min_lat(alloc, 1);
+    case MCTOP_ALLOC_MIN_LAT_HWCS:
+      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, 1);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES_HWCS:
-      mctop_alloc_prep_min_lat(alloc, 0);
+      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, 0);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES:
-      mctop_alloc_prep_min_lat(alloc, -1);
+      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, -1);
       break;
     }
   return alloc;

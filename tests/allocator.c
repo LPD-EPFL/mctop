@@ -7,6 +7,7 @@ main(int argc, char **argv)
   char mct_file[100];
   uint manual_file = 0;
   uint test_num_threads = 2;
+  int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = 0;
 
   struct option long_options[] = 
@@ -22,7 +23,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -41,6 +42,9 @@ main(int argc, char **argv)
 	  break;
 	case 'n':
 	  test_num_threads = atoi(optarg);
+	  break;
+	case 'c':
+	  test_num_hwcs_per_socket = atoi(optarg);
 	  break;
 	case 'p':
 	  test_policy = atoi(optarg);
@@ -69,7 +73,7 @@ main(int argc, char **argv)
     {
       mctop_print(topo);
 
-      mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_policy);
+      mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       for (int i = 0; i < test_num_threads; i++)
 	{
 	  //	  mctop_alloc_pin(alloc);
