@@ -273,13 +273,17 @@ extern int mctop_set_cpu(int cpu);
 
 typedef enum 
   {
-    MCTOP_ALLOC_MIN_LAT,
-    MCTOP_ALLOC_MIN_LAT_CORES,
+    MCTOP_ALLOC_MIN_LAT,            /* Minimize latency across used sockets. Use HWCs of same core first  */
+    MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first, */
+                                    /* HWCs of that socket after and then proceed to the next socket. */
+    MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
+                                    /* of them have been used start using HWCs */
   } mctop_alloc_policy;
 
 __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
 { 
   "MCTOP_ALLOC_MIN_LAT",
+  "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES",
 };
 

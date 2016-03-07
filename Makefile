@@ -42,7 +42,7 @@ endif
 
 
 default: mctop
-all: mctop mct_load mctop_latency
+all: mctop mct_load mctop_latency tests
 tests: run_on_node0 allocator
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \

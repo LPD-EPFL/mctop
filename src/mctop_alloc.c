@@ -24,25 +24,37 @@ mctop_find_double_max(double* arr, const uint n)
   return 0;
 }
 
-/* smt_first < 0  : don't care */
+/* smt_first < 0  : only physical cores / hwc : shows which HWC to return from each core */
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
-static void
-mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
+static uint
+mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first, const uint hwc)
 {
-  MA_DP("-- Socket #%u getting (smt %u): ", socket->id, smt_first);
+  uint idx = 0;
+  MA_DP("-- Socket #%u getting (smt %d): ", socket->id, smt_first);
   
-  if (smt_first < 0 || socket->topo->is_smt == 0)
+  if (!socket->topo->is_smt) /* only physical cores by design */
     {
       for (int i = 0; i < socket->n_hwcs; i++)
 	{
-	  hwc_ids[i] = socket->hwcs[i]->id;
-	  MA_DP("%-2u ", hwc_ids[i]);
+	  hwc_ids[idx] = socket->hwcs[hwc]->id;
+	  MA_DP("%-2u ", hwc_ids[idx]);
+	  idx++;
 	}
     }
-  else if (smt_first == 0)
+  else if (smt_first < 0)	/* only physical cores */
     {
-      uint idx = 0;
+      hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
+      for (int i = 0; i < socket->n_cores; i++)
+	{
+	  hwc_ids[idx] = gs->hwcs[hwc]->id;
+	  MA_DP("%-2u ", hwc_ids[idx]);
+	  idx++;
+	  gs = gs->next;
+	}
+    }
+  else if (smt_first == 0)	/* physical cores first */
+    {
       for (int ht = 0; ht < socket->topo->n_hwcs_per_core; ht++)
 	{
 	  hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
@@ -55,9 +67,8 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
 	    }
 	}
     }
-  else
+  else				/* HWCs first */
     {
-      uint idx = 0;
       hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
       for (int i = 0; i < socket->n_cores; i++)
 	{
@@ -71,10 +82,15 @@ mctop_socket_get_hwc_ids(socket_t* socket, uint* hwc_ids, const int smt_first)
 	}
     }
   MA_DP("\n");
+
+  return idx;
 }
 
+/* smt_first < 0  : only physical cores */
+/* smt_first = 0  : physical cores first */
+/* smt_first > 0  : all smt thread of a core first */
 static void
-mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, uint smt_first)
+mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
@@ -88,17 +104,19 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, uint smt_first)
   double min_bw = 1e9;
 
   uint hwc_i = 0, sibling_i = 0;
-  while (1)
+  do
     {
       darray_add(sockets, (uintptr_t) socket);
-      mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first);
-      hwc_i += socket->n_hwcs;
+      hwc_i += mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first, 0);
       if (hwc_i >= alloc->n_hwcs)
 	{
 	  break;
 	}
 
-      assert(sibling_i < socket->n_siblings);
+      if (sibling_i >= socket_start->n_siblings)
+	{
+	  break;
+	}
       socket = mctop_sibling_get_other_socket(socket_start->siblings[sibling_i], socket_start);
       uint lat = socket_start->siblings[sibling_i]->latency;
       if (lat > max_lat)
@@ -112,6 +130,20 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, uint smt_first)
 	}
       MA_DP("-- -> Lat %u / BW %f to %u\n",lat, bw, socket_start->id);
       sibling_i++;
+    }
+  while (1);
+
+  if (smt_first < 0 && topo->is_smt) /* have gotten ONLY physical cores so far */
+    {
+      for (int hwc = 1; (hwc_i < alloc->n_hwcs) && (hwc < topo->n_hwcs_per_core); hwc++)
+	{
+	  MA_DP("---- Now getting the #%u HWCs of cores\n", hwc);
+	  DARRAY_FOR_EACH(sockets, i)
+	    {
+	      socket_t* socket = (socket_t*) DARRAY_GET_N(sockets, i);
+	      hwc_i += mctop_socket_get_hwc_ids(socket, alloc_full + hwc_i, smt_first, hwc);
+	    }
+	}
     }
 
   for (int i = 0; i < alloc->n_hwcs; i++)
@@ -150,8 +182,11 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, mctop_alloc_policy policy)
     case MCTOP_ALLOC_MIN_LAT:
       mctop_alloc_prep_min_lat(alloc, 1);
       break;
-    case MCTOP_ALLOC_MIN_LAT_CORES:
+    case MCTOP_ALLOC_MIN_LAT_CORES_HWCS:
       mctop_alloc_prep_min_lat(alloc, 0);
+      break;
+    case MCTOP_ALLOC_MIN_LAT_CORES:
+      mctop_alloc_prep_min_lat(alloc, -1);
       break;
     }
   return alloc;
