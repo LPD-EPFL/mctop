@@ -73,6 +73,20 @@ mctop_get_num_hwc_per_socket(mctop_t* topo)
   return topo->sockets[0].n_hwcs;
 }
 
+sibling_t*
+mctop_get_sibling_with_sockets(mctop_t* topo, socket_t* s0, socket_t* s1)
+{
+  for (int i = 0; i < topo->n_siblings; i++)
+    {
+      sibling_t* sibling = topo->siblings[i];
+      if (mctop_sibling_contains_sockets(sibling, s0, s1))
+	{
+	  return sibling;
+	}
+    }
+
+  return NULL;
+}
 
 /* socket getters ***************************************************************** */
 
@@ -122,6 +136,18 @@ mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket)
   return sibling->left;
 }
 
+uint
+mctop_sibling_contains_sockets(sibling_t* sibling, socket_t* s0, socket_t* s1)
+{
+  if ((sibling->left == s0 && sibling->right == s1) ||
+      (sibling->left == s1 && sibling->right == s0))
+    {
+      return 1;
+    }
+  return 0;
+}
+
+
 
 /* hwcid ************************************************************************ */
 
@@ -144,7 +170,7 @@ mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
 /* queries ************************************************************************ */
 
 inline uint
-mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b)
+mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b)
 {
   return (a->type == HW_CONTEXT && b->type == HW_CONTEXT && a->parent == b->parent);
 }
@@ -161,6 +187,81 @@ mctop_has_mem_bw(mctop_t* topo)
   return topo->has_mem == BANDWIDTH;
 }
 
+static hwc_gs_t*
+mctop_id_get_hwc_gs(mctop_t* topo, const uint id)
+{
+  uint lvl = mctop_id_get_lvl(id);
+  hwc_gs_t* gs = NULL;
+  if (lvl == 0)
+    {
+      gs = (hwc_gs_t*) &topo->hwcs[id];
+    }
+  else if (lvl == topo->socket_level)
+    {
+      gs = (hwc_gs_t*) &topo->sockets[mctop_id_no_lvl(id)];
+    }
+  else
+    {
+      hwc_gs_t* _gs = mctop_get_first_gs_at_lvl(topo, lvl);
+      while (_gs != NULL)
+	{
+	  if (unlikely(_gs->id == id))
+	    {
+	      gs = _gs;
+	      break;
+	    }
+	  _gs = _gs->next;
+	}
+    }
+
+  return gs;
+}
+
+uint
+mctop_ids_get_latency(mctop_t* topo, const uint id0, const uint id1)
+{
+  hwc_gs_t* gs0 = mctop_id_get_hwc_gs(topo, id0);
+  hwc_gs_t* gs1 = mctop_id_get_hwc_gs(topo, id1);
+
+  while (gs0->level < gs1->level)
+    {
+      gs0 = gs0->parent;
+    }
+  while (gs1->level < gs0->level)
+    {
+      gs1 = gs1->parent;
+    }
+
+  if (unlikely(gs0->id == gs1->id))
+    {
+      if (gs0->level == 0)
+	{
+	  return 0;
+	}
+      else
+	{
+	  return gs0->latency;
+	}
+    }
+
+  while (gs0->type != SOCKET && gs1->type != SOCKET)
+    {
+      gs0 = gs0->parent;
+      gs1 = gs1->parent;
+      if (gs0->id == gs1->id)
+	{
+	  return gs0->latency;
+	}
+    }
+
+
+  sibling_t* sibling = mctop_get_sibling_with_sockets(topo, gs0, gs1);
+  return sibling->latency;
+}
+
+
+
+/* pining ************************************************************************ */
 
 static int
 mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem)

@@ -290,3 +290,57 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
     }
   return 0;
 }
+
+
+/* ******************************************************************************** */
+/* queries */
+/* ******************************************************************************** */
+
+inline mctop_alloc_policy
+mctop_alloc_get_policy(mctop_alloc_t* alloc)
+{
+  return alloc->policy;
+}
+
+inline uint
+mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc)
+{
+  return alloc->n_hwcs;
+}
+
+const char* 
+mctop_alloc_get_policy_desc(mctop_alloc_t* alloc)
+{
+  return mctop_alloc_policy_desc[alloc->policy];
+}
+
+inline double
+mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc)
+{
+  return alloc->min_bandwidth;
+}
+
+inline uint
+mctop_alloc_get_max_latency(mctop_alloc_t* alloc)
+{
+  return alloc->max_latency;
+}
+
+inline uint
+mctop_alloc_get_num_sockets(mctop_alloc_t* alloc)
+{
+  return alloc->n_sockets;
+}
+
+inline uint
+mctop_alloc_get_nth_hw_contect(mctop_alloc_t* alloc, const uint nth)
+{
+  return alloc->hwcs[nth];
+}
+
+inline uint
+mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1)
+{
+  return mctop_ids_get_latency(alloc->topo, id0, id1);
+}
+

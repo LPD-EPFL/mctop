@@ -74,9 +74,14 @@ main(int argc, char **argv)
       mctop_print(topo);
 
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
-      for (int i = 0; i < test_num_threads; i++)
+      for (int i = 0; i < mctop_alloc_get_num_hw_contexts(alloc); i++)
 	{
-	  //	  mctop_alloc_pin(alloc);
+	  uint a = mctop_alloc_get_nth_hw_contect(alloc, i);
+	  for (int j = i; j < mctop_alloc_get_num_hw_contexts(alloc); j++)
+	    {
+	      uint b = mctop_alloc_get_nth_hw_contect(alloc, j);
+	      printf("MCTOP Alloc: latency(%-3u, %-3u) = %u\n", a, b, mctop_alloc_ids_get_latency(alloc, a, b));
+	    }
 	}
 
       mctop_alloc_print(alloc);

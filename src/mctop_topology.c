@@ -642,7 +642,7 @@ mctop_fix_horizontal_links(mctop_t* topo)
       int r;
       for (r = 1;  r < socket->n_hwcs; r++)
 	{
-	  if (mctop_are_hwcs_same_core(hwc_cur, socket->hwcs[r]))
+	  if (mctop_hwcs_are_same_core(hwc_cur, socket->hwcs[r]))
 	    {
 	      darray_add(smt_hwcs, (uintptr_t) socket->hwcs[r]);
 	    }

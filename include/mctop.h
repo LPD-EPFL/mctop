@@ -175,6 +175,7 @@ socket_t* mctop_get_first_socket(mctop_t* topo);
 hwc_gs_t* mctop_get_first_gs_core(mctop_t* topo);
 hwc_gs_t* mctop_get_first_gs_at_lvl(mctop_t* topo, const uint lvl);
 sibling_t* mctop_get_first_sibling_lvl(mctop_t* topo, const uint lvl);
+sibling_t* mctop_get_sibling_with_sockets(mctop_t* topo, socket_t* s0, socket_t* s1);
 
 size_t mctop_get_num_nodes(mctop_t* topo);
 size_t mctop_get_num_cores_per_socket(mctop_t* topo);
@@ -187,15 +188,18 @@ hwc_gs_t* mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl);
 size_t mctop_socket_get_num_cores(socket_t* socket);
 
 /* queries ************************************************************************ */
-uint mctop_are_hwcs_same_core(hw_context_t* a, hw_context_t* b);
+uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
 uint mctop_has_mem_lat(mctop_t* topo);
 uint mctop_has_mem_bw(mctop_t* topo);
+uint mctop_ids_get_latency(mctop_t* topo, const uint id0, const uint id1);
 
 /* sibling getters ***************************************************************** */
 socket_t* mctop_sibling_get_other_socket(sibling_t* sibling, socket_t* socket);
+uint mctop_sibling_contains_sockets(sibling_t* sibling, socket_t* s0, socket_t* s1);
 
 /* optimizing ********************************************************************** */
 int mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid);
+
 
 
 static inline uint
@@ -307,9 +311,20 @@ mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_p
 void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
 
-
 int mctop_alloc_pin(mctop_alloc_t* alloc);
 int mctop_alloc_pin_all(mctop_alloc_t* alloc);
 int mctop_alloc_get_hwc_id();
 
+/* queries */
+mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);
+uint mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc);
+const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
+double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
+uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);
+uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
+uint mctop_alloc_get_nth_hw_contect(mctop_alloc_t* alloc, const uint nth);
+
+uint mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1);
+
 #endif	/* __H_MCTOP__ */
+
