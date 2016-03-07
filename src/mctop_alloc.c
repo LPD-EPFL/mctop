@@ -117,7 +117,16 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int smt_first)
 	{
 	  break;
 	}
-      socket = mctop_sibling_get_other_socket(socket_start->siblings[sibling_i], socket_start);
+
+      if (socket_start->siblings_in != NULL) /* sorted by incoming to socket_start bw */
+	{
+	  socket = mctop_sibling_get_other_socket(socket_start->siblings_in[sibling_i], socket_start);
+	}
+      else
+	{
+	  socket = mctop_sibling_get_other_socket(socket_start->siblings[sibling_i], socket_start);
+	}
+
       uint lat = socket_start->siblings[sibling_i]->latency;
       if (lat > max_lat)
 	{

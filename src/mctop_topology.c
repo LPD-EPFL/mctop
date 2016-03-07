@@ -203,6 +203,10 @@ mctop_free(mctop_t* topo)
       if (socket->n_siblings > 0)
 	{
 	  free(socket->siblings);
+	  if (socket->siblings_in)
+	    {
+	      free(socket->siblings_in);
+	    }
 	}
       if (topo->has_mem >= LATENCY)
 	{
@@ -829,6 +833,12 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
   for (int s = 0; s < topo->n_sockets; s++)
     {
       socket_t* socket = &topo->sockets[s];
+      socket->siblings_in = malloc_assert(socket->n_siblings * sizeof(sibling_t*));
+      for (int i = 0; i < socket->n_siblings; i++)
+	{
+	  socket->siblings_in[i] = socket->siblings[i];
+	}
+
       uint swaps = 0;
       do
 	{
@@ -841,6 +851,7 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 		{
 		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
 		  socket_t* sob = mctop_sibling_get_other_socket(sib, socket);
+		  //if bw from socket to sob > bw from socket to soa, swap
 		  if (mctop_socket_get_bw_to(socket, sob) > mctop_socket_get_bw_to(socket, soa))
 		    {
 		      socket->siblings[i] = sib;
@@ -848,6 +859,22 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 		      swaps++;
 		    }
 		}
+
+	      sia = socket->siblings_in[i];
+	      sib = socket->siblings_in[i + 1];
+	      if (sia->latency == sib->latency)
+		{
+		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
+		  socket_t* sob = mctop_sibling_get_other_socket(sib, socket);
+		  //if bw from sob to socket > bw soa to socket, swap
+		  if (mctop_socket_get_bw_to(sob, socket) > mctop_socket_get_bw_to(soa, socket))
+		    {
+		      socket->siblings_in[i] = sib;
+		      socket->siblings_in[i + 1] = sia;
+		      swaps++;
+		    }
+		}
+
 	    }
 	}
       while (swaps > 0);

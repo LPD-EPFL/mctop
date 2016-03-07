@@ -87,7 +87,8 @@ typedef struct hwc_gs		/* group / socket */
   mctop_t* topo;		/* link to topology */
   /* socket only info */
   uint n_siblings;		/* number of other sockets */
-  struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st */
+  struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st, max bw from this to sibling */
+  struct sibling** siblings_in;	/* pointers to other sockets, sorted closest 1st, max bw sibling to this */
   uint local_node;		/* local NUMA mem. node */
   uint n_nodes;			/* num of nodes = topo->n_sockets */
   uint* mem_latencies;		/* mem. latencies to NUMA nodes */
