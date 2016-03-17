@@ -189,6 +189,9 @@ size_t mctop_socket_get_num_cores(socket_t* socket);
 double mctop_socket_get_bw_local(socket_t* socket);
 double mctop_socket_get_bw_local_one(socket_t* socket);
 
+/* hwcid ************************************************************************** */
+uint mctop_hwcid_get_local_node(mctop_t* topo, uint id);
+
 /* queries ************************************************************************ */
 uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
 uint mctop_has_mem_lat(mctop_t* topo);
@@ -313,6 +316,13 @@ typedef struct mctop_alloc
   uint* hwcs;
 } mctop_alloc_t;
 
+typedef struct mctop_thread_info
+{
+  int id;
+  uint hwc_id;
+  uint local_node;
+} mctop_thread_info_t;
+
 
 /* n_config = num hwcs per socket for MIN_LAT policies*/
 /* n_config = num sockets for BW_BOUND policies*/
@@ -323,6 +333,8 @@ void mctop_alloc_print(mctop_alloc_t* alloc);
 int mctop_alloc_pin(mctop_alloc_t* alloc);
 int mctop_alloc_pin_all(mctop_alloc_t* alloc);
 int mctop_alloc_get_hwc_id();
+int mctop_alloc_get_local_node();
+
 
 /* queries */
 mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);

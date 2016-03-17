@@ -208,7 +208,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 }
 
 void
-mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, int n_sockets)
+mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_sockets)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
@@ -230,14 +230,18 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, int n_sockets)
       socket_t* socket = &topo->sockets[sockets_bw[socket_n]];
       alloc->sockets[socket_n] = socket;
 
-      uint n_hwcs = (0.5 + (mctop_socket_get_bw_local(socket) / mctop_socket_get_bw_local_one(socket)));
-      MA_DP("-- Socket #%u : bw %5.2f / bw1 %5.2f --> %u\n",
+      uint n_hwcs = n_hwcs_extra + (0.5 + (mctop_socket_get_bw_local(socket) / mctop_socket_get_bw_local_one(socket)));
+      if (n_hwcs > socket->n_hwcs)
+	{
+	  n_hwcs = socket->n_hwcs;
+	}
+      MA_DP("-- Socket #%u : bw %5.2f / bw1 %5.2f --> %u (+%u extra)\n",
 	    socket->id,
 	    mctop_socket_get_bw_local(socket),
 	    mctop_socket_get_bw_local_one(socket),
-	    n_hwcs);
+	    n_hwcs, n_hwcs_extra);
 
-      hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs, alloc_full + hwc_i, -1, 0);
+      hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs, alloc_full + hwc_i, 0, 0);
       min_bw = mctop_socket_get_bw_local(socket);
     }
   
@@ -301,7 +305,7 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
       mctop_alloc_prep_min_lat(alloc, n_config, -1);
       break;
     case MCTOP_ALLOC_BW_BOUND:
-      mctop_alloc_prep_bw_bound(alloc, n_config);
+      mctop_alloc_prep_bw_bound(alloc, n_hwcs, n_config);
       break;
     }
   return alloc;
@@ -341,13 +345,7 @@ mctop_alloc_free(mctop_alloc_t* alloc)
 /* pinning */
 /* ******************************************************************************** */
 
-static __thread int __mctop_hwc_id = -1;
-
-inline int
-mctop_alloc_get_hwc_id()
-{
-  return __mctop_hwc_id;
-}
+static __thread mctop_thread_info_t __mctop_thread_info = { .id = -1 };
 
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
@@ -386,10 +384,12 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
   uint hwcid = FAI_U32(&alloc->cur);
   if (hwcid < alloc->n_hwcs)
     {
-      __mctop_hwc_id = hwcid;
+      __mctop_thread_info.id = hwcid;
       hwcid = alloc->hwcs[hwcid];
+      __mctop_thread_info.hwc_id = hwcid;
       int ret = mctop_set_cpu(hwcid);
       mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+      __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
       return ret;
     }
   return 0;
@@ -448,3 +448,19 @@ mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1
   return mctop_ids_get_latency(alloc->topo, id0, id1);
 }
 
+
+/* thread ******************************************************************************** */
+
+int
+mctop_alloc_get_hwc_id()
+{
+  assert(__mctop_thread_info.id >= 0 && "Thread is not pinned!");
+  return __mctop_thread_info.hwc_id;
+}
+
+int
+mctop_alloc_get_local_node()
+{
+  assert(__mctop_thread_info.id >= 0 && "Thread is not pinned!");
+  return __mctop_thread_info.local_node;
+}

@@ -179,6 +179,14 @@ mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
 }
 
 
+/* hwcid ************************************************************************** */
+inline uint
+mctop_hwcid_get_local_node(mctop_t* topo, uint hwcid)
+{
+  hw_context_t* hwc = &topo->hwcs[hwcid];
+  return hwc->socket->local_node;
+}
+
 /* queries ************************************************************************ */
 
 inline uint
