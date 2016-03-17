@@ -24,6 +24,34 @@ mctop_find_double_max(double* arr, const uint n)
   return 0;
 }
 
+/* sort an array of double, but do not modify the actual array. Instead, return
+ an array with the indexes corresponding to the sorted double array. */
+static uint*
+mctop_sort_double_index(const double* arr, const uint n)
+{
+  uint* sorted = malloc_assert(n * sizeof(uint));
+  for (uint i = 0; i < n; i++)
+    {
+      sorted[i] = i;
+    }
+  if (arr != NULL)
+    {
+      for (uint i = 0; i < n; i++)
+	{
+	  for (uint j = i + 1; j < n; j++)
+	    {
+	      if (arr[sorted[j]] > arr[sorted[i]])
+		{
+		  uint tmp = sorted[j];
+		  sorted[j] = sorted[i];
+		  sorted[i] = tmp;
+		}
+	    }
+	}
+    }
+  return sorted;
+}
+
 /* smt_first < 0  : only physical cores / hwc : shows which HWC to return from each core */
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
@@ -179,10 +207,77 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
   darray_free(sockets);
 }
 
-mctop_alloc_t*
-mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_per_socket, mctop_alloc_policy policy)
+void
+mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, int n_sockets)
 {
-  mctop_alloc_t* alloc = malloc(sizeof(mctop_alloc_t) + (n_hwcs * sizeof(uint)));
+  mctop_t* topo = alloc->topo;
+  uint alloc_full[topo->n_hwcs];
+
+  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths, topo->n_sockets);
+  if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets < 0)
+    {
+      n_sockets = topo->n_sockets;
+    }      
+
+  alloc->n_sockets = n_sockets;
+  alloc->sockets = malloc_assert(alloc->n_sockets * sizeof(socket_t*));
+
+  double min_bw = 1e9;
+
+  uint hwc_i = 0;
+  for (uint socket_n = 0; socket_n < n_sockets; socket_n++)
+    {
+      socket_t* socket = &topo->sockets[sockets_bw[socket_n]];
+      alloc->sockets[socket_n] = socket;
+
+      uint n_hwcs = (0.5 + (mctop_socket_get_bw_local(socket) / mctop_socket_get_bw_local_one(socket)));
+      MA_DP("-- Socket #%u : bw %5.2f / bw1 %5.2f --> %u\n",
+	    socket->id,
+	    mctop_socket_get_bw_local(socket),
+	    mctop_socket_get_bw_local_one(socket),
+	    n_hwcs);
+
+      hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs, alloc_full + hwc_i, -1, 0);
+      min_bw = mctop_socket_get_bw_local(socket);
+    }
+  
+  alloc->n_hwcs = hwc_i;
+  alloc->hwcs = malloc_assert(alloc->n_hwcs * sizeof(uint));
+  for (int i = 0; i < alloc->n_hwcs; i++)
+    {
+      alloc->hwcs[i] = alloc_full[i];
+    }
+  
+  uint max_lat = topo->latencies[topo->socket_level];
+  for (int i = 0; i < n_sockets; i++)
+    {
+      for (int j = i + 1; j < n_sockets; j++)
+	{
+	  uint lat = mctop_ids_get_latency(topo, alloc->sockets[i]->id, alloc->sockets[j]->id);
+	  if (lat > max_lat)
+	    {
+	      max_lat = lat;
+	    }
+	}
+    }
+
+  alloc->max_latency = max_lat;
+  alloc->min_bandwidth = min_bw;
+
+  free(sockets_bw);
+}
+
+/* n_config = num hwcs per socket for MIN_LAT policies*/
+/* n_config = num sockets for BW_BOUND policies*/
+mctop_alloc_t*
+mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  mctop_alloc_t* alloc = malloc_assert(sizeof(mctop_alloc_t));
+  if (policy <= MCTOP_ALLOC_MIN_LAT_CORES)
+    {
+      alloc->hwcs = malloc_assert(n_hwcs * sizeof(uint));
+    }
+
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
   if (n_hwcs > topo->n_hwcs)
@@ -193,16 +288,20 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_per_socket, mcto
     }
   alloc->policy = policy;
   alloc->cur = 0;
+
   switch (policy)
     {
     case MCTOP_ALLOC_MIN_LAT_HWCS:
-      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, 1);
+      mctop_alloc_prep_min_lat(alloc, n_config, 1);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES_HWCS:
-      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, 0);
+      mctop_alloc_prep_min_lat(alloc, n_config, 0);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES:
-      mctop_alloc_prep_min_lat(alloc, n_hwcs_per_socket, -1);
+      mctop_alloc_prep_min_lat(alloc, n_config, -1);
+      break;
+    case MCTOP_ALLOC_BW_BOUND:
+      mctop_alloc_prep_bw_bound(alloc, n_config);
       break;
     }
   return alloc;
@@ -212,30 +311,35 @@ void
 mctop_alloc_print(mctop_alloc_t* alloc)
 {
   printf("#### MCTOP Allocator\n");
-  printf("## Policy          : %s\n", mctop_alloc_policy_desc[alloc->policy]);
-  printf("## HW Contexts     : %u\n", alloc->n_hwcs);
-  printf("## Max latency     : %-5u cycles\n", alloc->max_latency);
-  printf("## Min bandwidth   : %-5.2f GB/s\n", alloc->min_bandwidth);
-  printf("## Sockets         : ");
+  printf("## Policy            : %s\n", mctop_alloc_policy_desc[alloc->policy]);
+  printf("## Sockets (%-3u)     : ", alloc->n_sockets);
   for (int i = 0; i < alloc->n_sockets; i++)
     {
       printf("%u ", alloc->sockets[i]->id);
     }
   printf("\n");
-  printf("## HW contexts     : ");
+  printf("## HW Contexts (%-3u) : ", alloc->n_hwcs);
   for (int i = 0; i < alloc->n_hwcs; i++)
     {
       printf("%u ", alloc->hwcs[i]);
     }
   printf("\n");
+  printf("## Max latency       : %-5u cycles\n", alloc->max_latency);
+  printf("## Min bandwidth     : %-5.2f GB/s\n", alloc->min_bandwidth);
 }
 
 void
 mctop_alloc_free(mctop_alloc_t* alloc)
 {
+  free(alloc->hwcs);
+  free(alloc->sockets);
   free(alloc);
 }
 
+
+/* ******************************************************************************** */
+/* pinning */
+/* ******************************************************************************** */
 
 static __thread int __mctop_hwc_id = -1;
 

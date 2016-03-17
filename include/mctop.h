@@ -186,6 +186,8 @@ hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
 hwc_gs_t* mctop_socket_get_first_gs_core(socket_t* socket);
 hwc_gs_t* mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl);
 size_t mctop_socket_get_num_cores(socket_t* socket);
+double mctop_socket_get_bw_local(socket_t* socket);
+double mctop_socket_get_bw_local_one(socket_t* socket);
 
 /* queries ************************************************************************ */
 uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -277,6 +279,7 @@ extern int mctop_set_cpu(int cpu);
 /* ******************************************************************************** */
 
 #define MCTOP_ALLOC_ALL           -1
+#define MCTOP_ALLOC_ANY           0
 
 typedef enum 
   {
@@ -285,6 +288,8 @@ typedef enum
                                     /* HWCs of that socket after and then proceed to the next socket. */
     MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
                                     /* of them have been used start using HWCs */
+    MCTOP_ALLOC_BW_BOUND,	    /*  */
+                  
   } mctop_alloc_policy;
 
 __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
@@ -292,6 +297,7 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
   "MCTOP_ALLOC_MIN_LAT_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES",
+  "MCTOP_ALLOC_BW_BOUND",
 };
 
 typedef struct mctop_alloc
@@ -304,10 +310,13 @@ typedef struct mctop_alloc
   uint max_latency;
   double min_bandwidth;
   uint32_t cur;
-  uint hwcs[0];
+  uint* hwcs;
 } mctop_alloc_t;
 
-mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, int n_hwcs_per_socket, mctop_alloc_policy policy);
+
+/* n_config = num hwcs per socket for MIN_LAT policies*/
+/* n_config = num sockets for BW_BOUND policies*/
+mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy);
 void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
 

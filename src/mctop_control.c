@@ -124,6 +124,18 @@ mctop_socket_get_num_cores(socket_t* socket)
   return socket->n_cores;
 }
 
+inline double
+mctop_socket_get_bw_local(socket_t* socket)
+{
+  return socket->mem_bandwidths[socket->local_node];
+}
+
+inline double
+mctop_socket_get_bw_local_one(socket_t* socket)
+{
+  return socket->mem_bandwidths1[socket->local_node];
+}
+
 /* sibling getters ***************************************************************** */
 
 socket_t*
