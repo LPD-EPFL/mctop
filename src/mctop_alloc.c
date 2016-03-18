@@ -468,7 +468,7 @@ mctop_alloc_thread_print()
     {
       printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u / node seq id %-3u\n",
 	     mctop_alloc_get_id(),
-	     mctop_alloc_get_hwc_id(),
+	     mctop_alloc_get_hw_context_id(),
 	     mctop_alloc_get_local_node(),
 	     mctop_alloc_get_node_seq_id());
     }
@@ -546,7 +546,7 @@ mctop_alloc_get_id()
 }
 
 int
-mctop_alloc_get_hwc_id()
+mctop_alloc_get_hw_context_id()
 {
   assert(mctop_alloc_is_pinned());
   return __mctop_thread_info.hwc_id;

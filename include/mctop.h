@@ -282,8 +282,6 @@ extern int mctop_set_cpu(int cpu);
 /* MCTOP Allocator */
 /* ******************************************************************************** */
 
-#define MCTOP_ALLOC_ALL           -1
-
 typedef enum 
   {
     MCTOP_ALLOC_MIN_LAT_HWCS,       /* Minimize latency across used sockets. Use HWCs of same core first  */
@@ -291,17 +289,9 @@ typedef enum
                                     /* HWCs of that socket after and then proceed to the next socket. */
     MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
                                     /* of them have been used start using HWCs */
-    MCTOP_ALLOC_BW_BOUND,
-                  
+    MCTOP_ALLOC_BW_BOUND,	    /* Maximize bandwidth to local nodes and calculates the number of cores that are*/
+                                    /* required to saturate the bandwidth on each node. */
   } mctop_alloc_policy;
-
-__attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
-{ 
-  "MCTOP_ALLOC_MIN_LAT_HWCS",
-  "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
-  "MCTOP_ALLOC_MIN_LAT_CORES",
-  "MCTOP_ALLOC_BW_BOUND",
-};
 
 typedef struct mctop_alloc
 {
@@ -327,25 +317,49 @@ typedef struct mctop_thread_info
   uint nth_socket;
 } mctop_thread_info_t;
 
+__attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
+{ 
+  "MCTOP_ALLOC_MIN_LAT_HWCS",
+  "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
+  "MCTOP_ALLOC_MIN_LAT_CORES",
+  "MCTOP_ALLOC_BW_BOUND",
+};
 
-/* n_config = num hwcs per socket for MIN_LAT policies*/
-/* n_config = num sockets for BW_BOUND policies*/
+#define MCTOP_ALLOC_ALL           -1
+
+/* Alloc structs manipulation *************************************************************************************** */
+
+/* mctop_alloc_create params 
+ * MCTOP_ALLOC_MIN_LAT_HWCS       
+ * MCTOP_ALLOC_MIN_LAT_CORES_HWCS
+ * MCTOP_ALLOC_MIN_LAT_CORES      : n_hwcs = total # of hw contexts / n_config = limit the # of hw contexts per socket
+ *                                  pass MCTOP_ALLOC_ALL to get all hw contexts per socket
+ *
+ * MCTOP_ALLOC_BW_BOUND           : n_hwcs = how many extra hw contexts to allocate per socket
+ *                                  n_config = how many sockets to use
+ */
 mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy);
 void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
+
+
+/* Thread functions ************************************************************************************************** */
 
 int mctop_alloc_pin(mctop_alloc_t* alloc);
 int mctop_alloc_unpin();
 int mctop_alloc_pin_all(mctop_alloc_t* alloc);
 
-void mctop_alloc_thread_print();
-uint mctop_alloc_is_pinned();
-int mctop_alloc_get_id();
-int mctop_alloc_get_hwc_id();
-int mctop_alloc_get_local_node();
-int mctop_alloc_get_node_seq_id();
+void mctop_alloc_thread_print();     /* print current threads pin details */
+uint mctop_alloc_is_pinned();	     /* is thread pinned? */
+int mctop_alloc_get_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
+int mctop_alloc_get_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
+int mctop_alloc_get_local_node();    /* local NUMA node of thread */
+int mctop_alloc_get_node_seq_id();   /* sequence id of the node that this thread is using. For example, the allocator
+				        could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
 
-/* queries */
+
+/* Queries *********************************************************************************************************** */
+
 mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);
 uint mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc);
 const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
