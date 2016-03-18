@@ -183,7 +183,9 @@ size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
 
 /* socket getters ***************************************************************** */
 hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
+hw_context_t* mctop_socket_get_nth_hwc(socket_t* socket, const uint nth);
 hwc_gs_t* mctop_socket_get_first_gs_core(socket_t* socket);
+hwc_gs_t* mctop_socket_get_nth_gs_core(socket_t* socket, const uint nth);
 hwc_gs_t* mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl);
 size_t mctop_socket_get_num_cores(socket_t* socket);
 double mctop_socket_get_bw_local(socket_t* socket);
@@ -289,7 +291,11 @@ typedef enum
                                     /* HWCs of that socket after and then proceed to the next socket. */
     MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
                                     /* of them have been used start using HWCs */
-    MCTOP_ALLOC_BW_BOUND,	    /* Maximize bandwidth to local nodes and calculates the number of cores that are*/
+    MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS,  /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
+				      /* Use HWCs of the same core first.*/
+    MCTOP_ALLOC_BW_ROUND_ROBIN_CORES, /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
+                                      /* Use physical cores first.*/
+    MCTOP_ALLOC_BW_BOUND,	    /* Maximize bandwidth to local nodes and calculates the number of cores that are */
                                     /* required to saturate the bandwidth on each node. */
   } mctop_alloc_policy;
 
@@ -322,6 +328,8 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
   "MCTOP_ALLOC_MIN_LAT_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES",
+  "MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS",
+  "MCTOP_ALLOC_BW_ROUND_ROBIN_CORES",
   "MCTOP_ALLOC_BW_BOUND",
 };
 
@@ -332,11 +340,14 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
 /* mctop_alloc_create params 
  * MCTOP_ALLOC_MIN_LAT_HWCS       
  * MCTOP_ALLOC_MIN_LAT_CORES_HWCS
- * MCTOP_ALLOC_MIN_LAT_CORES      : n_hwcs = total # of hw contexts / n_config = limit the # of hw contexts per socket
- *                                  pass MCTOP_ALLOC_ALL to get all hw contexts per socket
+ * MCTOP_ALLOC_MIN_LAT_CORES        : n_hwcs = total # hw contexts / n_config = limit the # of hw contexts per socket
+ *                                    pass MCTOP_ALLOC_ALL to get all hw contexts per socket
  *
- * MCTOP_ALLOC_BW_BOUND           : n_hwcs = how many extra hw contexts to allocate per socket
- *                                  n_config = how many sockets to use
+ * MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS 
+ * MCTOP_ALLOC_BW_ROUND_ROBIN_CORES : n_hwcs = total # hw contexts / n_config = how many sockets to use
+ * 
+ * MCTOP_ALLOC_BW_BOUND             : n_hwcs = how many extra hw contexts to allocate per socket
+ *                                    n_config = how many sockets to use
  */
 mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy);
 void mctop_alloc_free(mctop_alloc_t* alloc);

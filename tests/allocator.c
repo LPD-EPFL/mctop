@@ -12,6 +12,7 @@ main(int argc, char **argv)
   uint test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = 0;
+  uint test_run_pin = 0;
 
   struct option long_options[] = 
     {
@@ -80,37 +81,39 @@ main(int argc, char **argv)
       mctop_alloc_print(alloc);
 
 
-      const uint n_hwcs = mctop_alloc_get_num_hw_contexts(alloc);
-      pthread_t threads[n_hwcs];
-      pthread_attr_t attr;
-      void* status;
-    
-      /* Initialize and set thread detached attribute */
-      pthread_attr_init(&attr);
-      pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    
-      for(int t = 0; t < n_hwcs; t++)
+      if (test_run_pin)
 	{
-	  int rc = pthread_create(&threads[t], &attr, test_pin, alloc);
-	  if (rc)
+	  const uint n_hwcs = mctop_alloc_get_num_hw_contexts(alloc);
+	  pthread_t threads[n_hwcs];
+	  pthread_attr_t attr;
+	  void* status;
+    
+	  /* Initialize and set thread detached attribute */
+	  pthread_attr_init(&attr);
+	  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    
+	  for(int t = 0; t < n_hwcs; t++)
 	    {
-	      printf("ERROR; return code from pthread_create() is %d\n", rc);
-	      exit(-1);
+	      int rc = pthread_create(&threads[t], &attr, test_pin, alloc);
+	      if (rc)
+		{
+		  printf("ERROR; return code from pthread_create() is %d\n", rc);
+		  exit(-1);
+		}
+	    }
+
+	  pthread_attr_destroy(&attr);
+
+	  for(int t = 0; t < n_hwcs; t++)
+	    {
+	      int rc = pthread_join(threads[t], &status);
+	      if (rc) 
+		{
+		  printf("ERROR; return code from pthread_join() is %d\n", rc);
+		  exit(-1);
+		}
 	    }
 	}
-
-      pthread_attr_destroy(&attr);
-
-      for(int t = 0; t < n_hwcs; t++)
-	{
-	  int rc = pthread_join(threads[t], &status);
-	  if (rc) 
-	    {
-	      printf("ERROR; return code from pthread_join() is %d\n", rc);
-	      exit(-1);
-	    }
-	}
-
       mctop_alloc_free(alloc);
 
       mctop_free(topo);

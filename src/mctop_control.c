@@ -96,6 +96,12 @@ mctop_socket_get_first_hwc(socket_t* socket)
   return socket->hwcs[0];
 }
 
+inline hw_context_t*
+mctop_socket_get_nth_hwc(socket_t* socket, const uint nth)
+{
+  return socket->hwcs[nth];
+}
+
 hwc_gs_t*
 mctop_socket_get_first_gs_core(socket_t* socket)
 {
@@ -103,6 +109,21 @@ mctop_socket_get_first_gs_core(socket_t* socket)
   while (gs && gs->type != CORE)
     {
       gs = gs->children[0];
+    }
+  return gs;
+}
+
+hwc_gs_t*
+mctop_socket_get_nth_gs_core(socket_t* socket, const uint nth)
+{
+  hwc_gs_t* gs = socket->children[0];
+  while (gs && gs->type != CORE)
+    {
+      gs = gs->children[0];
+    }
+  for (int i = 0; i < nth; i++)
+    {
+      gs = gs->next;
     }
   return gs;
 }

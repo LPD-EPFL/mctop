@@ -116,6 +116,34 @@ mctop_socket_get_hwc_ids(socket_t* socket, const uint n_hwcs, uint* hwc_ids, con
   return idx;
 }
 
+/* smt_first <= 0  : physical cores first (i.e., c0_hwc0, c1_hwc0, ..., c1_hwc1, ...) */
+/* smt_first > 0  : smt hw contexts first (i.e., c0_hwc0, c0_hwc1, c1_hwc0, c1_hwc1, ...) */
+static uint
+mctop_socket_get_nth_hwc_id(socket_t* socket, const uint nth_hwc, const int smt_first)
+{
+  hw_context_t* hwc;
+  if (!socket->topo->is_smt)
+    {
+      hwc = mctop_socket_get_nth_hwc(socket, nth_hwc);
+    }
+  else if (smt_first > 0)
+    {
+      uint core = nth_hwc / socket->topo->n_hwcs_per_core;
+      uint hwc_i = nth_hwc % socket->topo->n_hwcs_per_core;
+      hwc_gs_t* gs = mctop_socket_get_nth_gs_core(socket, core);
+      hwc = gs->hwcs[hwc_i];
+    }
+  else
+    {
+      uint core = nth_hwc % socket->n_cores;
+      uint hwc_i = nth_hwc / socket->n_cores;
+      hwc_gs_t* gs = mctop_socket_get_nth_gs_core(socket, core);
+      hwc = gs->hwcs[hwc_i];
+    }
+
+  return hwc->id;
+}
+
 /* smt_first < 0  : only physical cores */
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
@@ -131,7 +159,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
   socket_t* socket_start = socket;
   darray_t* sockets = darray_create();
 
-  if (n_hwcs_per_socket == MCTOP_ALLOC_ALL || n_hwcs_per_socket > socket->n_hwcs || n_hwcs_per_socket < 0)
+  if (n_hwcs_per_socket == MCTOP_ALLOC_ALL || n_hwcs_per_socket > socket->n_hwcs || n_hwcs_per_socket <= 0)
     {
       n_hwcs_per_socket = socket->n_hwcs;
     }      
@@ -210,13 +238,79 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 }
 
 void
+mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, const uint n_hwcs, int n_sockets, const int smt_first)
+{
+  mctop_t* topo = alloc->topo;
+  uint alloc_full[topo->n_hwcs];
+
+  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths, topo->n_sockets);
+  if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets <= 0)
+    {
+      n_sockets = topo->n_sockets;
+    }      
+
+  alloc->n_sockets = n_sockets;
+  alloc->sockets = malloc_assert(alloc->n_sockets * sizeof(socket_t*));
+
+  double min_bw = 1e9;
+
+  uint round = 0, n = 0;
+  for (uint hwc_i = 0; hwc_i < alloc->n_hwcs; hwc_i += n_sockets)
+    {
+      for (uint socket_n = 0; socket_n < n_sockets; socket_n++)
+	{
+	  socket_t* socket = &topo->sockets[sockets_bw[socket_n]];
+
+	  uint hwcid = mctop_socket_get_nth_hwc_id(socket, round, smt_first);
+	  alloc_full[n++] = hwcid;
+
+	  if (hwc_i < n_sockets)
+	    {
+	      alloc->sockets[socket_n] = socket;
+	      min_bw = mctop_socket_get_bw_local(socket);
+	    }
+
+	  MA_DP("-- Socket #%u : bw %5.2f / bw1 %5.2f --> %u\n",
+		socket->id,
+		mctop_socket_get_bw_local(socket),
+		mctop_socket_get_bw_local_one(socket),
+		hwcid);
+	}
+      round++;
+    }
+  
+  for (int i = 0; i < alloc->n_hwcs; i++)
+    {
+      alloc->hwcs[i] = alloc_full[i];
+    }
+  
+  uint max_lat = topo->latencies[topo->socket_level];
+  for (int i = 0; i < n_sockets; i++)
+    {
+      for (int j = i + 1; j < n_sockets; j++)
+	{
+	  uint lat = mctop_ids_get_latency(topo, alloc->sockets[i]->id, alloc->sockets[j]->id);
+	  if (lat > max_lat)
+	    {
+	      max_lat = lat;
+	    }
+	}
+    }
+
+  alloc->max_latency = max_lat;
+  alloc->min_bandwidth = min_bw;
+
+  free(sockets_bw);
+}
+
+void
 mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_sockets)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
   uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths, topo->n_sockets);
-  if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets < 0)
+  if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets <= 0)
     {
       n_sockets = topo->n_sockets;
     }      
@@ -274,13 +368,11 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
   free(sockets_bw);
 }
 
-/* n_config = num hwcs per socket for MIN_LAT policies*/
-/* n_config = num sockets for BW_BOUND policies*/
 mctop_alloc_t*
 mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy)
 {
   mctop_alloc_t* alloc = malloc_assert(sizeof(mctop_alloc_t));
-  if (policy <= MCTOP_ALLOC_MIN_LAT_CORES)
+  if (policy <= MCTOP_ALLOC_BW_ROUND_ROBIN_CORES)
     {
       alloc->hwcs = malloc_assert(n_hwcs * sizeof(uint));
       alloc->hwcs_used = calloc_assert(n_hwcs, sizeof(uint8_t));
@@ -313,6 +405,12 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES:
       mctop_alloc_prep_min_lat(alloc, n_config, -1);
+      break;
+    case MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS:
+      mctop_alloc_prep_bw_round_robin(alloc, n_hwcs, n_config, 1);
+      break;
+    case MCTOP_ALLOC_BW_ROUND_ROBIN_CORES:
+      mctop_alloc_prep_bw_round_robin(alloc, n_hwcs, n_config, 0);
       break;
     case MCTOP_ALLOC_BW_BOUND:
       mctop_alloc_prep_bw_bound(alloc, n_hwcs, n_config);
