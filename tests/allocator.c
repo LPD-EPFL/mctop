@@ -1,5 +1,8 @@
 #include <mctop.h>
+#include <pthread.h>
 #include <getopt.h>
+
+void* test_pin(void* params);
 
 int
 main(int argc, char **argv) 
@@ -74,20 +77,63 @@ main(int argc, char **argv)
       mctop_print(topo);
 
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
-      /* for (int i = 0; i < mctop_alloc_get_num_hw_contexts(alloc); i++) */
-      /* 	{ */
-      /* 	  uint a = mctop_alloc_get_nth_hw_contect(alloc, i); */
-      /* 	  for (int j = i; j < mctop_alloc_get_num_hw_contexts(alloc); j++) */
-      /* 	    { */
-      /* 	      uint b = mctop_alloc_get_nth_hw_contect(alloc, j); */
-      /* 	      printf("MCTOP Alloc: latency(%-3u, %-3u) = %u\n", a, b, mctop_alloc_ids_get_latency(alloc, a, b)); */
-      /* 	    } */
-      /* 	} */
-
       mctop_alloc_print(alloc);
+
+
+      const uint n_hwcs = mctop_alloc_get_num_hw_contexts(alloc);
+      pthread_t threads[n_hwcs];
+      pthread_attr_t attr;
+      void* status;
+    
+      /* Initialize and set thread detached attribute */
+      pthread_attr_init(&attr);
+      pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    
+      for(int t = 0; t < n_hwcs; t++)
+	{
+	  int rc = pthread_create(&threads[t], &attr, test_pin, alloc);
+	  if (rc)
+	    {
+	      printf("ERROR; return code from pthread_create() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
+
+      pthread_attr_destroy(&attr);
+
+      for(int t = 0; t < n_hwcs; t++)
+	{
+	  int rc = pthread_join(threads[t], &status);
+	  if (rc) 
+	    {
+	      printf("ERROR; return code from pthread_join() is %d\n", rc);
+	      exit(-1);
+	    }
+	}
+
       mctop_alloc_free(alloc);
 
       mctop_free(topo);
     }
   return 0;
+}
+
+void*
+test_pin(void* params)
+{
+  mctop_alloc_t* alloc = (mctop_alloc_t*) params;
+
+  const size_t reps = 1e9;
+
+  for (int r = 0; r < 4; r++)
+    {
+      mctop_alloc_pin(alloc);
+      mctop_alloc_thread_print();
+      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
+      mctop_alloc_unpin();
+      mctop_alloc_thread_print();
+      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
+    }
+
+  return NULL;
 }

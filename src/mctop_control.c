@@ -169,8 +169,8 @@ mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
   if (likely(topo->has_mem))
     {
       hw_context_t* hwc = &topo->hwcs[hwcid];
-      printf("# HWID %u, SOCKET %u, numa_set_preferred(%u)\n",
-	     hwcid, hwc->socket->id, hwc->socket->local_node);
+      /* printf("# HWID %-3u, SOCKET %-3u, numa_set_preferred(%u)\n", */
+      /* 	     hwcid, hwc->socket->id, hwc->socket->local_node); */
       numa_set_preferred(hwc->socket->local_node);
       return 1;
     }

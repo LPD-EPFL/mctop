@@ -312,12 +312,15 @@ typedef struct mctop_alloc
   socket_t** sockets;
   uint max_latency;
   double min_bandwidth;
-  uint32_t cur;
   uint* hwcs;
+  volatile uint n_hwcs_used;
+  volatile uint8_t* hwcs_used;
+  struct bitmask* hwcs_all;
 } mctop_alloc_t;
 
 typedef struct mctop_thread_info
 {
+  mctop_alloc_t* alloc;
   int id;
   uint hwc_id;
   uint local_node;
@@ -331,7 +334,12 @@ void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
 
 int mctop_alloc_pin(mctop_alloc_t* alloc);
+int mctop_alloc_unpin();
 int mctop_alloc_pin_all(mctop_alloc_t* alloc);
+
+void mctop_alloc_thread_print();
+uint mctop_alloc_is_pinned();
+int mctop_alloc_get_id();
 int mctop_alloc_get_hwc_id();
 int mctop_alloc_get_local_node();
 
@@ -343,7 +351,7 @@ const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
 double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
 uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);
 uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
-uint mctop_alloc_get_nth_hw_contect(mctop_alloc_t* alloc, const uint nth);
+uint mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth);
 
 uint mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1);
 

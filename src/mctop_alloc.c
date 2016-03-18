@@ -3,6 +3,8 @@
 
 #define MA_DP printf
 
+const double mctop_bw_sensitivity = 1.05;
+
 static int
 mctop_find_double_max(double* arr, const uint n)
 {
@@ -12,7 +14,7 @@ mctop_find_double_max(double* arr, const uint n)
       uint max_i = 0;
       for (int i = 1; i < n; i++)
 	{
-	  if (arr[i] > (1.1 * max))
+	  if (arr[i] > (mctop_bw_sensitivity * max))
 	    {
 	      max = arr[i];
 	      max_i = i;
@@ -40,7 +42,7 @@ mctop_sort_double_index(const double* arr, const uint n)
 	{
 	  for (uint j = i + 1; j < n; j++)
 	    {
-	      if (arr[sorted[j]] > arr[sorted[i]])
+	      if (arr[sorted[j]] > (mctop_bw_sensitivity * arr[sorted[i]]))
 		{
 		  uint tmp = sorted[j];
 		  sorted[j] = sorted[i];
@@ -135,7 +137,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
     }      
 
   uint max_lat = topo->latencies[topo->socket_level];
-  double min_bw = 1e9;
+  double min_bw = mctop_socket_get_bw_local(socket);
 
   uint hwc_i = 0, sibling_i = 0;
   do
@@ -247,6 +249,7 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
   
   alloc->n_hwcs = hwc_i;
   alloc->hwcs = malloc_assert(alloc->n_hwcs * sizeof(uint));
+  alloc->hwcs_used = calloc_assert(alloc->n_hwcs, sizeof(uint8_t));
   for (int i = 0; i < alloc->n_hwcs; i++)
     {
       alloc->hwcs[i] = alloc_full[i];
@@ -280,10 +283,12 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
   if (policy <= MCTOP_ALLOC_MIN_LAT_CORES)
     {
       alloc->hwcs = malloc_assert(n_hwcs * sizeof(uint));
+      alloc->hwcs_used = calloc_assert(n_hwcs, sizeof(uint8_t));
     }
 
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
+  alloc->n_hwcs_used = 0;
   if (n_hwcs > topo->n_hwcs)
     {
       fprintf(stderr, "MCTOP Warning: Asking for %u hw contexts. This processor has %u contexts.\n",
@@ -291,7 +296,12 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
       alloc->n_hwcs = topo->n_hwcs;
     }
   alloc->policy = policy;
-  alloc->cur = 0;
+
+  alloc->hwcs_all = numa_bitmask_alloc(topo->n_hwcs);
+  for (int i = 0; i < topo->n_hwcs; i++) 
+    {
+      alloc->hwcs_all = numa_bitmask_setbit(alloc->hwcs_all, topo->hwcs[i].id);
+    }
 
   switch (policy)
     {
@@ -336,6 +346,8 @@ void
 mctop_alloc_free(mctop_alloc_t* alloc)
 {
   free(alloc->hwcs);
+  free((void*) alloc->hwcs_used);
+  free(alloc->hwcs_all);
   free(alloc->sockets);
   free(alloc);
 }
@@ -349,14 +361,22 @@ static __thread mctop_thread_info_t __mctop_thread_info = { .id = -1 };
 
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
+#  define CAS_U8(a,b,c) atomic_cas_8(a,b,c)
 #  define CAS_U64(a,b,c) atomic_cas_64(a,b,c)
 #  define FAI_U32(a) (atomic_inc_32_nv(a) - 1)
+#  define DAF_U32(a) atomic_dec_32_nv((volatile uint32_t*) a)
 #elif defined(__tile__)		/* TILER */
 #  include <arch/atomic.h>
 #  include <arch/cycle.h>
+#  define CAS_U8(a,b,c)  arch_atomic_val_compare_and_exchange(a,b,c)
+#  define CAS_U64(a,b,c) arch_atomic_val_compare_and_exchange(a,b,c)
 #  define FAI_U32(a) arch_atomic_increment(a)
+#  define DAF_U32(a) (arch_atomic_decrement(a) - 1)
 #elif __x86_64__
+#  define CAS_U8(a,b,c) __sync_val_compare_and_swap(a,b,c)
+#  define CAS_U64(a,b,c) __sync_val_compare_and_swap(a,b,c)
 #  define FAI_U32(a) __sync_fetch_and_add(a, 1)
+#  define DAF_U32(a) __sync_sub_and_fetch(a, 1)
 #else
 #  error "Unsupported Architecture"
 #endif
@@ -381,20 +401,63 @@ mctop_alloc_pin_all(mctop_alloc_t* alloc)
 int
 mctop_alloc_pin(mctop_alloc_t* alloc)
 {
-  uint hwcid = FAI_U32(&alloc->cur);
-  if (hwcid < alloc->n_hwcs)
+  __mctop_thread_info.alloc = alloc;
+  while (alloc->n_hwcs_used < alloc->n_hwcs)
     {
-      __mctop_thread_info.id = hwcid;
-      hwcid = alloc->hwcs[hwcid];
-      __mctop_thread_info.hwc_id = hwcid;
-      int ret = mctop_set_cpu(hwcid);
-      mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
-      __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
-      return ret;
+      for (uint i = 0; i < alloc->n_hwcs; i++)
+	{
+	  if (alloc->hwcs_used[i] == 0)
+	    {
+	      if (CAS_U8(&alloc->hwcs_used[i], 0, 1) == 0)
+		{
+		  uint hwcid = i;
+		  FAI_U32(&alloc->n_hwcs_used);
+		  alloc->hwcs_used[hwcid] = 1;
+		  __mctop_thread_info.id = hwcid;
+		  hwcid = alloc->hwcs[hwcid];
+		  __mctop_thread_info.hwc_id = hwcid;
+		  int ret = mctop_set_cpu(hwcid);
+		  mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+		  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
+		  return ret;
+ 		}
+	    }
+	}
     }
   return 0;
 }
 
+int
+mctop_alloc_unpin()
+{
+  mctop_alloc_t* alloc = __mctop_thread_info.alloc;
+  if (mctop_alloc_is_pinned())
+    {
+      DAF_U32(&alloc->n_hwcs_used);
+      alloc->hwcs_used[mctop_alloc_get_id()] = 0;
+      int ret = numa_sched_setaffinity(0, alloc->hwcs_all);
+      __mctop_thread_info.id = -1;
+      __asm volatile ("mfence");
+      return ret;
+    }
+  return 1;
+}
+
+void
+mctop_alloc_thread_print()
+{
+  if (mctop_alloc_is_pinned())
+    {
+      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u\n",
+	     mctop_alloc_get_id(),
+	     mctop_alloc_get_hwc_id(),
+	     mctop_alloc_get_local_node());
+    }
+  else
+    {
+      printf("[MCTOP ALLOC] NOT pinned : id --- / hwc id --- / node ---\n");
+    }
+}
 
 /* ******************************************************************************** */
 /* queries */
@@ -437,7 +500,7 @@ mctop_alloc_get_num_sockets(mctop_alloc_t* alloc)
 }
 
 inline uint
-mctop_alloc_get_nth_hw_contect(mctop_alloc_t* alloc, const uint nth)
+mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth)
 {
   return alloc->hwcs[nth];
 }
@@ -451,16 +514,28 @@ mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1
 
 /* thread ******************************************************************************** */
 
+uint
+mctop_alloc_is_pinned()
+{
+  return __mctop_thread_info.id >= 0;
+}
+
+int
+mctop_alloc_get_id()
+{
+  return __mctop_thread_info.id;
+}
+
 int
 mctop_alloc_get_hwc_id()
 {
-  assert(__mctop_thread_info.id >= 0 && "Thread is not pinned!");
+  assert(mctop_alloc_is_pinned());
   return __mctop_thread_info.hwc_id;
 }
 
 int
 mctop_alloc_get_local_node()
 {
-  assert(__mctop_thread_info.id >= 0 && "Thread is not pinned!");
+  assert(mctop_alloc_is_pinned());
   return __mctop_thread_info.local_node;
 }
