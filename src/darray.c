@@ -37,6 +37,20 @@ darray_add(darray_t* da, uintptr_t elem)
   da->array[da->n_elems++] = elem;
 }
 
+void
+darray_add_double(darray_t* da, double elem)
+{
+  if (unlikely(da->n_elems == da->size))
+    {
+      size_t size_new = DARRAY_GROW_MUL * da->size;
+      da->array = realloc_assert(da->array, size_new * sizeof(uintptr_t));
+      da->size = size_new;
+    }
+  uintptr_t* ptr = da->array + da->n_elems++;
+  double* ptrd = (double*) ptr;
+  *ptrd = elem;
+}
+
 int 
 darray_add_uniq(darray_t* da, uintptr_t elem)
 {

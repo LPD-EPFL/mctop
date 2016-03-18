@@ -344,6 +344,8 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
  *
  * n_hwcs == MCTOP_ALLOC_ALL : set n_hwcs to the # of hw contexts of the processor
  *
+ * MCTOP_ALLOC_SEQUENTIAL           : n_hwcs = total # hw contexts
+ *
  * MCTOP_ALLOC_MIN_LAT_HWCS       
  * MCTOP_ALLOC_MIN_LAT_CORES_HWCS
  * MCTOP_ALLOC_MIN_LAT_CORES        : n_hwcs = total # hw contexts / n_config = limit the # of hw contexts per socket

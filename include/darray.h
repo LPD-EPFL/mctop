@@ -33,6 +33,7 @@ void darray_free(darray_t* da);
 void darray_empty(darray_t* da);
 
 void darray_add(darray_t* da, uintptr_t elem);
+void darray_add_double(darray_t* da, double elem);
 int darray_add_uniq(darray_t* da, uintptr_t elem);
 
 int darray_exists(darray_t* da, uintptr_t elem);
@@ -52,6 +53,9 @@ int darray_iter_next(darray_iter_t* dai, uintptr_t* elem);
   for (int idx = (from); idx < (da)->n_elems; idx++)
 #define DARRAY_GET_N(da, idx)			\
   (da)->array[idx]
+
+#define DARRAY_GET_N_DOUBLE(da, idx)		\
+  *((double*) (&(da)->array[idx]))
 
 void darray_print(darray_t* da);
 

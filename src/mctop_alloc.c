@@ -144,6 +144,67 @@ mctop_socket_get_nth_hwc_id(socket_t* socket, const uint nth_hwc, const int smt_
   return hwc->id;
 }
 
+static void
+mctop_alloc_fix_max_lat_bw_proportions(mctop_alloc_t* alloc, double tot_bw)
+{
+  mctop_t* topo = alloc->topo;
+  uint max_lat = topo->latencies[topo->socket_level];
+  for (int i = 0; i < alloc->n_sockets; i++)
+    {
+      double bw = mctop_socket_get_bw_local(alloc->sockets[i]);
+      alloc->bw_proportions[i] = bw / tot_bw;
+      for (int j = i + 1; j < alloc->n_sockets; j++)
+	{
+	  uint lat = mctop_ids_get_latency(topo, alloc->sockets[i]->id, alloc->sockets[j]->id);
+	  if (lat > max_lat)
+	    {
+	      max_lat = lat;
+	    }
+	}
+    }
+
+  alloc->max_latency = max_lat;
+}
+
+static void
+mctop_alloc_prep_sequential(mctop_alloc_t* alloc)
+{
+  mctop_t* topo = alloc->topo;
+  darray_t* sockets = darray_create();
+  darray_t* bws = darray_create();
+
+  double min_bw = 1e9, tot_bw = 0;
+
+  for (uint hwc_i = 0; hwc_i < alloc->n_hwcs; hwc_i++)
+    {
+      alloc->hwcs[hwc_i] = hwc_i;
+      socket_t* socket = mctop_hwcid_get_socket(topo, hwc_i);
+      if (darray_add_uniq(sockets, (uintptr_t) socket))
+	{
+	  double bw = mctop_socket_get_bw_local(socket);
+	  tot_bw += bw;
+	  if (bw < min_bw)
+	    {
+	      min_bw = bw;
+	    }
+	}
+    }
+
+  alloc->n_sockets = darray_get_num_elems(sockets);
+  alloc->sockets = malloc_assert(alloc->n_sockets * sizeof(socket_t*));
+  alloc->bw_proportions = malloc_assert(alloc->n_sockets * sizeof(socket_t*));
+  DARRAY_FOR_EACH(sockets, i)
+    {
+      alloc->sockets[i] = (socket_t*) DARRAY_GET_N(sockets, i);
+    }
+
+  mctop_alloc_fix_max_lat_bw_proportions(alloc, tot_bw);
+  alloc->min_bandwidth = min_bw;
+
+  darray_free(sockets);
+  darray_free(bws);
+}
+
 /* smt_first < 0  : only physical cores */
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
@@ -166,20 +227,15 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
     }      
 
   uint max_lat = topo->latencies[topo->socket_level];
-  double min_bw = mctop_socket_get_bw_local(socket), tot_bw = 0;
-  darray_add(bws, (uintptr_t) min_bw);
+  double min_bw = mctop_socket_get_bw_local(socket), tot_bw = min_bw;
+  darray_add_double(bws, min_bw);
 
   uint hwc_i = 0, sibling_i = 0;
   do
     {
       darray_add(sockets, (uintptr_t) socket);
       hwc_i += mctop_socket_get_hwc_ids(socket, n_hwcs_per_socket, alloc_full + hwc_i, smt_first, 0);
-      if (hwc_i >= alloc->n_hwcs)
-	{
-	  break;
-	}
-
-      if (sibling_i >= socket_start->n_siblings)
+      if (hwc_i >= alloc->n_hwcs || sibling_i >= socket_start->n_siblings)
 	{
 	  break;
 	}
@@ -201,7 +257,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 
       double bw = socket->mem_bandwidths[socket_start->local_node];
       tot_bw += bw;
-      darray_add(bws, (uintptr_t) bw);
+      darray_add_double(bws, bw);
       if (bw < min_bw)
 	{
 	  min_bw = bw;
@@ -238,15 +294,15 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
   DARRAY_FOR_EACH(sockets, i)
     {
       alloc->sockets[i] = (socket_t*) DARRAY_GET_N(sockets, i);
-      alloc->bw_proportions[i] = ((double) DARRAY_GET_N(bws, i)) / tot_bw;
+      alloc->bw_proportions[i] = DARRAY_GET_N_DOUBLE(bws, i) / tot_bw;
     }
   darray_free(sockets);
   darray_free(bws);
 }
 
-void
+static void
 mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, int n_sockets, const int smt_first)
-{
+ {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
@@ -293,28 +349,14 @@ mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, int n_sockets, const int s
       alloc->hwcs[i] = alloc_full[i];
     }
   
-  uint max_lat = topo->latencies[topo->socket_level];
-  for (int i = 0; i < n_sockets; i++)
-    {
-      double bw = mctop_socket_get_bw_local(alloc->sockets[i]);
-      alloc->bw_proportions[i] = bw / tot_bw;
-      for (int j = i + 1; j < n_sockets; j++)
-	{
-	  uint lat = mctop_ids_get_latency(topo, alloc->sockets[i]->id, alloc->sockets[j]->id);
-	  if (lat > max_lat)
-	    {
-	      max_lat = lat;
-	    }
-	}
-    }
-
-  alloc->max_latency = max_lat;
+ 
+  mctop_alloc_fix_max_lat_bw_proportions(alloc, tot_bw);
   alloc->min_bandwidth = min_bw;
 
   free(sockets_bw);
 }
 
-void
+static void
 mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_sockets)
 {
   mctop_t* topo = alloc->topo;
@@ -362,23 +404,8 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
       alloc->hwcs[i] = alloc_full[i];
     }
   
-  uint max_lat = topo->latencies[topo->socket_level];
-  for (int i = 0; i < n_sockets; i++)
-    {
-      double bw = mctop_socket_get_bw_local(alloc->sockets[i]);
-      alloc->bw_proportions[i] = bw / tot_bw;
-      for (int j = i + 1; j < n_sockets; j++)
-	{
-	  uint lat = mctop_ids_get_latency(topo, alloc->sockets[i]->id, alloc->sockets[j]->id);
-	  if (lat > max_lat)
-	    {
-	      max_lat = lat;
-	    }
-	}
-    }
-
-  alloc->max_latency = max_lat;
-  alloc->min_bandwidth = min_bw;
+   mctop_alloc_fix_max_lat_bw_proportions(alloc, tot_bw);
+   alloc->min_bandwidth = min_bw;
 
   free(sockets_bw);
 }
@@ -419,6 +446,9 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 
   switch (policy)
     {
+    case MCTOP_ALLOC_SEQUENTIAL:
+      mctop_alloc_prep_sequential(alloc);
+      break;
     case MCTOP_ALLOC_MIN_LAT_HWCS:
       mctop_alloc_prep_min_lat(alloc, n_config, 1);
       break;
