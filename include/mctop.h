@@ -286,6 +286,7 @@ extern int mctop_set_cpu(int cpu);
 
 typedef enum 
   {
+    MCTOP_ALLOC_SEQUENTIAL,	    /* Return HWC ids 0, 1, 2, 3, ... */
     MCTOP_ALLOC_MIN_LAT_HWCS,       /* Minimize latency across used sockets. Use HWCs of same core first  */
     MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first, */
                                     /* HWCs of that socket after and then proceed to the next socket. */
@@ -306,6 +307,7 @@ typedef struct mctop_alloc
   uint n_hwcs;
   uint n_sockets;
   socket_t** sockets;
+  double* bw_proportions;
   uint max_latency;
   double min_bandwidth;
   uint* hwcs;
@@ -325,6 +327,7 @@ typedef struct mctop_thread_info
 
 __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
 { 
+  "MCTOP_ALLOC_SEQUENTIAL",
   "MCTOP_ALLOC_MIN_LAT_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES",
@@ -385,6 +388,7 @@ uint mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth);
 uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
 /* get the OS NUMA node id for the nth socket of the allocator */
 uint mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth);
+double mctop_alloc_get_nth_socket_bandwidth_proportion(mctop_alloc_t* alloc, const uint nth);
 
 uint mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1);
 
