@@ -190,7 +190,8 @@ double mctop_socket_get_bw_local(socket_t* socket);
 double mctop_socket_get_bw_local_one(socket_t* socket);
 
 /* hwcid ************************************************************************** */
-uint mctop_hwcid_get_local_node(mctop_t* topo, uint id);
+uint mctop_hwcid_get_local_node(mctop_t* topo, uint hwcid);
+socket_t* mctop_hwcid_get_socket(mctop_t* topo, uint hwcid);
 
 /* queries ************************************************************************ */
 uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -282,7 +283,6 @@ extern int mctop_set_cpu(int cpu);
 /* ******************************************************************************** */
 
 #define MCTOP_ALLOC_ALL           -1
-#define MCTOP_ALLOC_ANY           0
 
 typedef enum 
   {
@@ -291,7 +291,7 @@ typedef enum
                                     /* HWCs of that socket after and then proceed to the next socket. */
     MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
                                     /* of them have been used start using HWCs */
-    MCTOP_ALLOC_BW_BOUND,	    /*  */
+    MCTOP_ALLOC_BW_BOUND,
                   
   } mctop_alloc_policy;
 
@@ -324,6 +324,7 @@ typedef struct mctop_thread_info
   int id;
   uint hwc_id;
   uint local_node;
+  uint nth_socket;
 } mctop_thread_info_t;
 
 
@@ -342,7 +343,7 @@ uint mctop_alloc_is_pinned();
 int mctop_alloc_get_id();
 int mctop_alloc_get_hwc_id();
 int mctop_alloc_get_local_node();
-
+int mctop_alloc_get_node_seq_id();
 
 /* queries */
 mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);

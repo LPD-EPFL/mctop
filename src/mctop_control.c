@@ -168,24 +168,27 @@ mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
 {
   if (likely(topo->has_mem))
     {
-      hw_context_t* hwc = &topo->hwcs[hwcid];
       /* printf("# HWID %-3u, SOCKET %-3u, numa_set_preferred(%u)\n", */
       /* 	     hwcid, hwc->socket->id, hwc->socket->local_node); */
-      numa_set_preferred(hwc->socket->local_node);
+      numa_set_preferred(mctop_hwcid_get_local_node(topo, hwcid));
       return 1;
     }
 
   return 0;
 }
 
-
-/* hwcid ************************************************************************** */
 inline uint
 mctop_hwcid_get_local_node(mctop_t* topo, uint hwcid)
 {
-  hw_context_t* hwc = &topo->hwcs[hwcid];
-  return hwc->socket->local_node;
+  return mctop_hwcid_get_socket(topo, hwcid)->local_node;
 }
+
+inline socket_t*
+mctop_hwcid_get_socket(mctop_t* topo, uint hwcid)
+{
+  return topo->hwcs[hwcid].socket;
+}
+
 
 /* queries ************************************************************************ */
 

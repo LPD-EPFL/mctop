@@ -402,6 +402,11 @@ int
 mctop_alloc_pin(mctop_alloc_t* alloc)
 {
   __mctop_thread_info.alloc = alloc;
+  if (unlikely(mctop_alloc_is_pinned()))
+    {
+      mctop_alloc_unpin();
+    }
+
   while (alloc->n_hwcs_used < alloc->n_hwcs)
     {
       for (uint i = 0; i < alloc->n_hwcs; i++)
@@ -411,14 +416,27 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
 	      if (CAS_U8(&alloc->hwcs_used[i], 0, 1) == 0)
 		{
 		  uint hwcid = i;
+
 		  FAI_U32(&alloc->n_hwcs_used);
 		  alloc->hwcs_used[hwcid] = 1;
+
 		  __mctop_thread_info.id = hwcid;
+
 		  hwcid = alloc->hwcs[hwcid];
 		  __mctop_thread_info.hwc_id = hwcid;
+
 		  int ret = mctop_set_cpu(hwcid);
 		  mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+
 		  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
+		  socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
+		  for (int s = 0; s < alloc->n_sockets; s++)
+		    {
+		      if (alloc->sockets[s] == socket)
+			{
+			  __mctop_thread_info.nth_socket = s;
+			}
+		    }
 		  return ret;
  		}
 	    }
@@ -448,14 +466,15 @@ mctop_alloc_thread_print()
 {
   if (mctop_alloc_is_pinned())
     {
-      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u\n",
+      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u / node seq id %-3u\n",
 	     mctop_alloc_get_id(),
 	     mctop_alloc_get_hwc_id(),
-	     mctop_alloc_get_local_node());
+	     mctop_alloc_get_local_node(),
+	     mctop_alloc_get_node_seq_id());
     }
   else
     {
-      printf("[MCTOP ALLOC] NOT pinned : id --- / hwc id --- / node ---\n");
+      printf("[MCTOP ALLOC] NOT pinned : id --- / hwc id --- / node --- / node seq id ---\n");
     }
 }
 
@@ -538,4 +557,11 @@ mctop_alloc_get_local_node()
 {
   assert(mctop_alloc_is_pinned());
   return __mctop_thread_info.local_node;
+}
+
+int
+mctop_alloc_get_node_seq_id()
+{
+  assert(mctop_alloc_is_pinned());
+  return __mctop_thread_info.nth_socket;
 }
