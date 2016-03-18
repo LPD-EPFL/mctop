@@ -622,6 +622,12 @@ mctop_alloc_get_num_sockets(mctop_alloc_t* alloc)
 }
 
 inline uint
+mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth)
+{
+  return alloc->sockets[nth]->local_node;
+}
+
+inline uint
 mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth)
 {
   return alloc->hwcs[nth];
@@ -667,4 +673,20 @@ mctop_alloc_get_node_seq_id()
 {
   assert(mctop_alloc_is_pinned());
   return __mctop_thread_info.nth_socket;
+}
+
+
+/* malloc ******************************************************************************** */
+
+void*
+mctop_alloc_malloc_on_nth_socket(mctop_alloc_t* alloc, const uint nth, const size_t size)
+{
+  const uint node = mctop_alloc_get_nth_node(alloc, nth);
+  return numa_alloc_onnode(size, node);
+}
+
+void
+mctop_alloc_malloc_free(void* mem, const size_t size)
+{
+  numa_free(mem, size);
 }

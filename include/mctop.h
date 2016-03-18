@@ -379,10 +379,18 @@ uint mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc);
 const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
 double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
 uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);
-uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
 uint mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth);
 
+/* # of sockets / nodes that the allocator uses */
+uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
+/* get the OS NUMA node id for the nth socket of the allocator */
+uint mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth);
+
 uint mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1);
+
+/* allocate with libnuma on the node of the nth socket of the allocator */
+void* mctop_alloc_malloc_on_nth_socket(mctop_alloc_t* alloc, const uint nth, const size_t size);
+void mctop_alloc_malloc_free(void* mem, const size_t size);
 
 #endif	/* __H_MCTOP__ */
 
