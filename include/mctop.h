@@ -338,6 +338,9 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
 /* Alloc structs manipulation *************************************************************************************** */
 
 /* mctop_alloc_create params 
+ *
+ * n_hwcs == MCTOP_ALLOC_ALL : set n_hwcs to the # of hw contexts of the processor
+ *
  * MCTOP_ALLOC_MIN_LAT_HWCS       
  * MCTOP_ALLOC_MIN_LAT_CORES_HWCS
  * MCTOP_ALLOC_MIN_LAT_CORES        : n_hwcs = total # hw contexts / n_config = limit the # of hw contexts per socket
@@ -349,7 +352,7 @@ __attribute__((unused)) static const char* mctop_alloc_policy_desc[] =
  * MCTOP_ALLOC_BW_BOUND             : n_hwcs = how many extra hw contexts to allocate per socket
  *                                    n_config = how many sockets to use
  */
-mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy);
+mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy);
 void mctop_alloc_free(mctop_alloc_t* alloc);
 void mctop_alloc_print(mctop_alloc_t* alloc);
 

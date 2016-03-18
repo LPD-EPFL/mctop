@@ -9,7 +9,7 @@ main(int argc, char **argv)
 {
   char mct_file[100];
   uint manual_file = 0;
-  uint test_num_threads = 2;
+  int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = 0;
   uint test_run_pin = 0;

@@ -238,7 +238,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 }
 
 void
-mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, const uint n_hwcs, int n_sockets, const int smt_first)
+mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, int n_sockets, const int smt_first)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
@@ -369,15 +369,9 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
 }
 
 mctop_alloc_t*
-mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_alloc_policy policy)
+mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
 {
   mctop_alloc_t* alloc = malloc_assert(sizeof(mctop_alloc_t));
-  if (policy <= MCTOP_ALLOC_BW_ROUND_ROBIN_CORES)
-    {
-      alloc->hwcs = malloc_assert(n_hwcs * sizeof(uint));
-      alloc->hwcs_used = calloc_assert(n_hwcs, sizeof(uint8_t));
-    }
-
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
   alloc->n_hwcs_used = 0;
@@ -387,6 +381,17 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
 	      n_hwcs, topo->n_hwcs);
       alloc->n_hwcs = topo->n_hwcs;
     }
+  else if (n_hwcs < 0)
+    {
+      alloc->n_hwcs = topo->n_hwcs;
+    }
+
+  if (policy <= MCTOP_ALLOC_BW_ROUND_ROBIN_CORES)
+    {
+      alloc->hwcs = malloc_assert(alloc->n_hwcs * sizeof(uint));
+      alloc->hwcs_used = calloc_assert(alloc->n_hwcs, sizeof(uint8_t));
+    }
+
   alloc->policy = policy;
 
   alloc->hwcs_all = numa_bitmask_alloc(topo->n_hwcs);
@@ -407,13 +412,13 @@ mctop_alloc_create(mctop_t* topo, const uint n_hwcs, const int n_config, mctop_a
       mctop_alloc_prep_min_lat(alloc, n_config, -1);
       break;
     case MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS:
-      mctop_alloc_prep_bw_round_robin(alloc, n_hwcs, n_config, 1);
+      mctop_alloc_prep_bw_round_robin(alloc, n_config, 1);
       break;
     case MCTOP_ALLOC_BW_ROUND_ROBIN_CORES:
-      mctop_alloc_prep_bw_round_robin(alloc, n_hwcs, n_config, 0);
+      mctop_alloc_prep_bw_round_robin(alloc, n_config, 0);
       break;
     case MCTOP_ALLOC_BW_BOUND:
-      mctop_alloc_prep_bw_bound(alloc, n_hwcs, n_config);
+      mctop_alloc_prep_bw_bound(alloc, alloc->n_hwcs, n_config);
       break;
     }
   return alloc;
