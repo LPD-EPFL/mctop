@@ -66,8 +66,10 @@ typedef struct mctop
   struct hw_context* hwcs;	/* pointers to hwcs */
   uint n_siblings;		/* total number of sibling relationships */
   struct sibling** siblings;	/* pointers to sibling relationships */
-  double* mem_bandwidths;	/* Mem. bandwidth of each socket, maximum */
-  double* mem_bandwidths1;	/* Mem. bandwidth of each socket, single threaded */
+  double* mem_bandwidths_r;	/* Read mem. bandwidth of each socket, maximum */
+  double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
+  double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
+  double* mem_bandwidths1_w;	/* Write mem. bandwidth of each socket, single threaded */
 } mctop_t;
 
 typedef struct hwc_gs		/* group / socket */
@@ -92,8 +94,10 @@ typedef struct hwc_gs		/* group / socket */
   uint local_node;		/* local NUMA mem. node */
   uint n_nodes;			/* num of nodes = topo->n_sockets */
   uint* mem_latencies;		/* mem. latencies to NUMA nodes */
-  double* mem_bandwidths;	/* mem. bandwidths to NUMA nodes, maximum */
-  double* mem_bandwidths1;	/* mem. bandwidths to NUMA nodes, single threaded */
+  double* mem_bandwidths_r;	/* Read mem. bandwidth of each socket, maximum */
+  double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
+  double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
+  double* mem_bandwidths1_w;	/* Write mem. bandwidth of each socket, single threaded */
 } hwc_gs_t;
 
 typedef struct sibling
@@ -159,7 +163,7 @@ mctop_t* mctop_construct(uint64_t** lat_table_norm, const size_t N,
 			   cdf_cluster_t* cc, const int is_smt);
 mctop_t* mctop_load(const char* mct_file);
 void mctop_free(mctop_t* topo);
-void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_table, double** mem_bw_table1);
+void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_r, double** mem_bw_r1, double** mem_bw_w, double** mem_bw_w1);
 void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
 void mctop_print(mctop_t* topo);
 void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);

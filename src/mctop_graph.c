@@ -258,7 +258,7 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		  if (topo->has_mem == BANDWIDTH)
 		    {
 		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-			     i, socket->id, socket->id, socket->id, socket->mem_bandwidths[i]);
+			     i, socket->id, socket->id, socket->id, socket->mem_bandwidths_r[i]);
 		    }
 		  else
 		    {
@@ -271,7 +271,7 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		  if (topo->has_mem == BANDWIDTH)
 		    {
 		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-			     i, socket->id, socket->children[0]->id, socket->id, socket->mem_bandwidths[i]);
+			     i, socket->id, socket->children[0]->id, socket->id, socket->mem_bandwidths_r[i]);
 		    }
 		  else
 		    {
@@ -330,7 +330,7 @@ mctop_dot_graph_cross_socket_plot(mctop_t* topo, const uint max_cross_socket_lvl
 		{
 		  if (topo->has_mem == BANDWIDTH)
 		    {
-		      double bw = sibling->left->mem_bandwidths[sibling->right->local_node];
+		      double bw = sibling->left->mem_bandwidths_r[sibling->right->local_node];
 		      dot_gss_link_bw(ofp, 1, sibling->left->id, sibling->right->id, sibling->latency, bw);
 		    }
 		  else
@@ -354,7 +354,7 @@ mctop_dot_graph_cross_socket_plot(mctop_t* topo, const uint max_cross_socket_lvl
       for (int i = 0; i < topo->n_sockets; i++)
 	{
 	  socket_t* socket = &topo->sockets[i];
-	  dot_gs_link_only_bw(ofp, 1, socket->id, socket->mem_bandwidths[socket->local_node]);
+	  dot_gs_link_only_bw(ofp, 1, socket->id, socket->mem_bandwidths_r[socket->local_node]);
 	}
     }
 #endif	/* MCTOP_GRAPH_BW_SELF == 1 */

@@ -214,8 +214,8 @@ mctop_free(mctop_t* topo)
 	}
       if (topo->has_mem == BANDWIDTH)
 	{
-	  free(socket->mem_bandwidths);
-	  free(socket->mem_bandwidths1);
+	  free(socket->mem_bandwidths_r);
+	  free(socket->mem_bandwidths1_r);
 	}
     }
 
@@ -232,8 +232,10 @@ mctop_free(mctop_t* topo)
       free(topo->node_to_socket);
       if (topo->has_mem == BANDWIDTH)
 	{
-	  free(topo->mem_bandwidths);
-	  free(topo->mem_bandwidths1);
+	  free(topo->mem_bandwidths_r);
+	  free(topo->mem_bandwidths1_r);
+	  free(topo->mem_bandwidths_w);
+	  free(topo->mem_bandwidths1_w);
 	}
     }
   free(topo);
@@ -312,27 +314,29 @@ mctop_print(mctop_t* topo)
       /* mem. bandwidht */
       if (topo->has_mem == BANDWIDTH && l == topo->socket_level)
 	{
-	  printf(PD_2"          Memory bandwidths - max (GB/s)\n");
+	  printf(PD_2"          Memory bandwidths (Read / Write) - max (GB/s)\n");
 	  hwc_gs_t* gs = mctop_get_first_gs_at_lvl(topo, l);
 	  while (gs != NULL)
 	    {
 	      printf(PD_2" " MCTOP_ID_PRINTER "   ", MCTOP_ID_PRINT(gs->id));
 	      for (int n = 0; n < gs->n_nodes; n++)
 		{
-		  printf("%6.2f%s ", gs->mem_bandwidths[n], (gs->local_node == n) ? "*" : " ");
+		  printf("%6.2f /%6.2f%s ",
+			 gs->mem_bandwidths_r[n], gs->mem_bandwidths_w[n], (gs->local_node == n) ? "*" : " ");
 		}
 	      printf("\n");
 	      gs = gs->next;
 	    }
 
-	  printf(PD_2"          Memory bandwidths - single thread (GB/s)\n");
+	  printf(PD_2"          Memory bandwidths (Read / Write) - single thread (GB/s)\n");
 	  gs = mctop_get_first_gs_at_lvl(topo, l);
 	  while (gs != NULL)
 	    {
 	      printf(PD_2" " MCTOP_ID_PRINTER "   ", MCTOP_ID_PRINT(gs->id));
 	      for (int n = 0; n < gs->n_nodes; n++)
 		{
-		  printf("%6.2f%s ", gs->mem_bandwidths1[n], (gs->local_node == n) ? "*" : " ");
+		  printf("%6.2f /%6.2f%s ",
+			 gs->mem_bandwidths1_r[n], gs->mem_bandwidths1_w[n], (gs->local_node == n) ? "*" : " ");
 		}
 	      printf("\n");
 	      gs = gs->next;
@@ -799,23 +803,34 @@ mctop_fix_n_hwcs_per_core_smt(mctop_t* topo)
 }
 
 void 
-mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_table, double** mem_bw_table1)
+mctop_mem_bandwidth_add(mctop_t* topo,
+			double** mem_bw_table_r, double** mem_bw_table1_r,
+			double** mem_bw_table_w, double** mem_bw_table1_w)
 {
   topo->has_mem = BANDWIDTH;
-  topo->mem_bandwidths = malloc_assert(topo->n_sockets * sizeof(double));
-  topo->mem_bandwidths1 = malloc_assert(topo->n_sockets * sizeof(double));
+  topo->mem_bandwidths_r = malloc_assert(topo->n_sockets * sizeof(double));
+  topo->mem_bandwidths1_r = malloc_assert(topo->n_sockets * sizeof(double));
+  topo->mem_bandwidths_w = malloc_assert(topo->n_sockets * sizeof(double));
+  topo->mem_bandwidths1_w = malloc_assert(topo->n_sockets * sizeof(double));
+
   for (int s = 0; s < topo->n_sockets; s++)
     {
       socket_t* socket = topo->sockets + s;
-      socket->mem_bandwidths = malloc_assert(socket->n_nodes * sizeof(double));
-      socket->mem_bandwidths1 = malloc_assert(socket->n_nodes * sizeof(double));
+      socket->mem_bandwidths_r = malloc_assert(socket->n_nodes * sizeof(double));
+      socket->mem_bandwidths1_r = malloc_assert(socket->n_nodes * sizeof(double));
+      socket->mem_bandwidths_w = malloc_assert(socket->n_nodes * sizeof(double));
+      socket->mem_bandwidths1_w = malloc_assert(socket->n_nodes * sizeof(double));
       for (int n = 0; n < socket->n_nodes; n++)
 	{
-	  socket->mem_bandwidths[n] = mem_bw_table[s][n];
-	  socket->mem_bandwidths1[n] = mem_bw_table1[s][n];
+	  socket->mem_bandwidths_r[n] = mem_bw_table_r[s][n];
+	  socket->mem_bandwidths1_r[n] = mem_bw_table1_r[s][n];
+	  socket->mem_bandwidths_w[n] = mem_bw_table_w[s][n];
+	  socket->mem_bandwidths1_w[n] = mem_bw_table1_w[s][n];
 	}
-      topo->mem_bandwidths[s] = socket->mem_bandwidths[socket->local_node];
-      topo->mem_bandwidths1[s] = socket->mem_bandwidths1[socket->local_node];
+      topo->mem_bandwidths_r[s] = socket->mem_bandwidths_r[socket->local_node];
+      topo->mem_bandwidths1_r[s] = socket->mem_bandwidths1_r[socket->local_node];
+      topo->mem_bandwidths_w[s] = socket->mem_bandwidths_w[socket->local_node];
+      topo->mem_bandwidths1_w[s] = socket->mem_bandwidths1_w[socket->local_node];
     }
 
   mctop_fix_siblings_by_bandwidth(topo);
@@ -824,7 +839,7 @@ mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_table, double** mem_bw_ta
 static double
 mctop_socket_get_bw_to(socket_t* from, socket_t* to)
 {
-  return from->mem_bandwidths[to->local_node];
+  return from->mem_bandwidths_r[to->local_node];
 }
 
 static void

@@ -32,14 +32,14 @@ ticks* lat_table = NULL;
 ticks** mem_lat_table = NULL;
 volatile uint64_t** node_mem;
 int test_mem_on_demand = 0;
-double** mem_bw_table;
-double** mem_bw_table1;		/* single-threaded */
+double** mem_bw_table_r, ** mem_bw_table_w;
+double** mem_bw_table1_r, ** mem_bw_table1_w; /* single-threaded */
 
 /* variables set by worker threads */
 cache_line_t* test_cache_line = NULL;
 volatile int high_stdev_retry = 0;
 volatile uint32_t mem_bw_barrier = 0;
-volatile double* mem_bw_gbps;
+volatile double* mem_bw_gbps_r, * mem_bw_gbps_w;
 
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
@@ -49,8 +49,8 @@ static void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint 
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
-void print_mem_bw_tables(double** mem_bw_t, double** mem_bw_t1, size_t n_sockets, test_format_t test_format, const char* hostname);
-
+void print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock,
+			 const char* rw, test_format_t test_format, const char* hn);
 ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluster_t* cc);
 void mctop_mem_latencies_calc(struct mctop* topo, uint64_t** mem_lat_table);
 
@@ -401,22 +401,43 @@ mini_barrier(volatile uint32_t* b, const uint n)
     }
 }
 
+enum
+  {
+    BW_READ,
+    BW_WRITE,
+  };
+
 double
-mem_bw_estimate(volatile cache_line_t** mem, const uint n_streams, const size_t n, const size_t reps)
+mem_bw_estimate(volatile cache_line_t** mem, const uint do_read, const size_t n, const size_t reps)
 {
-  volatile cache_line_t* m0, *m1;
-  m0 = mem[0];
-  m1 = mem[1];
-  volatile size_t sum[n_streams];
+  const uint n_streams = 2;
+  volatile uint64_t* m0, * m1;
+  m0 = (uint64_t*) mem[0];
+  m1 = (uint64_t*) mem[1];
+  volatile size_t sum[n_streams], suma = 0;
 
   struct timespec start, stop;
   clock_gettime(CLOCK_REALTIME, &start);
-  for (uint r = 0; r < reps; r++)
+  if (do_read == BW_READ)
     {
-      for (size_t i = 0; i < n; i++)
+      for (uint r = 0; r < reps; r++)
 	{
-	  sum[0] = m0[i].word[0];
-	  sum[1] = m1[i].word[0];
+	  for (size_t i = 0; i < n; i++)
+	    {
+	      sum[0] = m0[i];
+	      sum[1] = m1[i];
+	    }
+	}
+    }
+  else if (do_read == BW_WRITE)
+    {
+      for (uint r = 0; r < reps; r++)
+	{
+	  for (size_t i = 0; i < n; i++)
+	    {
+	      m0[i] = 0xAAAAFFFF;
+	      m1[i] = 0xFFFFAAAA;
+	    }
 	}
     }
   clock_gettime(CLOCK_REALTIME, &stop);
@@ -424,10 +445,10 @@ mem_bw_estimate(volatile cache_line_t** mem, const uint n_streams, const size_t 
   double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
   if (dur_s == 9)
     {
-      printf("%p%zu%p%zu", m0, sum[0], m1, sum[1]);
+      printf("%p%zu%p%zu%zu", m0, sum[0], m1, sum[1], suma);
     }
 
-  double bw = (n_streams * reps * n * sizeof(cache_line_t)) / (1e9 * dur_s);
+  double bw = (n_streams * reps * n * sizeof(uint64_t)) / (1e9 * dur_s);
   return bw;
 }
 
@@ -439,11 +460,12 @@ mem_bandwidth(void* param)
   const uint n_threads = tld->n_threads;
   pthread_barrier_t* barrier = tld->barrier;
   mctop_t* topo = tld->topo;
-  const uint n_cls = test_mem_bw_size / sizeof(cache_line_t);
+  const uint n_u64 = test_mem_bw_size / sizeof(uint64_t);
 
   volatile cache_line_t** mem_bw = malloc_assert(test_mem_bw_num_streams * sizeof(cache_line_t*));
 
-  ID0_DO(mem_bw_gbps = (double*) malloc_assert(n_threads * sizeof(double)));
+  ID0_DO(mem_bw_gbps_r = (double*) malloc_assert(n_threads * sizeof(double));
+	 mem_bw_gbps_w = (double*) malloc_assert(n_threads * sizeof(double)));
 
   double progress_step = 100.0 / (topo->n_sockets * topo->n_sockets);
   uint progress = 0;
@@ -470,8 +492,10 @@ mem_bandwidth(void* param)
 	  if (tid == 0)
 	    {
 	      dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
-	      double bw_gbps = mem_bw_estimate(mem_bw, test_mem_bw_num_streams, n_cls, test_mem_bw_num_reps);
-	      mem_bw_table1[n][mem_on] = bw_gbps;
+	      double bw_gbps_r = mem_bw_estimate(mem_bw, BW_READ, n_u64, test_mem_bw_num_reps);
+	      mem_bw_table1_r[n][mem_on] = bw_gbps_r;
+	      double bw_gbps_w = mem_bw_estimate(mem_bw, BW_WRITE, n_u64, test_mem_bw_num_reps);
+	      mem_bw_table1_w[n][mem_on] = bw_gbps_w;
 	    }
 	  pthread_barrier_wait(barrier);
 
@@ -479,8 +503,10 @@ mem_bandwidth(void* param)
 	  dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
 	  mini_barrier(&mem_bw_barrier, n_threads);
 
-	  double bw_gbps = mem_bw_estimate(mem_bw, test_mem_bw_num_streams, n_cls, test_mem_bw_num_reps);
-	  mem_bw_gbps[tid] = bw_gbps;
+	  double bw_gbps_r = mem_bw_estimate(mem_bw, BW_READ, n_u64, test_mem_bw_num_reps);
+	  mem_bw_gbps_r[tid] = bw_gbps_r;
+	  double bw_gbps_w = mem_bw_estimate(mem_bw, BW_WRITE, n_u64, test_mem_bw_num_reps);
+	  mem_bw_gbps_w[tid] = bw_gbps_w;
 
 	  pthread_barrier_wait(barrier);
 
@@ -492,21 +518,36 @@ mem_bandwidth(void* param)
 	  if (tid == 0)
 	    {
 	      mem_bw_barrier = 0;
-	      double tot_bw = 0;
-	      VERBOSE(printf("   BW ("););
+	      double tot_bw_r = 0, tot_bw_w = 0;
+	      VERBOSE(printf("   READ  BW ("););
 	      for (int i = 0; i < n_threads; i++)
 		{
-		  VERBOSE(printf("+%2.2f", mem_bw_gbps[i]););
-		  tot_bw += mem_bw_gbps[i];
+		  VERBOSE(printf("+%2.2f", mem_bw_gbps_r[i]););
+		  tot_bw_r += mem_bw_gbps_r[i];
 		}
-	      VERBOSE(printf(") = %f GB/s\n", tot_bw););
-	      mem_bw_table[n][mem_on] = tot_bw;
+	      VERBOSE(printf(") = %f GB/s\n", tot_bw_r););
+	      mem_bw_table_r[n][mem_on] = tot_bw_r;
+
+	      VERBOSE(printf("   WRITE BW ("););
+	      for (int i = 0; i < n_threads; i++)
+		{
+		  VERBOSE(printf("+%2.2f", mem_bw_gbps_w[i]););
+		  tot_bw_w += mem_bw_gbps_w[i];
+		}
+	      VERBOSE(printf(") = %f GB/s\n", tot_bw_w););
+	      mem_bw_table_w[n][mem_on] = tot_bw_w;
+
 	      NOT_VERBOSE(printf("\r# Progress : %6.1f%%", ++progress * progress_step); fflush(stdout););
 	    }
 	}
     }
 
-  ID0_DO(NOT_VERBOSE(printf("\n");););
+  if (tid == 0)
+    {
+      NOT_VERBOSE(printf("\n"););
+      free((void*) mem_bw_gbps_r);
+      free((void*) mem_bw_gbps_w);
+    }
   return NULL;
 }
 
@@ -892,8 +933,10 @@ main(int argc, char **argv)
     {
       if (!mctop_has_mem_bw(topo))
 	{
-	  mem_bw_table = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
-	  mem_bw_table1 = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  mem_bw_table_r = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  mem_bw_table1_r = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  mem_bw_table_w = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
+	  mem_bw_table1_w = (double**) table_malloc(test_num_sockets, test_num_sockets, sizeof(double));
 	  uint test_num_mem_bw_threads = mctop_get_num_cores_per_socket(topo);
 	  printf("## Calculating memory bw on topology using %u cores\n", test_num_mem_bw_threads);
 	  pthread_t threads_mem_bw[test_num_mem_bw_threads];
@@ -928,11 +971,14 @@ main(int argc, char **argv)
 	  free(tds_mem_bw);
 	  free(barrier_mem_bw);
 
-	  mctop_mem_bandwidth_add(topo, mem_bw_table, mem_bw_table1);
-	  print_mem_bw_tables(mem_bw_table, mem_bw_table1, test_num_sockets, test_format, hostname);
+	  mctop_mem_bandwidth_add(topo, mem_bw_table_r, mem_bw_table1_r, mem_bw_table_w, mem_bw_table1_w);
+	  print_mem_bw_tables(mem_bw_table_r, mem_bw_table1_r, test_num_sockets, "READ", test_format, hostname);
+	  print_mem_bw_tables(mem_bw_table_w, mem_bw_table1_w, test_num_sockets, "WRITE", test_format, hostname);
 
-	  table_free((void**) mem_bw_table, test_num_sockets);
-	  table_free((void**) mem_bw_table1, test_num_sockets);
+	  table_free((void**) mem_bw_table_r, test_num_sockets);
+	  table_free((void**) mem_bw_table1_r, test_num_sockets);
+	  table_free((void**) mem_bw_table_w, test_num_sockets);
+	  table_free((void**) mem_bw_table1_w, test_num_sockets);
 	}
       else
 	{
@@ -1151,11 +1197,11 @@ print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_form
 
 void
 print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sockets,
-		    test_format_t test_format, const char* hostname)
+		    const char* rw, test_format_t test_format, const char* hostname)
 {
   if (test_format != NONE)
     {
-      printf("## Mem. bw table #########################################################\n");
+      printf("## Mem. bw table (%-6s)###################################################\n", rw);
     }
   switch (test_format)
     {
@@ -1205,7 +1251,7 @@ print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock
 	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
 	    ofp = stderr;
 	  }
-	fprintf(ofp, "#Mem_bw %zu\n", n_sockets);
+	fprintf(ofp, "#Mem_bw-%s %zu\n", rw, n_sockets);
 	for (int x = 0; x < n_sockets; x++)
 	  {
 	    for (int y = 0; y < n_sockets; y++)
@@ -1213,7 +1259,7 @@ print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock
 		fprintf(ofp, "%-4d %-4d %f\n", x, y, mem_bw_table[x][y]);
 	      }
 	  }
-	fprintf(ofp, "#Mem_bw1 %zu\n", n_sockets);
+	fprintf(ofp, "#Mem_bw1-%s %zu\n", rw, n_sockets);
 	for (int x = 0; x < n_sockets; x++)
 	  {
 	    for (int y = 0; y < n_sockets; y++)

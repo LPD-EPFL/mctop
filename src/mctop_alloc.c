@@ -215,7 +215,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
-  uint socket_i = mctop_find_double_max(topo->mem_bandwidths, topo->n_sockets);
+  uint socket_i = mctop_find_double_max(topo->mem_bandwidths_r, topo->n_sockets);
   socket_t* socket = &topo->sockets[socket_i];
   socket_t* socket_start = socket;
   darray_t* sockets = darray_create();
@@ -255,7 +255,7 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 	  max_lat = lat;
 	}
 
-      double bw = socket->mem_bandwidths[socket_start->local_node];
+      double bw = socket->mem_bandwidths_r[socket_start->local_node];
       tot_bw += bw;
       darray_add_double(bws, bw);
       if (bw < min_bw)
@@ -306,7 +306,7 @@ mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, int n_sockets, const int s
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
-  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths, topo->n_sockets);
+  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths_r, topo->n_sockets);
   if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets <= 0)
     {
       n_sockets = topo->n_sockets;
@@ -362,7 +362,7 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
 
-  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths, topo->n_sockets);
+  uint* sockets_bw = mctop_sort_double_index(topo->mem_bandwidths_r, topo->n_sockets);
   if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets <= 0)
     {
       n_sockets = topo->n_sockets;
