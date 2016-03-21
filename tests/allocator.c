@@ -12,7 +12,7 @@ main(int argc, char **argv)
   int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = 0;
-  uint test_run_pin = 0;
+  uint test_run_pin = 1;
 
   struct option long_options[] = 
     {

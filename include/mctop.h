@@ -286,6 +286,7 @@ extern int mctop_set_cpu(int cpu);
 
 typedef enum 
   {
+    MCTOP_ALLOC_NONE,		    /* Do not pin anything! */
     MCTOP_ALLOC_SEQUENTIAL,	    /* Return HWC ids 0, 1, 2, 3, ... */
     MCTOP_ALLOC_MIN_LAT_HWCS,       /* Minimize latency across used sockets. Use HWCs of same core first  */
     MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first, */
@@ -327,6 +328,7 @@ typedef struct mctop_thread_info
 
 __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
 { 
+  "MCTOP_ALLOC_NONE",
   "MCTOP_ALLOC_SEQUENTIAL",
   "MCTOP_ALLOC_MIN_LAT_HWCS",
   "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",

@@ -446,6 +446,13 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 
   switch (policy)
     {
+    case MCTOP_ALLOC_NONE:
+      alloc->n_hwcs_used = alloc->n_hwcs + 1;
+      alloc->n_sockets = 0;
+      alloc->sockets = NULL;
+      alloc->max_latency = 0;
+      alloc->min_bandwidth = 0;
+      break;
     case MCTOP_ALLOC_SEQUENTIAL:
       mctop_alloc_prep_sequential(alloc);
       break;
@@ -494,7 +501,14 @@ mctop_alloc_print(mctop_alloc_t* alloc)
   printf("## HW Contexts (%-3u) : ", alloc->n_hwcs);
   for (int i = 0; i < alloc->n_hwcs; i++)
     {
+      if (unlikely(alloc->policy == MCTOP_ALLOC_NONE))
+	{
+	  printf("? ");
+	}
+      else
+	{
       printf("%u ", alloc->hwcs[i]);
+	}
     }
   printf("\n");
   printf("## Max latency       : %-5u cycles\n", alloc->max_latency);
@@ -507,7 +521,10 @@ mctop_alloc_free(mctop_alloc_t* alloc)
   free(alloc->hwcs);
   free((void*) alloc->hwcs_used);
   free(alloc->hwcs_all);
-  free(alloc->sockets);
+  if (alloc->sockets != NULL)
+    {
+      free(alloc->sockets);
+    }
   if (alloc->bw_proportions != NULL)
     {
       free(alloc->bw_proportions);
