@@ -561,6 +561,17 @@ static __thread mctop_thread_info_t __mctop_thread_info = { .id = -1 };
 #  error "Unsupported Architecture"
 #endif
 
+
+int
+mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth)
+{
+  if (unlikely(nth >= alloc->n_sockets))
+    {
+      return 0;
+    }
+  return mctop_run_on_socket_ref(alloc->sockets[nth], 1);
+}
+
 /* pin to ALL hw contexts contained in alloc */
 int
 mctop_alloc_pin_all(mctop_alloc_t* alloc)
