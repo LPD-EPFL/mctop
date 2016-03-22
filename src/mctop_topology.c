@@ -375,8 +375,8 @@ mctop_infer_clustering(uint64_t** lat_table_norm, const size_t N)
 
   int n_clusters = darray_get_num_elems(clusters);
   darray_sort(clusters);
-  printf("## Detected %2d clusters: ", n_clusters);
-  darray_print(clusters);
+  //printf("## Detected %2d clusters: ", n_clusters);
+  /* darray_print(clusters); */
 
   cdf_cluster_t* cc = cdf_cluster_create_empty(n_clusters);
   cc->n_clusters = n_clusters;

@@ -307,7 +307,7 @@ mctop_ids_get_latency(mctop_t* topo, const uint id0, const uint id1)
 
 /* pining ************************************************************************ */
 
-static int
+int
 mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem)
 {
   int ret = 0;
