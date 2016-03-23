@@ -1,7 +1,8 @@
 #include <mctop.h>
 #include <darray.h>
 
-#define MA_DP printf
+/* #define MA_DP(args...) printf(args) */
+#define MA_DP(args...) //printf(args)
 
 const double mctop_bw_sensitivity = 1.05;
 
@@ -423,7 +424,7 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 	      n_hwcs, topo->n_hwcs);
       alloc->n_hwcs = topo->n_hwcs;
     }
-  else if (n_hwcs < 0)
+  else if (n_hwcs <= 0)
     {
       alloc->n_hwcs = topo->n_hwcs;
     }
@@ -447,7 +448,6 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
   switch (policy)
     {
     case MCTOP_ALLOC_NONE:
-      alloc->n_hwcs_used = alloc->n_hwcs + 1;
       alloc->n_sockets = 0;
       alloc->sockets = NULL;
       alloc->max_latency = 0;
@@ -516,6 +516,18 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 }
 
 void
+mctop_alloc_print_short(mctop_alloc_t* alloc)
+{
+  printf("%s | Sockets (%u): ",
+	 mctop_alloc_policy_desc[alloc->policy], alloc->n_sockets);
+  for (int i = 0; i < alloc->n_sockets; i++)
+    {
+      printf("%u ", alloc->sockets[i]->id);
+    }
+  printf("| #Contexts %u\n", alloc->n_hwcs);
+}
+
+void
 mctop_alloc_free(mctop_alloc_t* alloc)
 {
   free(alloc->hwcs);
@@ -537,7 +549,7 @@ mctop_alloc_free(mctop_alloc_t* alloc)
 /* pinning */
 /* ******************************************************************************** */
 
-static __thread mctop_thread_info_t __mctop_thread_info = { .id = -1 };
+static __thread mctop_thread_info_t __mctop_thread_info = { .is_pinned = 0, .id = -1 };
 
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
@@ -598,6 +610,15 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
       mctop_alloc_unpin();
     }
 
+  if (unlikely(alloc->policy == MCTOP_ALLOC_NONE))
+    {
+      if (__mctop_thread_info.id < 0)
+	{
+	  __mctop_thread_info.id = FAI_U32(&alloc->n_hwcs_used);
+	  return 0;
+	}
+    }
+
   while (alloc->n_hwcs_used < alloc->n_hwcs)
     {
       for (uint i = 0; i < alloc->n_hwcs; i++)
@@ -608,9 +629,11 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
 		{
 		  uint hwcid = i;
 
+
 		  FAI_U32(&alloc->n_hwcs_used);
 		  alloc->hwcs_used[hwcid] = 1;
 
+		  __mctop_thread_info.is_pinned = 1;
 		  __mctop_thread_info.id = hwcid;
 
 		  hwcid = alloc->hwcs[hwcid];
@@ -645,7 +668,7 @@ mctop_alloc_unpin()
       DAF_U32(&alloc->n_hwcs_used);
       alloc->hwcs_used[mctop_alloc_get_id()] = 0;
       int ret = numa_sched_setaffinity(0, alloc->hwcs_all);
-      __mctop_thread_info.id = -1;
+      __mctop_thread_info.is_pinned = 0;
       __asm volatile ("mfence");
       return ret;
     }
@@ -665,7 +688,8 @@ mctop_alloc_thread_print()
     }
   else
     {
-      printf("[MCTOP ALLOC] NOT pinned : id --- / hwc id --- / node --- / node seq id ---\n");
+      printf("[MCTOP ALLOC] NOT pinned : id %-3d / hwc id --- / node --- / node seq id ---\n",
+	     mctop_alloc_get_id());
     }
 }
 
@@ -739,7 +763,7 @@ mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1
 uint
 mctop_alloc_is_pinned()
 {
-  return __mctop_thread_info.id >= 0;
+  return __mctop_thread_info.is_pinned;
 }
 
 int
@@ -784,3 +808,4 @@ mctop_alloc_malloc_free(void* mem, const size_t size)
 {
   numa_free(mem, size);
 }
+
