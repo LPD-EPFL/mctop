@@ -79,6 +79,7 @@ main(int argc, char **argv)
 
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       mctop_alloc_print(alloc);
+      mctop_alloc_print_short(alloc);
 
 
       if (test_run_pin)

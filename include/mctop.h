@@ -331,6 +331,7 @@ extern "C" {
   typedef struct mctop_thread_info
   {
     mctop_alloc_t* alloc;
+    uint is_pinned;
     int id;
     uint hwc_id;
     uint local_node;
@@ -373,6 +374,7 @@ extern "C" {
   mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy);
   void mctop_alloc_free(mctop_alloc_t* alloc);
   void mctop_alloc_print(mctop_alloc_t* alloc);
+  void mctop_alloc_print_short(mctop_alloc_t* alloc);
 
 
   /* Thread functions ************************************************************************************************** */
