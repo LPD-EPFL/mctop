@@ -4,6 +4,17 @@
 /* #define MA_DP(args...) printf(args) */
 #define MA_DP(args...) //printf(args)
 
+void
+mctop_alloc_help()
+{
+  printf("## MCTOP Allocator available polices:\n");
+  for (int i = 0; i < MCTOP_ALLOC_NUM; i++)
+    {
+      printf("%-2d - %s\n", i, mctop_alloc_policy_desc[i]);
+    }
+}
+
+
 const double mctop_bw_sensitivity = 1.05;
 
 static int
@@ -210,8 +221,9 @@ mctop_alloc_prep_sequential(mctop_alloc_t* alloc)
 /* smt_first = 0  : physical cores first */
 /* smt_first > 0  : all smt thread of a core first */
 /* n_hwcs_per_socket == MCTOP_ALLOC_ALL : all per-socket according to policy*/
+/* balance : balance or not the threads on sockets, overrides n_hwcs_per_socket */
 static void
-mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_first)
+mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_first, const uint balance)
 {
   mctop_t* topo = alloc->topo;
   uint alloc_full[topo->n_hwcs];
@@ -225,7 +237,20 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
   if (n_hwcs_per_socket == MCTOP_ALLOC_ALL || n_hwcs_per_socket > socket->n_hwcs || n_hwcs_per_socket <= 0)
     {
       n_hwcs_per_socket = socket->n_hwcs;
-    }      
+    }
+
+  if (balance)
+    {
+      uint n_hwcs_avail = socket->n_hwcs;
+      if (smt_first < 0)
+	{
+	  n_hwcs_avail /= topo->n_hwcs_per_core;
+	}
+      uint n_sockets = (alloc->n_hwcs / n_hwcs_avail) + ((alloc->n_hwcs % n_hwcs_avail) > 0);
+      n_hwcs_per_socket = (alloc->n_hwcs / n_sockets) + ((alloc->n_hwcs % n_sockets) > 0);
+      /* printf("Balancing! %u hwcs, %u hwcs avail per socket -- Need #Sockets: %u, Put %u per socket\n", */
+      /* 	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket); */
+    }
 
   uint max_lat = topo->latencies[topo->socket_level];
   double min_bw = mctop_socket_get_bw_local(socket), tot_bw = min_bw;
@@ -457,13 +482,19 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
       mctop_alloc_prep_sequential(alloc);
       break;
     case MCTOP_ALLOC_MIN_LAT_HWCS:
-      mctop_alloc_prep_min_lat(alloc, n_config, 1);
+      mctop_alloc_prep_min_lat(alloc, n_config, 1, 0);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES_HWCS:
-      mctop_alloc_prep_min_lat(alloc, n_config, 0);
+      mctop_alloc_prep_min_lat(alloc, n_config, 0, 0);
       break;
     case MCTOP_ALLOC_MIN_LAT_CORES:
-      mctop_alloc_prep_min_lat(alloc, n_config, -1);
+      mctop_alloc_prep_min_lat(alloc, n_config, -1, 0);
+      break;
+    case MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE:
+      mctop_alloc_prep_min_lat(alloc, n_config, 1, 1);
+      break;
+    case MCTOP_ALLOC_MIN_LAT_CORES_BALANCE:
+      mctop_alloc_prep_min_lat(alloc, n_config, -1, 1);
       break;
     case MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS:
       mctop_alloc_prep_bw_round_robin(alloc, n_config, 1);
@@ -518,13 +549,13 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 void
 mctop_alloc_print_short(mctop_alloc_t* alloc)
 {
-  printf("%s | Sockets (%u): ",
-	 mctop_alloc_policy_desc[alloc->policy], alloc->n_sockets);
+  printf("%-33s | #Contexts %-3u | Sockets (%u): ",
+	 mctop_alloc_policy_desc[alloc->policy], alloc->n_hwcs, alloc->n_sockets);
   for (int i = 0; i < alloc->n_sockets; i++)
     {
       printf("%u ", alloc->sockets[i]->id);
     }
-  printf("| #Contexts %u\n", alloc->n_hwcs);
+  printf("\n");
 }
 
 void

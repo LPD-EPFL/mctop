@@ -295,6 +295,7 @@ extern "C" {
   /* MCTOP Allocator */
   /* ******************************************************************************** */
 
+  #define MCTOP_ALLOC_NUM 10
   typedef enum 
     {
       MCTOP_ALLOC_NONE,		    /* Do not pin anything! */
@@ -304,6 +305,8 @@ extern "C" {
       /* HWCs of that socket after and then proceed to the next socket. */
       MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
       /* of them have been used start using HWCs */
+      MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE, /* Same as MCTOP_ALLOC_MIN_LAT_HWCS, but balances hwcs across the used sockets. */
+      MCTOP_ALLOC_MIN_LAT_CORES_BALANCE, /* Same as MCTOP_ALLOC_MIN_LAT_CORES, but balances cores across the used sockets. */
       MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS,  /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
       /* Use HWCs of the same core first.*/
       MCTOP_ALLOC_BW_ROUND_ROBIN_CORES, /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
@@ -338,13 +341,15 @@ extern "C" {
     uint nth_socket;
   } mctop_thread_info_t;
 
-  __attribute__((unused)) static const char* mctop_alloc_policy_desc[] = 
+  __attribute__((unused)) static const char* mctop_alloc_policy_desc[MCTOP_ALLOC_NUM] = 
     { 
       "MCTOP_ALLOC_NONE",
       "MCTOP_ALLOC_SEQUENTIAL",
       "MCTOP_ALLOC_MIN_LAT_HWCS",
       "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
       "MCTOP_ALLOC_MIN_LAT_CORES",
+      "MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE",
+      "MCTOP_ALLOC_MIN_LAT_CORES_BALANCE",
       "MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS",
       "MCTOP_ALLOC_BW_ROUND_ROBIN_CORES",
       "MCTOP_ALLOC_BW_BOUND",
@@ -365,6 +370,10 @@ extern "C" {
    * MCTOP_ALLOC_MIN_LAT_CORES        : n_hwcs = total # hw contexts / n_config = limit the # of hw contexts per socket
    *                                    pass MCTOP_ALLOC_ALL to get all hw contexts per socket
    *
+   * MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE          
+   * MCTOP_ALLOC_MIN_LAT_CORES_BALANCE : n_hwcs = total # hw contexts / n_config = ignored
+   *                                     pass MCTOP_ALLOC_ALL to get all hw contexts per socket
+   *
    * MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS 
    * MCTOP_ALLOC_BW_ROUND_ROBIN_CORES : n_hwcs = total # hw contexts / n_config = how many sockets to use
    * 
@@ -375,7 +384,7 @@ extern "C" {
   void mctop_alloc_free(mctop_alloc_t* alloc);
   void mctop_alloc_print(mctop_alloc_t* alloc);
   void mctop_alloc_print_short(mctop_alloc_t* alloc);
-
+  void mctop_alloc_help();
 
   /* Thread functions ************************************************************************************************** */
 
