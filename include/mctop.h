@@ -295,24 +295,27 @@ extern "C" {
   /* MCTOP Allocator */
   /* ******************************************************************************** */
 
-  #define MCTOP_ALLOC_NUM 10
+#define MCTOP_ALLOC_NUM 11
   typedef enum 
     {
       MCTOP_ALLOC_NONE,		    /* Do not pin anything! */
       MCTOP_ALLOC_SEQUENTIAL,	    /* Return HWC ids 0, 1, 2, 3, ... */
       MCTOP_ALLOC_MIN_LAT_HWCS,       /* Minimize latency across used sockets. Use HWCs of same core first  */
-      MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first, */
-      /* HWCs of that socket after and then proceed to the next socket. */
-      MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all */
-      /* of them have been used start using HWCs */
+      MCTOP_ALLOC_MIN_LAT_CORES_HWCS, /* Minimize latency across used sockets. Use physical cores of a socket first,
+					 HWCs of that socket after and then proceed to the next socket. */
+      MCTOP_ALLOC_MIN_LAT_CORES,      /* Minimize latency across used sockets. Use physical cores first and once all 
+					 of them have been used start using HWCs */
       MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE, /* Same as MCTOP_ALLOC_MIN_LAT_HWCS, but balances hwcs across the used sockets. */
+      MCTOP_ALLOC_MIN_LAT_CORES_HWCS_BALANCE, /* Same as MCTOP_ALLOC_MIN_LAT_CORES_HWCS, 
+						 but balances hwcs across the used sockets.
+						 HWCs of that socket after and then proceed to the next socket. */
       MCTOP_ALLOC_MIN_LAT_CORES_BALANCE, /* Same as MCTOP_ALLOC_MIN_LAT_CORES, but balances cores across the used sockets. */
-      MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS,  /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
-      /* Use HWCs of the same core first.*/
-      MCTOP_ALLOC_BW_ROUND_ROBIN_CORES, /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. */
-      /* Use physical cores first.*/
-      MCTOP_ALLOC_BW_BOUND,	    /* Maximize bandwidth to local nodes and calculates the number of cores that are */
-                                    /* required to saturate the bandwidth on each node. */
+      MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS,  /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets. 
+					   Use HWCs of the same core first.*/
+      MCTOP_ALLOC_BW_ROUND_ROBIN_CORES, /* Maximize bandwidth to local nodes. Allocate HWCs round robin in terms of sockets.
+					   Use physical cores first.*/
+      MCTOP_ALLOC_BW_BOUND,	    /* Maximize bandwidth to local nodes and calculates the number of cores that are 
+				       required to saturate the bandwidth on each node. */
     } mctop_alloc_policy;
 
   typedef struct mctop_alloc
@@ -349,6 +352,7 @@ extern "C" {
       "MCTOP_ALLOC_MIN_LAT_CORES_HWCS",
       "MCTOP_ALLOC_MIN_LAT_CORES",
       "MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE",
+      "MCTOP_ALLOC_MIN_LAT_CORES_HWCS_BALANCE",
       "MCTOP_ALLOC_MIN_LAT_CORES_BALANCE",
       "MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS",
       "MCTOP_ALLOC_BW_ROUND_ROBIN_CORES",

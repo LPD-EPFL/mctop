@@ -493,6 +493,9 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
     case MCTOP_ALLOC_MIN_LAT_HWCS_BALANCE:
       mctop_alloc_prep_min_lat(alloc, n_config, 1, 1);
       break;
+    case MCTOP_ALLOC_MIN_LAT_CORES_HWCS_BALANCE:
+      mctop_alloc_prep_min_lat(alloc, n_config, 0, 1);
+      break;
     case MCTOP_ALLOC_MIN_LAT_CORES_BALANCE:
       mctop_alloc_prep_min_lat(alloc, n_config, -1, 1);
       break;

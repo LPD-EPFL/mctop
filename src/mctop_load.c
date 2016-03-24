@@ -31,7 +31,7 @@ mctop_load(const char* mct_file)
 	}
       else
 	{
-	  fprintf(stderr, "MCTOP Info: Opened %s!\n", file_open);
+	  fprintf(stdout, "MCTOP Info: Opened %s!\n", file_open);
 	}
     }
 
