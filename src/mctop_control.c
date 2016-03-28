@@ -157,6 +157,12 @@ mctop_socket_get_bw_local_one(socket_t* socket)
   return socket->mem_bandwidths1_r[socket->local_node];
 }
 
+inline uint
+mctop_socket_get_local_node(socket_t* socket)
+{
+  return socket->local_node;
+}
+
 /* sibling getters ***************************************************************** */
 
 socket_t*

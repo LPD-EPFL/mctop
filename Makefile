@@ -43,7 +43,7 @@ endif
 
 default: mctop
 all: mctop mct_load mctop_latency tests
-tests: run_on_node0 allocator
+tests: run_on_node0 allocator work_queue
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -71,7 +71,7 @@ mctop_latency: ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/
 ################################################################################
 
 MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o \
-	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o
+	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o ${SRCPATH}/mctop_wq.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 	ar cr libmctop.a ${MCTOPLIB_OBJS} ${INCLUDE}/mctop.h
@@ -86,6 +86,8 @@ run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
 
+work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} -ljemalloc
 
 ################################################################################
 ## .o compilation generic rules ################################################

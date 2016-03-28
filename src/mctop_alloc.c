@@ -806,6 +806,12 @@ mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth)
   return alloc->hwcs[nth];
 }
 
+socket_t*
+mctop_alloc_get_nth_socket(mctop_alloc_t* alloc, const uint nth)
+{
+  return alloc->sockets[nth];
+}
+
 inline uint
 mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1)
 {

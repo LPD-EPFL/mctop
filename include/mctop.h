@@ -198,6 +198,7 @@ extern "C" {
   size_t mctop_socket_get_num_cores(socket_t* socket);
   double mctop_socket_get_bw_local(socket_t* socket);
   double mctop_socket_get_bw_local_one(socket_t* socket);
+  uint mctop_socket_get_local_node(socket_t* socket);
 
   /* hwcid ************************************************************************** */
   uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);
@@ -416,6 +417,7 @@ extern "C" {
   double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
   uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);
   uint mctop_alloc_get_nth_hw_context(mctop_alloc_t* alloc, const uint nth);
+  socket_t* mctop_alloc_get_nth_socket(mctop_alloc_t* alloc, const uint nth);
 
   /* # of sockets / nodes that the allocator uses */
   uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
@@ -429,6 +431,38 @@ extern "C" {
   void* mctop_alloc_malloc_on_nth_socket(mctop_alloc_t* alloc, const uint nth, const size_t size);
   void mctop_alloc_malloc_free(void* mem, const size_t size);
 
+
+  /* Work Q *********************************************************************************************************** */
+
+  typedef struct mctop_wq
+  {
+    mctop_alloc_t* alloc;
+    uint n_queues;
+    struct mctop_queue* queues[0];	/* or * ? */
+  } mctop_wq_t;
+
+  typedef __attribute__((aligned(64))) struct mctop_queue
+  {
+    volatile uint64_t lock;
+    volatile size_t size;
+    struct mctop_qnode* head;
+    struct mctop_qnode* tail;
+    volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
+    uint next_q[0];
+  } mctop_queue_t;
+
+  typedef __attribute__((aligned(64))) struct mctop_qnode
+  {
+    struct mctop_qnode* next;
+    void* data;
+  } mctop_qnode_t;
+
+  mctop_wq_t* mctop_wq_create(mctop_alloc_t* alloc);
+  void mctop_wq_free(mctop_wq_t* wq);
+
+
+  void mctop_wq_enqueue(mctop_wq_t* wq, void* data);
+  void* mctop_wq_dequeue(mctop_wq_t* wq);
 
 
 #ifdef __cplusplus
