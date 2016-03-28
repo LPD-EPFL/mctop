@@ -436,6 +436,20 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
   free(sockets_bw);
 }
 
+static uint
+mctop_alloc_num_cores_calc(mctop_alloc_t* alloc)
+{
+  darray_t* cores = darray_create();
+  for (uint i = 0; i < alloc->n_hwcs; i++)
+    {
+      hwc_gs_t* core = mctop_hwcid_get_core(alloc->topo, alloc->hwcs[i]);
+      darray_add_uniq(cores, core->id);
+    }
+  uint n = darray_get_num_elems(cores);
+  darray_free(cores);
+  return n;
+}
+
 mctop_alloc_t*
 mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
 {
@@ -509,6 +523,12 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
       mctop_alloc_prep_bw_bound(alloc, alloc->n_hwcs, n_config);
       break;
     }
+
+  alloc->n_cores = 0;
+  if (alloc->policy != MCTOP_ALLOC_NONE)
+    {
+      alloc->n_cores = mctop_alloc_num_cores_calc(alloc);
+    }
   return alloc;
 }
 
@@ -532,6 +552,7 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 	}
       printf(" \n");
     }
+  printf("## # Cores           : %u\n", alloc->n_cores);
   printf("## HW Contexts (%-3u) : ", alloc->n_hwcs);
   for (int i = 0; i < alloc->n_hwcs; i++)
     {
@@ -552,8 +573,8 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 void
 mctop_alloc_print_short(mctop_alloc_t* alloc)
 {
-  printf("%-33s | #Contexts %-3u | Sockets (%u): ",
-	 mctop_alloc_policy_desc[alloc->policy], alloc->n_hwcs, alloc->n_sockets);
+  printf("%-33s | #HWCs %-3u | #Cores %-3u | Sockets (%u): ",
+	 mctop_alloc_policy_desc[alloc->policy], alloc->n_hwcs, alloc->n_cores, alloc->n_sockets);
   for (int i = 0; i < alloc->n_sockets; i++)
     {
       printf("%u ", alloc->sockets[i]->id);
@@ -809,22 +830,31 @@ mctop_alloc_get_id()
 int
 mctop_alloc_get_hw_context_id()
 {
-  assert(mctop_alloc_is_pinned());
-  return __mctop_thread_info.hwc_id;
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.hwc_id;
+    }
+  return 0;
 }
 
 int
 mctop_alloc_get_local_node()
 {
-  assert(mctop_alloc_is_pinned());
-  return __mctop_thread_info.local_node;
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.local_node;
+    }
+  return 0;
 }
 
 int
 mctop_alloc_get_node_seq_id()
 {
-  assert(mctop_alloc_is_pinned());
-  return __mctop_thread_info.nth_socket;
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.nth_socket;
+    }
+  return 0;
 }
 
 

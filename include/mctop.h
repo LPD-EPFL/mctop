@@ -200,8 +200,9 @@ extern "C" {
   double mctop_socket_get_bw_local_one(socket_t* socket);
 
   /* hwcid ************************************************************************** */
-  uint mctop_hwcid_get_local_node(mctop_t* topo, uint hwcid);
-  socket_t* mctop_hwcid_get_socket(mctop_t* topo, uint hwcid);
+  uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);
+  socket_t* mctop_hwcid_get_socket(mctop_t* topo, const uint hwcid);
+  hwc_gs_t* mctop_hwcid_get_core(mctop_t* topo, const uint hwcid);
 
   /* queries ************************************************************************ */
   uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -323,6 +324,7 @@ extern "C" {
     mctop_t* topo;
     mctop_alloc_policy policy;
     uint n_hwcs;
+    uint n_cores;
     uint n_sockets;
     socket_t** sockets;
     double* bw_proportions;
@@ -426,6 +428,8 @@ extern "C" {
   /* allocate with libnuma on the node of the nth socket of the allocator */
   void* mctop_alloc_malloc_on_nth_socket(mctop_alloc_t* alloc, const uint nth, const size_t size);
   void mctop_alloc_malloc_free(void* mem, const size_t size);
+
+
 
 #ifdef __cplusplus
 }

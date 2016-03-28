@@ -210,6 +210,20 @@ mctop_hwcid_get_socket(mctop_t* topo, uint hwcid)
   return topo->hwcs[hwcid].socket;
 }
 
+hwc_gs_t*
+mctop_hwcid_get_core(mctop_t* topo, const uint hwcid)
+{
+  hw_context_t* hwc = &topo->hwcs[hwcid];
+  if (hwc->type == CORE)
+    {
+      return (hwc_gs_t*) hwc;
+    }
+  else
+    {
+      return hwc->parent;
+    }
+}
+
 
 /* queries ************************************************************************ */
 
