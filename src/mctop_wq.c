@@ -67,6 +67,29 @@ mctop_wq_create(mctop_alloc_t* alloc)
   return wq;
 }
 
+void 
+mctop_wq_print(mctop_wq_t* wq)
+{
+  mctop_alloc_t* alloc = wq->alloc;
+  mctop_t* topo = alloc->topo;
+
+  printf("## MCTOP Work Queue -- %u per-node queues\n", wq->n_queues);
+  for (int i = 0; i < wq->n_queues; i++)
+    {
+      socket_t* s = mctop_alloc_get_nth_socket(alloc, i);
+      printf("# Q#%-2u - Socket #%u : Steal: ", i, s->id);
+      mctop_queue_t* q = wq->queues[i];
+      for (int j = 0; j < (wq->n_queues - 1); j++)
+	{
+	  socket_t* f = mctop_alloc_get_nth_socket(alloc, q->next_q[j]);
+	  printf("%u -> ", f->id);
+	}
+      printf("\n");
+    }
+}
+
+
+
 static void mctop_queue_free(mctop_queue_t* q, const uint n_sockets);
 
 void

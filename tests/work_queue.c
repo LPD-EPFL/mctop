@@ -11,8 +11,8 @@ main(int argc, char **argv)
   uint manual_file = 0;
   int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
-  mctop_alloc_policy test_policy = 0;
-  uint test_run_pin = 1;
+  mctop_alloc_policy test_policy = 1;
+  uint test_run_pin = 0;
 
   struct option long_options[] = 
     {
@@ -27,7 +27,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r", long_options, &i);
 
       if(c == -1)
 	break;
@@ -52,6 +52,9 @@ main(int argc, char **argv)
 	  break;
 	case 'p':
 	  test_policy = atoi(optarg);
+	  break;
+	case 'r':
+	  test_run_pin = 1;
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -83,7 +86,7 @@ main(int argc, char **argv)
       mctop_alloc_print_short(alloc);
 
       mctop_wq_t* wq = mctop_wq_create(alloc);
-
+      mctop_wq_print(wq);
 
       if (test_run_pin)
 	{
@@ -228,7 +231,7 @@ array_sum(const size_t* a, const uint n)
 const uint _multi   = 1024;
 const uint _min     = 1;
 const uint _max     = 16;
-const uint _creps   = 8192;
+const uint _creps   = 2048;
 
 void*
 test_pin(void* params)
@@ -240,7 +243,9 @@ test_pin(void* params)
   unsigned long* seeds = seed_rand();
   const uint hwcid = mctop_alloc_get_hw_context_id();
   const uint node = mctop_alloc_get_local_node();
-  const uint _creps_n = _creps * (node + 1);
+
+  //  const uint _creps_n = _creps * (node + 1);
+  const uint _creps_n = _creps * ((node<<1) + 1);
 
   size_t len_tot = 0, n_chunks = 0;;
 
@@ -312,9 +317,10 @@ test_pin(void* params)
 	}
     }
 
-  printf("[%2d@%d] #Tot %-5u / #Loc / %-5u #Rem %-5u [%-5u %-5u %-5u %-5u]\n",
+  printf("[%2d@%d] #Tot %-5u / #Loc / %-5u #Rem %-5u [ %-5u %-5u %-5u %-5u %-5u %-5u %-5u %-5u ]\n",
 	 hwcid, node, n_total, n_local, n_total - n_local,
-	 n_from[0], n_from[1], n_from[2], n_from[3]);
+	 n_from[0], n_from[1], n_from[2], n_from[3],
+	 n_from[4], n_from[5], n_from[6], n_from[7]);
 
   free(n_from);
   free(seeds);
