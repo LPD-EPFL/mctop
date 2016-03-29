@@ -336,7 +336,12 @@ mctop_alloc_prep_bw_round_robin(mctop_alloc_t* alloc, int n_sockets, const int s
   if (n_sockets == MCTOP_ALLOC_ALL || n_sockets > topo->n_sockets || n_sockets <= 0)
     {
       n_sockets = topo->n_sockets;
-    }      
+    }
+
+  if (n_sockets > alloc->n_hwcs)
+    {
+      n_sockets = alloc->n_hwcs;
+    }
 
   alloc->n_sockets = n_sockets;
   alloc->sockets = malloc_assert(alloc->n_sockets * sizeof(socket_t*));
