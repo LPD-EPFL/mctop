@@ -461,7 +461,7 @@ extern "C" {
   void mctop_wq_free(mctop_wq_t* wq);
 
   void mctop_wq_print(mctop_wq_t* wq);
-
+  void mctop_wq_stats_print(mctop_wq_t* wq);
 
   void mctop_wq_enqueue(mctop_wq_t* wq, void* data);
   void* mctop_wq_dequeue(mctop_wq_t* wq);

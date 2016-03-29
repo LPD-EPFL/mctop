@@ -185,14 +185,14 @@ data_alloc(const size_t len)
 
 #include <atomics.h>
 
-volatile uint32_t __barrier = 0;
+volatile uint32_t __barrier[2] = { 0, 0 };
 volatile uint64_t __exited  = 0;
 
 void
-barrier_wait(const uint n_threads)
+barrier_wait(const uint nb, const uint n_threads)
 {
-  FAI_U32(&__barrier);
-  while (__barrier != n_threads)
+  FAI_U32(&__barrier[nb]);
+  while (__barrier[nb] != n_threads)
     {
       PAUSE();
     }
@@ -245,7 +245,8 @@ test_pin(void* params)
   const uint node = mctop_alloc_get_local_node();
 
   //  const uint _creps_n = _creps * (node + 1);
-  const uint _creps_n = _creps * ((node<<1) + 1);
+  const uint _creps_n = _creps * ((2 * node) + 1);
+  /* const uint _creps_n = _creps * 2; */
 
   size_t len_tot = 0, n_chunks = 0;;
 
@@ -266,7 +267,7 @@ test_pin(void* params)
   uint* n_from = calloc_assert(8, sizeof(uint));
 
   printf("[%2d@%d] Initialized %-5zu chunks / %-10zu elems\n", hwcid, node, n_chunks, len_tot);
-  barrier_wait(alloc->n_hwcs);
+  barrier_wait(0, alloc->n_hwcs);
 
   size_t sum = 0;
   while (1)
@@ -321,6 +322,10 @@ test_pin(void* params)
 	 hwcid, node, n_total, n_local, n_total - n_local,
 	 n_from[0], n_from[1], n_from[2], n_from[3],
 	 n_from[4], n_from[5], n_from[6], n_from[7]);
+
+  barrier_wait(1, alloc->n_hwcs);
+
+  mctop_wq_stats_print(wq);
 
   free(n_from);
   free(seeds);

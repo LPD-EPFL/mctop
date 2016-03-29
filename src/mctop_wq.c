@@ -71,7 +71,6 @@ void
 mctop_wq_print(mctop_wq_t* wq)
 {
   mctop_alloc_t* alloc = wq->alloc;
-  mctop_t* topo = alloc->topo;
 
   printf("## MCTOP Work Queue -- %u per-node queues\n", wq->n_queues);
   for (int i = 0; i < wq->n_queues; i++)
@@ -211,33 +210,128 @@ mctop_queue_dequeue(mctop_queue_t* qu)
 /* high-level enqueue / dequeue */
 /* ******************************************************************************** */
 
+#define MCTOP_WQ_PROF 0
+#if MCTOP_WQ_PROF == 1
+#  include <helper.h>
+#  define GETTICKS_IN(s) ticks s = getticks();
+#  define GETTICKS_SUM(sum, add) sum += add;
+#  define INC(x) x++
+__thread ticks __mctop_wq_prof_enqueue_n = 0,
+  __mctop_wq_prof_enqueue_t = 0,
+  __mctop_wq_prof_dequeue_local_n = 0,
+  __mctop_wq_prof_dequeue_local_t = 0,
+  __mctop_wq_prof_dequeue_n[8] = { 1, 1, 1, 1, 1, 1, 1, 1 },
+  __mctop_wq_prof_dequeue_t[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+#else
+#  define GETTICKS_IN(s) 
+#  define GETTICKS_SUM(sum, add)
+#  define INC(x)
+#endif
+
 void
 mctop_wq_enqueue(mctop_wq_t* wq, void* data)
 {
+  INC(__mctop_wq_prof_enqueue_n);
+  GETTICKS_IN(__s);
+
   mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
   mctop_queue_enqueue(qu, data);
+
+  GETTICKS_IN(__e);
+  GETTICKS_SUM(__mctop_wq_prof_enqueue_t, __e - __s);
 }
 
 void*
 mctop_wq_dequeue(mctop_wq_t* wq)
 {
+  GETTICKS_IN(__s);
+
   mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
   void* data = mctop_queue_dequeue(qu);
   if (data != NULL)
     {
+      GETTICKS_IN(__e);
+      GETTICKS_SUM(__mctop_wq_prof_dequeue_local_t, __e - __s);
+      INC(__mctop_wq_prof_dequeue_local_n);
+
       return data;
     }
 
   for (int q = 0; q < wq->n_queues; q++)
     {
+      GETTICKS_IN(__s);
       const uint next = qu->next_q[q];
       mctop_queue_t* qun = wq->queues[next];
       void* data = mctop_queue_dequeue(qun);
       if (data != NULL)
 	{
+	  GETTICKS_IN(__e);
+	  GETTICKS_SUM(__mctop_wq_prof_dequeue_t[q], __e - __s);
+	  INC(__mctop_wq_prof_dequeue_n[q]);
+
 	  return data;
 	}
     }
 
   return NULL;
 }
+
+void
+mctop_wq_stats_print(mctop_wq_t* wq)
+{
+#if MCTOP_WQ_PROF == 1
+  for (int i = 0; i < 8; i++)
+    {
+      if (__mctop_wq_prof_dequeue_n[i] > 1)
+	{
+	  __mctop_wq_prof_dequeue_n[i]--;
+	}
+    }
+
+  if (wq->n_queues == 1)
+    {
+      printf("WQ@%u #Enq: %-6zu = %4zu cy | #Deq: %-6zu = %4zu cy\n",
+	     mctop_alloc_get_local_node(),
+	     __mctop_wq_prof_enqueue_n, __mctop_wq_prof_enqueue_t / __mctop_wq_prof_enqueue_n,
+	     __mctop_wq_prof_dequeue_local_n, __mctop_wq_prof_dequeue_local_t / __mctop_wq_prof_dequeue_local_n);
+    }
+  else if (wq->n_queues <= 2)
+    {
+      printf("WQ@%u #Enq: %-6zu = %4zu cy | #Deq: %-6zu = %4zu cy"
+	     " [ %-4zu = %4zu ]\n",
+	     mctop_alloc_get_local_node(),
+	     __mctop_wq_prof_enqueue_n, __mctop_wq_prof_enqueue_t / __mctop_wq_prof_enqueue_n,
+	     __mctop_wq_prof_dequeue_local_n, __mctop_wq_prof_dequeue_local_t / __mctop_wq_prof_dequeue_local_n,
+	     __mctop_wq_prof_dequeue_n[0], __mctop_wq_prof_dequeue_t[0] / __mctop_wq_prof_dequeue_n[0]);
+    }
+  else if (wq->n_queues <= 4)
+    {
+      printf("WQ@%u #Enq: %-6zu = %4zu cy | #Deq: %-6zu = %4zu cy"
+	     " [ %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy ]\n",
+	     mctop_alloc_get_local_node(),
+	     __mctop_wq_prof_enqueue_n, __mctop_wq_prof_enqueue_t / __mctop_wq_prof_enqueue_n,
+	     __mctop_wq_prof_dequeue_local_n, __mctop_wq_prof_dequeue_local_t / __mctop_wq_prof_dequeue_local_n,
+	     __mctop_wq_prof_dequeue_n[0], __mctop_wq_prof_dequeue_t[0] / __mctop_wq_prof_dequeue_n[0],
+	     __mctop_wq_prof_dequeue_n[1], __mctop_wq_prof_dequeue_t[1] / __mctop_wq_prof_dequeue_n[1],
+	     __mctop_wq_prof_dequeue_n[2], __mctop_wq_prof_dequeue_t[2] / __mctop_wq_prof_dequeue_n[2]);
+    }
+  else
+    {
+      printf("WQ@%u #Enq: %-6zu = %4zu cy | #Deq: %-6zu = %4zu cy"
+	     " [ %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy | \n"
+	     "                                                 %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy ]\n",
+	     mctop_alloc_get_local_node(),
+	     __mctop_wq_prof_enqueue_n, __mctop_wq_prof_enqueue_t / __mctop_wq_prof_enqueue_n,
+	     __mctop_wq_prof_dequeue_local_n, __mctop_wq_prof_dequeue_local_t / __mctop_wq_prof_dequeue_local_n,
+	     __mctop_wq_prof_dequeue_n[0], __mctop_wq_prof_dequeue_t[0] / __mctop_wq_prof_dequeue_n[0],
+	     __mctop_wq_prof_dequeue_n[1], __mctop_wq_prof_dequeue_t[1] / __mctop_wq_prof_dequeue_n[1],
+	     __mctop_wq_prof_dequeue_n[2], __mctop_wq_prof_dequeue_t[2] / __mctop_wq_prof_dequeue_n[2],
+	     __mctop_wq_prof_dequeue_n[3], __mctop_wq_prof_dequeue_t[3] / __mctop_wq_prof_dequeue_n[3],
+	     __mctop_wq_prof_dequeue_n[4], __mctop_wq_prof_dequeue_t[4] / __mctop_wq_prof_dequeue_n[4],
+	     __mctop_wq_prof_dequeue_n[5], __mctop_wq_prof_dequeue_t[5] / __mctop_wq_prof_dequeue_n[5],
+	     __mctop_wq_prof_dequeue_n[6], __mctop_wq_prof_dequeue_t[6] / __mctop_wq_prof_dequeue_n[6]);
+    }
+#endif
+}
+
