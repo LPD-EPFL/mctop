@@ -13,7 +13,7 @@ CFLAGS += -Wall -std=c99
 INCLUDE = include
 SRCPATH = src
 TSTPATH = tests
-LDFLAGS = -lrt -lm -pthread -L.
+LDFLAGS = -lrt -lm -lpthread -L.
 VFLAGS = -D_GNU_SOURCE
 
 UNAME := $(shell uname -n)
@@ -34,6 +34,7 @@ OS_NAME = $(shell uname -s)
 
 ifeq ($(OS_NAME), Linux)
 	LDFLAGS += -lnuma
+	MALLOC += -ljemalloc
 endif
 
 ifeq ($(OS_NAME), SunOS)
@@ -42,7 +43,7 @@ endif
 
 
 default: mctop
-all: mctop mct_load mctop_latency tests
+all: mctop mct_load tests
 tests: run_on_node0 allocator work_queue work_queue_sort
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
@@ -70,7 +71,7 @@ mctop_latency: ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/
 ## libmctop.a ##################################################################
 ################################################################################
 
-MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o \
+MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/numa_sparc.o \
 	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o ${SRCPATH}/mctop_wq.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
@@ -87,10 +88,10 @@ allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
 
 work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} -ljemalloc
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} ${MALLOC}
 
 work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} -ljemalloc
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} ${MALLOC}
 
 ################################################################################
 ## .o compilation generic rules ################################################
@@ -108,7 +109,7 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 ################################################################################
 
 clean:
-	rm src/*.o *.a
+	rm src/*.o *.a tests/*.o
 
 
 ################################################################################

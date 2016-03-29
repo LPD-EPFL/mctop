@@ -1,7 +1,9 @@
 #include <mctop.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <numaif.h>
+#if __x86_64__
+#  include <numaif.h>
+#endif
 
 void* test_pin(void* params);
 
@@ -54,12 +56,22 @@ timespec_diff(struct timespec start, struct timespec end)
   return temp;
 }
 
-int get_numa_node(void* mem)
+#ifdef __x86_64__
+int
+get_numa_node(void* mem, const uint n_nodes)
 {
   int numa_node = -1;
   get_mempolicy(&numa_node, NULL, 0, (void*)mem, MPOL_F_NODE | MPOL_F_ADDR);
   return numa_node;
 }
+#elif __sparc
+static uint cnode = 0;
+int
+get_numa_node(void* mem, const uint n_nodes)
+{
+  return cnode++ % n_nodes;
+}
+#endif
 
 typedef struct wq_data
 {
@@ -164,7 +176,7 @@ main(int argc, char **argv)
 
   if (topo)
     {
-      mctop_print(topo);
+      //      mctop_print(topo);
 
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       mctop_alloc_print(alloc);
@@ -193,16 +205,16 @@ main(int argc, char **argv)
 
 
       void* arrayv = (void*) array;
-      int node_prev = get_numa_node(arrayv), n_pages = 0, chunk_size = -1;
+      int node_prev = get_numa_node(arrayv, alloc->n_sockets), n_pages = 0, chunk_size = -1;
       for (uint p = 0; p < array_len_pages; p++)
 	{
 	  n_pages++;
-	  int node = get_numa_node(arrayv);
+	  int node = get_numa_node(arrayv, alloc->n_sockets);
 	  if (node != node_prev && chunk_size < 0)
 	    {
 	      chunk_size = n_pages * page_size;
 	    }
-	  /* printf("%p on %d\n", arrayv, node); */
+	  //	  printf("%p on %d\n", arrayv, node); 
 	  wq_data_t* wqd = wq_data_create(1, 0, per_page, arrayv);
 	  mctop_wq_enqueue_node(wq, node, wqd);
 	  arrayv += page_size;
@@ -275,7 +287,9 @@ main(int argc, char **argv)
       mctop_free(topo);
 
       numa_free((void*) array, array_siz);
+#ifdef __x86_64__
       numa_free_nodemask(nodemask);
+#endif
     }
   return 0;
 }

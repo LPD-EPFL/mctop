@@ -74,6 +74,13 @@ numa_alloc_onnode(size_t size, uint node)
   return m;
 }
 
+void* 
+numa_alloc_interleaved_subset(size_t size, void* mask)
+{
+  void* m = malloc(size);
+  return m;
+}
+
 int
 numa_run_on_node(uint node)
 {
