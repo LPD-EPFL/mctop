@@ -530,9 +530,15 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
     }
 
   alloc->n_cores = 0;
+  alloc->node_to_nth_socket = NULL;
   if (alloc->policy != MCTOP_ALLOC_NONE)
     {
       alloc->n_cores = mctop_alloc_num_cores_calc(alloc);
+      alloc->node_to_nth_socket = calloc_assert(topo->n_sockets, sizeof(uint));
+      for (int i = 0; i < alloc->n_sockets; i++)
+	{
+	  alloc->node_to_nth_socket[i] = alloc->sockets[i]->local_node;
+	}
     }
   return alloc;
 }
@@ -596,6 +602,10 @@ mctop_alloc_free(mctop_alloc_t* alloc)
   if (alloc->sockets != NULL)
     {
       free(alloc->sockets);
+    }
+  if (alloc->node_to_nth_socket != NULL)
+    {
+      free(alloc->node_to_nth_socket);
     }
   if (alloc->bw_proportions != NULL)
     {
@@ -797,6 +807,25 @@ inline uint
 mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth)
 {
   return alloc->sockets[nth]->local_node;
+}
+
+inline uint
+mctop_alloc_node_to_nth_socket(mctop_alloc_t* alloc, const uint node)
+{
+  return alloc->node_to_nth_socket[node];
+}
+
+struct bitmask* 
+mctop_alloc_create_nodemask(mctop_alloc_t* alloc)
+{
+  struct bitmask* nodemask = numa_allocate_nodemask();
+  for (int n = 0; n < alloc->n_sockets; n++)
+    {
+      uint node = mctop_alloc_get_nth_node(alloc, n);
+      nodemask = numa_bitmask_setbit(nodemask, node);
+    }
+
+  return nodemask;
 }
 
 inline double
