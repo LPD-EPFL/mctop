@@ -181,9 +181,9 @@ main(int argc, char **argv)
       assert(array != NULL);
 
       for (size_t i = 0; i < array_len; i++)
-	{
-	  array[i] = mrand(seeds) % array_max;
-	}
+      	{
+      	  array[i] = mrand(seeds) % array_max;
+      	}
 
       free(seeds);
 
@@ -191,10 +191,17 @@ main(int argc, char **argv)
       const size_t array_len_pages = array_siz / page_size;
       const uint per_page = page_size / sizeof(uint);
 
+
       void* arrayv = (void*) array;
+      int node_prev = get_numa_node(arrayv), n_pages = 0, chunk_size = -1;
       for (uint p = 0; p < array_len_pages; p++)
 	{
+	  n_pages++;
 	  int node = get_numa_node(arrayv);
+	  if (node != node_prev && chunk_size < 0)
+	    {
+	      chunk_size = n_pages * page_size;
+	    }
 	  /* printf("%p on %d\n", arrayv, node); */
 	  wq_data_t* wqd = wq_data_create(1, 0, per_page, arrayv);
 	  mctop_wq_enqueue_node(wq, node, wqd);
@@ -203,7 +210,9 @@ main(int argc, char **argv)
 	}
 
       mctop_wq_print(wq);
-      printf("# Data = %llu MB\n", array_siz / (1024 * 1024LL));
+      printf("# Data = %llu MB (chunk size = %d = %llu MB)\n",
+	     array_siz / (1024 * 1024LL),
+	     chunk_size, chunk_size / (1024 * 1024LL));
 
       if (test_run_pin)
 	{
