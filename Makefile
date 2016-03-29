@@ -5,7 +5,7 @@
 CFLAGS = -O2
 
 ifeq (${DEBUG},1)
-CFLAGS = -O0 -ggdb
+CFLAGS = -O0 -ggdb -g 
 endif
 
 CFLAGS += -Wall -std=c99
@@ -43,7 +43,7 @@ endif
 
 default: mctop
 all: mctop mct_load mctop_latency tests
-tests: run_on_node0 allocator work_queue
+tests: run_on_node0 allocator work_queue work_queue_sort
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -88,6 +88,9 @@ allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 
 work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} -ljemalloc
+
+work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} -ljemalloc
 
 ################################################################################
 ## .o compilation generic rules ################################################

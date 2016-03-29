@@ -36,6 +36,7 @@ mctop_wq_create(mctop_alloc_t* alloc)
 				 n_sockets * sizeof(mctop_queue_t*));
   wq->alloc = alloc;
   wq->n_queues = n_sockets;
+  wq->n_entered = wq->n_exited = 0;
 
   for (int i = 0; i < wq->n_queues; i++)
     {
@@ -76,8 +77,8 @@ mctop_wq_print(mctop_wq_t* wq)
   for (int i = 0; i < wq->n_queues; i++)
     {
       socket_t* s = mctop_alloc_get_nth_socket(alloc, i);
-      printf("# Q#%-2u - Socket #%u : Steal: ", i, s->id);
       mctop_queue_t* q = wq->queues[i];
+      printf("# Queue#%-2u (size %5zu) - Socket #%u : Steal: ", i, q->size, s->id);
       for (int j = 0; j < (wq->n_queues - 1); j++)
 	{
 	  socket_t* f = mctop_alloc_get_nth_socket(alloc, q->next_q[j]);
@@ -111,7 +112,8 @@ mctop_queue_create_on_seq(mctop_alloc_t* alloc, const uint sid)
   q->lock = 0;
   q->size = 0;
   mctop_qnode_t* n = malloc_assert(sizeof(mctop_qnode_t));
-  n->next = n->data = NULL;
+  n->data = NULL;
+  n->next = NULL;
   q->head = q->tail = n;
   return q;
 }
@@ -163,8 +165,14 @@ mctop_queue_unlock(mctop_queue_t* qu)
   qu->lock = 0;
 }
 
+static inline size_t
+mctop_queue_size(mctop_queue_t* qu)
+{
+  return qu->size;
+}
+
 void
-mctop_queue_enqueue(mctop_queue_t* qu, void* data)
+mctop_queue_enqueue(mctop_queue_t* qu, const void* data)
 {
   mctop_qnode_t* node = malloc_assert(sizeof(mctop_qnode_t));
   node->data = data;
@@ -194,7 +202,7 @@ mctop_queue_dequeue(mctop_queue_t* qu)
 
   mctop_qnode_t* node = qu->head;
   mctop_qnode_t* head_new = node->next;
-  void* data = head_new->data;
+  void* data = (void*) head_new->data;
 
   qu->head = head_new;
 
@@ -216,9 +224,9 @@ mctop_queue_dequeue(mctop_queue_t* qu)
 #  define GETTICKS_IN(s) ticks s = getticks();
 #  define GETTICKS_SUM(sum, add) sum += add;
 #  define INC(x) x++
-__thread ticks __mctop_wq_prof_enqueue_n = 0,
+__thread ticks __mctop_wq_prof_enqueue_n = 1,
   __mctop_wq_prof_enqueue_t = 0,
-  __mctop_wq_prof_dequeue_local_n = 0,
+  __mctop_wq_prof_dequeue_local_n = 1,
   __mctop_wq_prof_dequeue_local_t = 0,
   __mctop_wq_prof_dequeue_n[8] = { 1, 1, 1, 1, 1, 1, 1, 1 },
   __mctop_wq_prof_dequeue_t[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -230,7 +238,7 @@ __thread ticks __mctop_wq_prof_enqueue_n = 0,
 #endif
 
 void
-mctop_wq_enqueue(mctop_wq_t* wq, void* data)
+mctop_wq_enqueue(mctop_wq_t* wq, const void* data)
 {
   INC(__mctop_wq_prof_enqueue_n);
   GETTICKS_IN(__s);
@@ -241,6 +249,21 @@ mctop_wq_enqueue(mctop_wq_t* wq, void* data)
   GETTICKS_IN(__e);
   GETTICKS_SUM(__mctop_wq_prof_enqueue_t, __e - __s);
 }
+
+inline void
+mctop_wq_enqueue_nth_socket(mctop_wq_t* wq, const uint nth, const void* data)
+{
+  mctop_queue_t* qu = wq->queues[nth];
+  mctop_queue_enqueue(qu, data);
+}
+
+inline void
+mctop_wq_enqueue_node(mctop_wq_t* wq, const uint node, const void* data)
+{
+  const uint nth = mctop_alloc_node_to_nth_socket(wq->alloc, node);
+  return mctop_wq_enqueue_nth_socket(wq, nth, data);
+}
+
 
 void*
 mctop_wq_dequeue(mctop_wq_t* wq)
@@ -315,6 +338,58 @@ mctop_wq_dequeue_remote(mctop_wq_t* wq)
 }
 
 
+size_t
+mctop_wq_get_size_atomic(mctop_wq_t* wq)
+{
+  size_t s = 0;
+  for (int i = 0; i < wq->n_queues; i++)
+    {
+      mctop_queue_t* qu = wq->queues[i];
+      mctop_queue_lock(qu);
+      s += mctop_queue_size(qu);
+    }
+
+  for (int i = 0; i < wq->n_queues; i++)
+    {
+      mctop_queue_t* qu = wq->queues[i];
+      mctop_queue_unlock(qu);
+    }
+  return s;
+}
+
+#ifdef __sparc__		/* SPARC */
+#  include <atomic.h>
+#  define IAF_U32(a) atomic_inc_32_nv((volatile uint32_t*) a)
+#elif defined(__tile__)		/* TILER */
+#  include <arch/atomic.h>
+#  include <arch/cycle.h>
+#  define IAF_U32(a) (arch_atomic_increment(a) + 1)
+#elif __x86_64__
+#  define IAF_U32(a) __sync_add_and_fetch(a, 1)
+#else
+#  error "Unsupported Architecture"
+#endif
+
+
+inline uint
+mctop_wq_thread_enter(mctop_wq_t* wq)
+{
+  uint s = IAF_U32(&wq->n_entered);
+  return s == wq->alloc->n_hwcs;
+}
+
+uint
+mctop_wq_thread_exit(mctop_wq_t* wq)
+{
+  uint s = IAF_U32(&wq->n_exited);
+  return s == wq->alloc->n_hwcs && wq->n_entered == wq->alloc->n_hwcs;
+}
+
+uint
+mctop_wq_is_last_thread(mctop_wq_t* wq)
+{
+  return wq->n_entered == wq->alloc->n_hwcs && wq->n_exited == (wq->alloc->n_hwcs - 1);
+}
 
 void
 mctop_wq_stats_print(mctop_wq_t* wq)
@@ -326,6 +401,16 @@ mctop_wq_stats_print(mctop_wq_t* wq)
 	{
 	  __mctop_wq_prof_dequeue_n[i]--;
 	}
+    }
+
+  if (__mctop_wq_prof_enqueue_n > 1)
+    {
+      __mctop_wq_prof_enqueue_n--;
+    }
+
+  if (__mctop_wq_prof_dequeue_local_n > 1)
+    {
+      __mctop_wq_prof_dequeue_local_n--;
     }
 
   if (wq->n_queues == 1)

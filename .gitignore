@@ -40,3 +40,4 @@
 /mctop_latency
 /run_on_node0
 /work_queue
+/work_queue_sort

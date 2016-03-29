@@ -328,6 +328,7 @@ extern "C" {
     uint n_cores;
     uint n_sockets;
     socket_t** sockets;
+    uint* node_to_nth_socket;
     double* bw_proportions;
     uint max_latency;
     double min_bandwidth;
@@ -423,6 +424,12 @@ extern "C" {
   uint mctop_alloc_get_num_sockets(mctop_alloc_t* alloc);
   /* get the OS NUMA node id for the nth socket of the allocator */
   uint mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth);
+  /* get the seq id of the socket that corresponds to NUMA node node */
+  uint mctop_alloc_node_to_nth_socket(mctop_alloc_t* alloc, const uint node);
+
+  /* allocates and initialized a libnuma bitmask to be used in numa_alloc_interleaved_subset */
+  struct bitmask* mctop_alloc_create_nodemask(mctop_alloc_t* alloc);
+
   double mctop_alloc_get_nth_socket_bandwidth_proportion(mctop_alloc_t* alloc, const uint nth);
 
   uint mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1);
@@ -438,6 +445,8 @@ extern "C" {
   {
     mctop_alloc_t* alloc;
     uint n_queues;
+    volatile uint32_t n_entered;
+    volatile uint32_t n_exited;    
     struct mctop_queue* queues[0];	/* or * ? */
   } mctop_wq_t;
 
@@ -454,7 +463,7 @@ extern "C" {
   typedef __attribute__((aligned(64))) struct mctop_qnode
   {
     struct mctop_qnode* next;
-    void* data;
+    const void* data;
   } mctop_qnode_t;
 
   mctop_wq_t* mctop_wq_create(mctop_alloc_t* alloc);
@@ -463,12 +472,21 @@ extern "C" {
   void mctop_wq_print(mctop_wq_t* wq);
   void mctop_wq_stats_print(mctop_wq_t* wq);
 
-  void mctop_wq_enqueue(mctop_wq_t* wq, void* data);
+  void mctop_wq_enqueue(mctop_wq_t* wq, const void* data); /* Use local node queue. */
+  void mctop_wq_enqueue_nth_socket(mctop_wq_t* wq, const uint nth, const void* data); /* Use nth queue. */
+  void mctop_wq_enqueue_node(mctop_wq_t* wq, const uint node, const void* data);     /* Use queue corresponding to "node" 
+											NUMA node */
 
   void* mctop_wq_dequeue(mctop_wq_t* wq); /* Try to dequeue from local. If empty, try the remote ones. 
 					     If empty, retry local once more. */
   void* mctop_wq_dequeue_local(mctop_wq_t* wq); /* Try to dequeue from local only. */
   void* mctop_wq_dequeue_remote(mctop_wq_t* wq); /* Try to dequeue from remote ones only. */
+
+  size_t mctop_wq_get_size_atomic(mctop_wq_t* wq); /* Lock all queues and get the total current size. */
+
+  uint mctop_wq_thread_enter(mctop_wq_t* wq);   /* inform the others that you are working on WQ. Returns 1 if last thread. */
+  uint mctop_wq_thread_exit(mctop_wq_t* wq);	/* inform the others that you stopped working on WQ. Returns 1 if last thread. */
+  uint mctop_wq_is_last_thread(mctop_wq_t* wq);	/* Returns 1 if it's the last active thread. */
 
 #ifdef __cplusplus
 }
