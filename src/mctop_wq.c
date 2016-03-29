@@ -277,6 +277,45 @@ mctop_wq_dequeue(mctop_wq_t* wq)
   return NULL;
 }
 
+void*
+mctop_wq_dequeue_local(mctop_wq_t* wq)
+{
+  GETTICKS_IN(__s);
+  mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  void* data = mctop_queue_dequeue(qu);
+
+  GETTICKS_IN(__e);
+  GETTICKS_SUM(__mctop_wq_prof_dequeue_local_t, __e - __s);
+  INC(__mctop_wq_prof_dequeue_local_n);
+
+  return data;
+}
+
+void*
+mctop_wq_dequeue_remote(mctop_wq_t* wq)
+{
+  const mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  for (int q = 0; q < wq->n_queues; q++)
+    {
+      GETTICKS_IN(__s);
+      const uint next = qu->next_q[q];
+      mctop_queue_t* qun = wq->queues[next];
+      void* data = mctop_queue_dequeue(qun);
+      if (data != NULL)
+	{
+	  GETTICKS_IN(__e);
+	  GETTICKS_SUM(__mctop_wq_prof_dequeue_t[q], __e - __s);
+	  INC(__mctop_wq_prof_dequeue_n[q]);
+
+	  return data;
+	}
+    }
+
+  return NULL;
+}
+
+
+
 void
 mctop_wq_stats_print(mctop_wq_t* wq)
 {

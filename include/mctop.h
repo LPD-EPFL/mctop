@@ -464,8 +464,11 @@ extern "C" {
   void mctop_wq_stats_print(mctop_wq_t* wq);
 
   void mctop_wq_enqueue(mctop_wq_t* wq, void* data);
-  void* mctop_wq_dequeue(mctop_wq_t* wq);
 
+  void* mctop_wq_dequeue(mctop_wq_t* wq); /* Try to dequeue from local. If empty, try the remote ones. 
+					     If empty, retry local once more. */
+  void* mctop_wq_dequeue_local(mctop_wq_t* wq); /* Try to dequeue from local only. */
+  void* mctop_wq_dequeue_remote(mctop_wq_t* wq); /* Try to dequeue from remote ones only. */
 
 #ifdef __cplusplus
 }
