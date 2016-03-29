@@ -320,7 +320,7 @@ mctop_wq_stats_print(mctop_wq_t* wq)
     {
       printf("WQ@%u #Enq: %-6zu = %4zu cy | #Deq: %-6zu = %4zu cy"
 	     " [ %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy | \n"
-	     "                                                 %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy ]\n",
+	     "                                                       %-4zu = %4zu cy | %-4zu = %4zu cy | %-4zu = %4zu cy ]\n",
 	     mctop_alloc_get_local_node(),
 	     __mctop_wq_prof_enqueue_n, __mctop_wq_prof_enqueue_t / __mctop_wq_prof_enqueue_n,
 	     __mctop_wq_prof_dequeue_local_n, __mctop_wq_prof_dequeue_local_t / __mctop_wq_prof_dequeue_local_n,
