@@ -146,6 +146,59 @@ mctop_queue_free(mctop_queue_t* q, const uint n_sockets)
 #  error "Unsupported Architecture"
 #endif
 
+#ifdef __TSX__
+#  include <immintrin.h>
+static inline int
+mctop_queue_lock(mctop_queue_t* qu)
+{
+  int _xbegin_tries = 1;
+  int t;
+  for (t = 0; t < _xbegin_tries; t++)
+    {
+      while (qu->lock != 0)
+	{
+	  PAUSE();
+	}
+
+      long status;
+      if ((status = _xbegin()) == _XBEGIN_STARTED)
+	{
+	  if (qu->lock == 0)
+	    {
+	      return 0;
+	    }
+	  _xabort(0xff);
+	}
+      else
+	{
+	  if (status & _XABORT_EXPLICIT)
+	    break;
+	  /* pause rep */
+	}
+    }
+  while (__atomic_exchange_n(&qu->lock, 1, __ATOMIC_ACQUIRE))
+    {
+      PAUSE();
+    }
+  return 0;
+}
+
+static inline int
+mctop_queue_unlock(mctop_queue_t* qu)
+{
+  if (qu->lock == 0)
+    {
+      _xend();
+    }
+  else
+    {
+      __atomic_clear(&qu->lock, __ATOMIC_RELEASE);
+    }
+  return 0;
+}
+
+
+#else /* !__TSX__ */
 
 static inline void
 mctop_queue_lock(mctop_queue_t* qu)
@@ -164,6 +217,8 @@ mctop_queue_unlock(mctop_queue_t* qu)
 {
   qu->lock = 0;
 }
+
+#endif	/* __TSX__ */
 
 static inline size_t
 mctop_queue_size(mctop_queue_t* qu)
@@ -218,7 +273,7 @@ mctop_queue_dequeue(mctop_queue_t* qu)
 /* high-level enqueue / dequeue */
 /* ******************************************************************************** */
 
-#define MCTOP_WQ_PROF 0
+#define MCTOP_WQ_PROF 1
 #if MCTOP_WQ_PROF == 1
 #  include <helper.h>
 #  define GETTICKS_IN(s) ticks s = getticks();

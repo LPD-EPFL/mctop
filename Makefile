@@ -20,6 +20,14 @@ UNAME := $(shell uname -n)
 
 CC := cc
 
+ifeq ($(UNAME), lpdquad)
+TSX = 1	
+endif
+
+ifneq ($(TSX),)
+CFLAGS += -D__TSX__ -mrtm
+endif
+
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
 CFLAGS += -m64 -mcpu=v9 -mtune=v9
@@ -33,12 +41,12 @@ endif
 OS_NAME = $(shell uname -s)
 
 ifeq ($(OS_NAME), Linux)
-	LDFLAGS += -lnuma
-	MALLOC += -ljemalloc
+LDFLAGS += -lnuma
+MALLOC += -ljemalloc
 endif
 
 ifeq ($(OS_NAME), SunOS)
-	LDFLAGS += -llgrp
+LDFLAGS += -llgrp
 endif
 
 
