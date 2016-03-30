@@ -44,7 +44,7 @@ endif
 
 default: mctop
 all: mctop mct_load tests
-tests: run_on_node0 allocator work_queue work_queue_sort
+tests: run_on_node0 allocator work_queue work_queue_sort numa_alloc
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -92,6 +92,9 @@ work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
 
 work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} ${MALLOC}
+
+numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
 
 ################################################################################
 ## .o compilation generic rules ################################################
