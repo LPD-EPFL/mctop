@@ -19,18 +19,11 @@ main(int argc, char **argv)
   if (topo)
     {
       mctop_run_on_node(topo, on);
-      lgrp_id_t root = lgrp_root(lgrp_cookie);
-      lgrp_affinity_t current = lgrp_affinity_get(P_LWPID, P_MYID, root);
-      printf("I'm on %zu\n", current);
-
       volatile uint** mem[mctop_get_num_nodes(topo)];
       for (int i = 0; i < mctop_get_num_nodes(topo); i++)
 	{
 	  mem[i] = numa_alloc_onnode(msize, i);
 	  assert(mem[i] != NULL);
-	  lgrp_id_t root = lgrp_root(lgrp_cookie);
-	  lgrp_affinity_t current = lgrp_affinity_get(P_LWPID, P_MYID, root);
-	  printf("%d - I'm on %zu\n", i, current);
 	}
 
       printf(" -- Mem intialized\n");
