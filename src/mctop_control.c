@@ -391,11 +391,7 @@ mctop_run_on_node(mctop_t* topo, const uint node_n)
   socket_t* socket = &topo->sockets[socket_n];
   return mctop_run_on_socket_ref(socket, 1);
 #elif __sparc
-  lgrp_id_t root = lgrp_root(lgrp_cookie);
-  lgrp_id_t lgrp_array[SPARC_LGRP_MAX_NODES];
-  int ret = lgrp_children(lgrp_cookie, root, lgrp_array, SPARC_LGRP_MAX_NODES);
-  ret = ret && lgrp_affinity_set(P_LWPID, P_MYID, lgrp_array[node_n], LGRP_AFF_STRONG);
-  return ret;
+  return numa_run_on_node(node_n);
 #endif
 }
 
