@@ -4,6 +4,23 @@
 
 void* test_pin(void* params);
 
+struct timespec
+timespec_diff(struct timespec start, struct timespec end)
+{
+  struct timespec temp;
+  if ((end.tv_nsec-start.tv_nsec) < 0)
+    {
+      temp.tv_sec = end.tv_sec-start.tv_sec-1;
+      temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+    }
+  else
+    {
+      temp.tv_sec = end.tv_sec-start.tv_sec;
+      temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+    }
+  return temp;
+}
+
 int
 main(int argc, char **argv) 
 {
@@ -99,6 +116,9 @@ main(int argc, char **argv)
 	  pthread_attr_init(&attr);
 	  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     
+	  struct timespec start, stop;
+	  clock_gettime(CLOCK_REALTIME, &start);
+
 	  for(int t = 0; t < n_hwcs; t++)
 	    {
 	      int rc = pthread_create(&threads[t], &attr, test_pin, wq);
@@ -120,6 +140,12 @@ main(int argc, char **argv)
 		  exit(-1);
 		}
 	    }
+
+	  clock_gettime(CLOCK_REALTIME, &stop);
+	  struct timespec dur = timespec_diff(start, stop);
+	  double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
+	  printf("## Summed  in %f seconds\n", dur_s);
+
 	}
 
       mctop_wq_free(wq);
@@ -231,7 +257,7 @@ array_sum(const size_t* a, const uint n)
 const uint _multi   = 1024;
 const uint _min     = 1;
 const uint _max     = 16;
-const uint _creps   = 2048;
+const uint _creps   = 4096;
 
 void*
 test_pin(void* params)
