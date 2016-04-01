@@ -14,28 +14,23 @@
 static __inline int
 mbininssort_find(SORT_TYPE* dst, const SORT_TYPE x, const size_t size)
 {
-  int l, c, r;
-  SORT_TYPE cx;
-  l = 0;
-  r = size - 1;
-  c = r >> 1;
+  int l = 0;
+  int r = size - 1;
+  int c = r >> 1;
 
   /* check for out of bounds at the beginning. */
-  if (SORT_CMP(x, dst[0]) < 0)
+  if (x < dst[0])
     {
       return 0;
     }
-  else if (SORT_CMP(x, dst[r]) > 0)
+  else if (x > dst[r])
     {
       return r;
     }
 
-  cx = dst[c];
-
   while (1)
     {
-      const int val = SORT_CMP(x, cx);
-      if (val < 0)
+      if (x < dst[c])
 	{
 	  if (c - l <= 1)
 	    {
@@ -46,7 +41,7 @@ mbininssort_find(SORT_TYPE* dst, const SORT_TYPE x, const size_t size)
 	}
       else
 	{ /* allow = for stability. The binary search favors the right. */
-	  if (r - c <= 1)
+	  if (unlikely(r - c <= 1))
 	    {
 	      return c + 1;
 	    }
@@ -55,7 +50,6 @@ mbininssort_find(SORT_TYPE* dst, const SORT_TYPE x, const size_t size)
 	}
 
       c = l + ((r - l) >> 1);
-      cx = dst[c];
     }
 }
 
@@ -63,25 +57,19 @@ mbininssort_find(SORT_TYPE* dst, const SORT_TYPE x, const size_t size)
 static void
 mbininssort_start(SORT_TYPE* dst, const size_t start, const size_t size)
 {
-  uint i;
-
-  for (i = start; i < size; i++)
+  for (uint i = start; i < size; i++)
     {
-      int j;
-      SORT_TYPE x;
-      int location;
-
       /* If this entry is already correct, just move along */
-      if (SORT_CMP(dst[i - 1], dst[i]) <= 0)
+      if (unlikely((dst[i - 1] <= dst[i])))
 	{
 	  continue;
 	}
 
       /* Else we need to find the right place, shift everything over, and squeeze in */
-      x = dst[i];
-      location = mbininssort_find(dst, x, i);
+      const SORT_TYPE x = dst[i];
+      const int location = mbininssort_find(dst, x, i);
 
-      for (j = i - 1; j >= location; j--)
+      for (int j = i - 1; j >= location; j--)
 	{
 	  dst[j + 1] = dst[j];
 	}
@@ -92,10 +80,10 @@ mbininssort_start(SORT_TYPE* dst, const size_t start, const size_t size)
 
 /* Binary insertion sort */
 void
-mbininssort_SORT(SORT_TYPE* dst, const size_t size)
+mbininssort(SORT_TYPE* dst, const size_t size)
 {
   /* don't bother sorting an array of size 0 */
-  if (size == 0)
+  if (unlikely(size == 0))
     {
       return;
     }
@@ -106,24 +94,24 @@ mbininssort_SORT(SORT_TYPE* dst, const size_t size)
 static __inline int
 mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivot)
 {
-  SORT_TYPE value = dst[pivot];
+  const SORT_TYPE value = dst[pivot];
   int index = left;
-  int i;
   int all_same = 1;
   /* move the pivot to the right */
   SORT_SWAP(dst[pivot], dst[right]);
 
-  for (i = left; i < right; i++)
+  for (int i = left; i < right; i++)
     {
-      int cmp = SORT_CMP(dst[i], value);
+      /* int cmp = SORT_CMP(dst[i], value); */
 
       /* check if everything is all the same */
-      if (cmp != 0)
-	{
-	  all_same &= 0;
-	}
+      /* if (cmp != 0) */
+      /* 	{ */
+	  //      	  all_same &= 0;
+      all_same &= (dst[i] == value);
+      	/* } */
 
-      if (cmp < 0)
+      if (dst[i] < value)
 	{
 	  SORT_SWAP(dst[i], dst[index]);
 	  index++;
@@ -133,7 +121,7 @@ mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivo
   SORT_SWAP(dst[right], dst[index]);
 
   /* avoid degenerate case */
-  if (all_same)
+  if (unlikely(all_same))
     {
       return -1;
     }
@@ -141,81 +129,21 @@ mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivo
   return index;
 }
 
-/* Return the median index of the objects at the three indices. */
-static __inline int
-mqsort_median(const SORT_TYPE* dst, const int a, const int b, const int c)
-{
-  const int AB = SORT_CMP(dst[a], dst[b]) < 0;
-
-  if (AB)
-    {
-      /* a < b */
-      const int BC = SORT_CMP(dst[b], dst[c]) < 0;
-
-      if (BC)
-	{
-	  /* a < b < c */
-	  return b;
-	} else {
-	/* a < b, c < b */
-	const int AC = SORT_CMP(dst[a], dst[c]) < 0;
-
-	if (AC)
-	  {
-	    /* a < c < b */
-	    return c;
-	  } else
-	  {
-	    /* c < a < b */
-	    return a;
-	  }
-      }
-    }
-  else
-    {
-      /* b < a */
-      const int AC = SORT_CMP(dst[a], dst[b]) < 0;
-
-      if (AC)
-	{
-	  /* b < a < c */
-	  return a;
-	}
-      else
-	{
-	  /* b < a, c < a */
-	  const int BC = SORT_CMP(dst[b], dst[c]) < 0;
-
-	  if (BC)
-	    {
-	      /* b < c < a */
-	      return c;
-	    }
-	  else
-	    {
-	      /* c < b < a */
-	      return b;
-	    }
-	}
-    }
-}
-
 static void
 mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
 {
-  if (right <= left)
+  if (unlikely(right <= left))
     {
       return;
     }
 
   if ((right - left + 1) < 16)
     {
-      mbininssort_SORT(&dst[left], right - left + 1);
+      mbininssort(&dst[left], right - left + 1);
       return;
     }
 
   const int pivot = left + ((right - left) >> 1);
-  /* pivot = mqsort_median(dst, left, pivot, right); */
   const int new_pivot = mqsort_partition(dst, left, right, pivot);
 
   /* check for partition all equal */
