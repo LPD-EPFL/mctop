@@ -858,10 +858,10 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
       do
 	{
 	  swaps = 0;
-	  for (int i = 0; i < socket->n_siblings - 1; i++)
+	  for (int i = 1; i < socket->n_siblings; i++)
 	    {
-	      sibling_t* sia = socket->siblings[i];
-	      sibling_t* sib = socket->siblings[i + 1];
+	      sibling_t* sia = socket->siblings[i - 1];
+	      sibling_t* sib = socket->siblings[i];
 	      if (sia->latency == sib->latency)
 		{
 		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
@@ -869,14 +869,14 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 		  //if bw from socket to sob > bw from socket to soa, swap
 		  if (mctop_socket_get_bw_to(socket, sob) > mctop_socket_get_bw_to(socket, soa))
 		    {
-		      socket->siblings[i] = sib;
-		      socket->siblings[i + 1] = sia;
+		      socket->siblings[i - 1] = sib;
+		      socket->siblings[i] = sia;
 		      swaps++;
 		    }
 		}
 
-	      sia = socket->siblings_in[i];
-	      sib = socket->siblings_in[i + 1];
+	      sia = socket->siblings_in[i - 1];
+	      sib = socket->siblings_in[i];
 	      if (sia->latency == sib->latency)
 		{
 		  socket_t* soa = mctop_sibling_get_other_socket(sia, socket);
@@ -884,8 +884,8 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 		  //if bw from sob to socket > bw soa to socket, swap
 		  if (mctop_socket_get_bw_to(sob, socket) > mctop_socket_get_bw_to(soa, socket))
 		    {
-		      socket->siblings_in[i] = sib;
-		      socket->siblings_in[i + 1] = sia;
+		      socket->siblings_in[i - 1] = sib;
+		      socket->siblings_in[i] = sia;
 		      swaps++;
 		    }
 		}
