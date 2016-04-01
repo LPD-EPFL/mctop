@@ -1,5 +1,7 @@
 /* adapted from https://github.com/swenson/sort */
 
+#include <nmmintrin.h>
+
 #define SORT_TYPE int
 
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -9,6 +11,34 @@
 /* #define SORT_CMP(x, y)  ((x) < (y) ? -1 : ((x) == (y) ? 0 : 1)) */
 #define SORT_CMP(x, y)  ((x) - (y))
 
+
+static inline void
+in_register_sort(__m128* data)
+{
+
+  __m128 i1 = _mm_min_ps(data[0],data[1]);
+  __m128 i2 = _mm_max_ps(data[0],data[1]);
+  __m128 i3 = _mm_min_ps(data[2],data[3]);
+  __m128 i4 = _mm_max_ps(data[2],data[3]);
+
+  __m128 res1 = _mm_min_ps(i1,i3);
+  __m128 i22 = _mm_max_ps(i1,i3);
+  __m128 i23 = _mm_min_ps(i2,i4);
+  __m128 res4 = _mm_max_ps(i2,i4);
+
+  __m128 res2 = _mm_min_ps(i22,i23);
+  __m128 res3 = _mm_max_ps(i22,i23);
+
+  __m128 l11 = _mm_shuffle_ps(res1,res2,_MM_SHUFFLE(1,0,1,0));
+  __m128 l12 = _mm_shuffle_ps(res1,res2,_MM_SHUFFLE(3,2,3,2));
+  __m128 l13 = _mm_shuffle_ps(res3,res4,_MM_SHUFFLE(1,0,1,0));
+  __m128 l14 = _mm_shuffle_ps(res3,res4,_MM_SHUFFLE(3,2,3,2));
+
+  data[0] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(2,0,2,0));
+  data[1] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(3,1,3,1));
+  data[2] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
+  data[3] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
+}
 
 /* Function used to do a binary search for binary insertion sort */
 static __inline int
@@ -129,6 +159,13 @@ mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivo
   return index;
 }
 
+static __inline uint
+is_aligned_16(uintptr_t addr)
+{
+  const uintptr_t mask = 0xE;
+  return (addr & mask) == 0;
+}
+
 static void
 mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
 {
@@ -137,11 +174,19 @@ mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
       return;
     }
 
-  if ((right - left + 1) < 16)
+  const uint n = right - left + 1;
+  /* if (n == 16 && is_aligned_16((uintptr_t) &dst[left])) */
+  /*   { */
+  /*     in_register_sort((__m128*) &dst[left]); */
+  /*     return; */
+  /*   } */
+  /* else */
+  if (n <= 16)
     {
-      mbininssort(&dst[left], right - left + 1);
+      mbininssort(&dst[left], n);
       return;
     }
+
 
   const int pivot = left + ((right - left) >> 1);
   const int new_pivot = mqsort_partition(dst, left, right, pivot);
