@@ -273,7 +273,7 @@ mctop_queue_dequeue(mctop_queue_t* qu)
 /* high-level enqueue / dequeue */
 /* ******************************************************************************** */
 
-#define MCTOP_WQ_PROF 1
+#define MCTOP_WQ_PROF 0
 #if MCTOP_WQ_PROF == 1
 #  include <helper.h>
 #  define GETTICKS_IN(s) ticks s = getticks();

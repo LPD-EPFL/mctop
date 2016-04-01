@@ -32,6 +32,7 @@
 *.x86_64
 *~
 /.nfs0000000006da006300000015
+/.nfs0000000006da046700000154
 /allocator
 /core
 /cscope.files
@@ -43,3 +44,4 @@
 /solaris
 /work_queue
 /work_queue_sort
+/work_queue_sort1
