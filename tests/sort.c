@@ -7,6 +7,7 @@
 #endif
 
 #include <mqsort.h>
+#include <mmergesort.h>
 
 /* #define SORT_NAME int */
 /* #define SORT_TYPE int */
@@ -478,6 +479,7 @@ test_pin(void* params)
       /* qsort(b + (c * chunk_size), chunk_size, sizeof(int), cmpfunc); */
       /* int_merge_sort(b + (c * chunk_size), chunk_size); */
       mqsort(b + (c * chunk_size), chunk_size);
+      //mmergesort(b + (c * chunk_size), chunk_size);
       /* int_selection_sort(b + (c * chunk_size), chunk_size); */
       /* int_binary_insertion_sort(b + (c * chunk_size), chunk_size); */
       /* int_heap_sort(b + (c * chunk_size), chunk_size); */

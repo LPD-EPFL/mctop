@@ -12,6 +12,7 @@
 /* #include "sort.h" */
 
 #include <mqsort.h>
+#include <mmergesort.h>
 
 
 #define mrand(x) xorshf96(&x[0], &x[1], &x[2])
@@ -85,7 +86,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:k:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -105,6 +106,13 @@ main(int argc, char **argv)
 	  {
 	    uint array_mb = atol(optarg) * 1024 * 1024LU;
 	    array_len = array_mb / sizeof(int);
+	  }
+	  break;
+	case 'k':
+	  {
+	    //uint array_kb = atol(optarg) * 1024LU;
+	    //	    array_len = array_kb / sizeof(int);
+	    array_len = atol(optarg);
 	  }
 	  break;
 	case 'r':
@@ -196,7 +204,8 @@ main(int argc, char **argv)
   
   for (int i = 0; i < n_chunks; i++)
     {
-      mqsort(array + chunks[i], chunk_size);
+      //      mqsort(array + chunks[i], chunk_size);
+      mmergesort(array + chunks[i], chunk_size);
     }
 
   clock_gettime(CLOCK_REALTIME, &stop);
