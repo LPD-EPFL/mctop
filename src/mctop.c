@@ -43,6 +43,8 @@ volatile double* mem_bw_gbps_r, * mem_bw_gbps_w;
 
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
+void mctop_cache_size_estimate();
+
 
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
 static void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
@@ -674,6 +676,11 @@ main(int argc, char **argv)
   test_num_hw_ctx = get_num_hw_ctx();
   double dvfs_up_dur;
   test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, &dvfs_up_dur);
+
+
+  mctop_cache_size_estimate();
+  exit(0);
+
 
 #if defined(__sparc__)
   lgrp_cookie_initialize();

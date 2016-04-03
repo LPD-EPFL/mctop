@@ -172,7 +172,6 @@ extern "C" {
   void mctop_print(mctop_t* topo);
   void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
 
-
   /* ******************************************************************************** */
   /* MCTOP CONTROL IF */
   /* ******************************************************************************** */
