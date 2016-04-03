@@ -2,14 +2,14 @@
 
 #include <nmmintrin.h>
 
+#define MQSORT_ITERATIVE 1 	/* 0 for recursive */
+
 #define SORT_TYPE int
 
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
 #define SORT_SWAP(x,y) {SORT_TYPE __SORT_SWAP_t = (x); (x) = (y); (y) = __SORT_SWAP_t;}
-/* #define SORT_CMP(x, y)  ((x) < (y) ? -1 : ((x) == (y) ? 0 : 1)) */
-#define SORT_CMP(x, y)  ((x) - (y))
 
 
 #include <mbininssort.h>
@@ -59,7 +59,7 @@ is_aligned_16(uintptr_t addr)
   return (addr & mask) == 0;
 }
 
-static void
+__attribute__((unused)) static void
 mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
 {
   if (unlikely(right <= left))
@@ -93,28 +93,15 @@ mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
   mqsort_recursive(dst, new_pivot + 1, right);
 }
 
-void
-mqsort1(SORT_TYPE* dst, const size_t size)
-{
-  /* don't bother sorting an array of size 0 */
-  if (size == 0)
-    {
-      return;
-    }
-
-  mqsort_recursive(dst, 0, size - 1);
-}
-
-
 
 /* This function is same in both iterative and recursive*/
 int
-partition (SORT_TYPE* arr, const int l, const int h)
+mqsort_partition1(SORT_TYPE* arr, const int l, const int h)
 {
   SORT_TYPE x = arr[h];
   int i = (l - 1);
 
-  for (int j = l; j <= h- 1; j++)
+  for (int j = l; j <= h - 1; j++)
     {
       if (arr[j] <= x)
 	{
@@ -128,9 +115,73 @@ partition (SORT_TYPE* arr, const int l, const int h)
 }
  
 
+typedef struct stack_e
+{
+  int low, high;
+} stack_e_t;
+
+static inline void
+stack_push(stack_e_t* stack, const int top, const int low, const int high)
+{
+  stack_e_t* st = stack + top;
+  st->low = low;
+  st->high = high;
+}
+
+#define STACK_PUSH(stack, top, low, high)	\
+  stack[++top].low = low; stack[top].high = high
+
+static inline stack_e_t
+stack_pop(stack_e_t* stack, const int top)
+{
+  return stack[top];
+}
+
+#define STACK_POP(stack, top)			\
+  stack[top--]
+
+
 // adapted from http://www.geeksforgeeks.org/iterative-quick-sort/
+
 void
 mqsort_iter(SORT_TYPE* arr, const size_t low, const size_t high)
+{
+  // Create an auxiliary stack
+  const size_t stack_size = ((high - low)  >> 1) + 1;
+  stack_e_t* stack;
+  int ret = posix_memalign((void**) &stack, 64, stack_size * sizeof(stack_e_t));
+  assert(!ret && stack != NULL);
+
+  register int top = -1;   // initialize top of stack
+
+  // push initial values of l and h to stack
+  top++;
+  stack_push(stack, top, low, high);
+
+  // Keep popping from stack while is not empty
+  while (likely(top >= 0))
+    {
+      register stack_e_t se = stack_pop(stack, top);
+      top--;
+      const int p = mqsort_partition1(arr, se.low, se.high);
+      if ((p - 1) > se.low)
+	{
+	  top++;
+	  stack_push(stack, top, se.low, p - 1);
+	}
+      if ((p + 1) < se.high)
+	{
+	  top++;
+	  stack_push(stack, top, p + 1, se.high);
+	}
+    }
+
+  free(stack);
+}
+
+
+void
+mqsort_iter1(SORT_TYPE* arr, const size_t low, const size_t high)
 {
   register int l = low, h = high;
 
@@ -154,10 +205,9 @@ mqsort_iter(SORT_TYPE* arr, const size_t low, const size_t high)
       // Pop h and l
       h = stack[top--];
       l = stack[top--];
-
       // Set pivot element at its correct position
       // in sorted array
-      const int p = partition(arr, l, h);
+      const int p = mqsort_partition1(arr, l, h);
 
       // If there are elements on left side of pivot,
       // then push left side to stack
@@ -188,5 +238,10 @@ mqsort(SORT_TYPE* dst, const size_t size)
       return;
     }
 
+#if MQSORT_ITERATIVE == 1
   mqsort_iter(dst, 0, size - 1);
+  //  mqsort_iter1(dst, 0, size - 1);
+#else
+  mqsort_recursive(dst, 0, size - 1);
+#endif
 }
