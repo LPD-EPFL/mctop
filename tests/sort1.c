@@ -64,7 +64,8 @@ timespec_diff(struct timespec start, struct timespec end)
 int
 main(int argc, char **argv) 
 {
-  int* array, * chunks, chunk_size;
+  int* __attribute__((aligned(64))) array;
+  int* chunks, chunk_size;
   uint chunks_per_thread = 1;
   size_t array_len = 1 * 1024 * 1024LL;
   uint test_random_type = 0;
@@ -123,8 +124,8 @@ main(int argc, char **argv)
   unsigned long* seeds = seed_rand();
 
   const size_t array_siz = array_len * sizeof(int);
-  array = malloc(array_siz);
-  assert(array != NULL);
+  int ret = posix_memalign((void**) &array, 64, array_siz);
+  assert(!ret && array != NULL);
 
   chunk_size = array_len / n_chunks;
 
