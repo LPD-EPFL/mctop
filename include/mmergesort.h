@@ -34,19 +34,6 @@ mmerge(SORT_TYPE* inl, SORT_TYPE* inr, const size_t len,
     }
 }
 
-static size_t
-mmergesort_is_sorted(SORT_TYPE* a, const size_t len)
-{
-  for (size_t i = 1; i < len; i++)
-    {
-      if (a[i - 1] > a[i])
-	{
-	  return i;
-	}
-    }
-  return 0;
-}
-
 void
 mmergesort(SORT_TYPE* dst, const size_t size)
 {
@@ -156,7 +143,7 @@ mmergesort2(SORT_TYPE* src, const size_t size)
   int ret = posix_memalign((void**) &help, 64, size * sizeof(SORT_TYPE));
   assert(!ret && help != NULL);
   
-  int in = 1;
+  uint in = 1;
   mmergesort_2(src, help, size, &in);
 
   //printf("in  %d\n", in);
