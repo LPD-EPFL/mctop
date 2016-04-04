@@ -124,26 +124,16 @@ sse_sort_16elements_32bits(__m128* data)
   __m128 l13 = _mm_shuffle_ps(res3,res4,_MM_SHUFFLE(1,0,1,0));
   __m128 l14 = _mm_shuffle_ps(res3,res4,_MM_SHUFFLE(3,2,3,2));
 
-  data[0] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(2,0,2,0));
-  data[1] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(3,1,3,1));
-  data[2] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
-  data[3] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
-  __m128 last; 
-  assert((((uintptr_t)temp1) & 15) == 0);
   __m128 *dest1 = (__m128 *)temp1; 
-
-  bitonic_merge(data[0],data[1],dest1, &dest1[1]);
-
   __m128 *dest2 = (__m128 *)temp2; 
-  bitonic_merge(data[2],data[3],dest2,&dest2[1]);
+  dest1[0] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(2,0,2,0));
+  dest1[1] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(3,1,3,1));
+  dest2[0] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
+  dest2[1] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
+
+  bitonic_merge(dest1[0],dest1[1],&data[0],&data[1]);
+  bitonic_merge(dest2[0],dest2[1],&data[2],&data[3]);
   
-  long i;
-  for (i = 0; i < 8; i++) {
-    ((SORT_TYPE*)data)[i] = temp1[i];
-  }
-  for (i = 8; i < 16; i++) {
-    ((SORT_TYPE*)data)[i] = temp2[i-8];
-  }
 }
 
 void
