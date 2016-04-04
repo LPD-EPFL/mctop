@@ -47,7 +47,6 @@ mmergesort(SORT_TYPE* dst, const size_t size)
   arrays[0] = dst;
   int ret = posix_memalign((void**) &arrays[1], 64, size * sizeof(SORT_TYPE));
   assert(!ret && arrays[1] != NULL);
-  /* long i; */
   
   //  step with "small" sort
   size_t c;
