@@ -61,27 +61,6 @@ mctop_cache_size_read_OS(size_t* sizes)
   return ret;
 }
 
-
-static mctop_cache_info_t*
-mctop_cache_info_create(const uint n_levels)
-{
-  mctop_cache_info_t* mci = malloc_assert(sizeof(mctop_cache_info_t));
-  mci->n_levels = n_levels;
-  mci->latencies = calloc_assert(n_levels, sizeof(uint64_t));
-  mci->sizes_OS = calloc_assert(n_levels, sizeof(uint64_t));
-  mci->sizes_estimated = calloc_assert(n_levels, sizeof(uint64_t));
-  return mci;
-}
-
-void
-mctop_cache_info_free(mctop_cache_info_t* mci)
-{
-  free(mci->latencies);
-  free(mci->sizes_OS);
-  free(mci->sizes_estimated);
-  free(mci);
-}
-
 mctop_cache_info_t*
 mctop_cache_size_estimate()
 {
@@ -162,7 +141,7 @@ mctop_cache_size_estimate()
       mci->latencies[lvl] = clat;
       mci->sizes_estimated[lvl] = kb;
 
-      printf("#### Cache L%d / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
+      printf("## Cache L%d / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
 	     lvl, clat, mci->sizes_OS[lvl], mci->sizes_estimated[lvl]);
 
       cdf_cluster_free(cc);

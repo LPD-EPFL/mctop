@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <darray.h>
 
 cdf_cluster_t* mctop_infer_clustering(uint64_t** lat_table_norm, const size_t N);
@@ -748,6 +749,26 @@ mctop_fix_horizontal_links(mctop_t* topo)
 
   darray_free(smt_hwcs);
   darray_free(siblings_all);
+}
+
+mctop_cache_info_t*
+mctop_cache_info_create(const uint n_levels)
+{
+  mctop_cache_info_t* mci = malloc_assert(sizeof(mctop_cache_info_t));
+  mci->n_levels = n_levels;
+  mci->latencies = calloc_assert(n_levels, sizeof(uint64_t));
+  mci->sizes_OS = calloc_assert(n_levels, sizeof(uint64_t));
+  mci->sizes_estimated = calloc_assert(n_levels, sizeof(uint64_t));
+  return mci;
+}
+
+void
+mctop_cache_info_free(mctop_cache_info_t* mci)
+{
+  free(mci->latencies);
+  free(mci->sizes_OS);
+  free(mci->sizes_estimated);
+  free(mci);
 }
 
 void
