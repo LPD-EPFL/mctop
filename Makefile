@@ -3,12 +3,15 @@
 ################################################################################
 
 CFLAGS = -O2
+CPPFLAGS = -O2
 
 ifeq (${DEBUG},1)
 CFLAGS = -O0 -ggdb -g 
+CPPFLAGS = -O0 -ggdb -g 
 endif
 
 CFLAGS += -Wall -std=c99
+CPPFLAGS += -Wall
 
 INCLUDE = include
 SRCPATH = src
@@ -120,6 +123,13 @@ sortcc: ${TSTPATH}/sortcc.o libmctop.a ${INCLUDES}
 
 numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
+
+merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} -ljemalloc
+
+merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
+
 
 ################################################################################
 ## .o compilation generic rules ################################################
