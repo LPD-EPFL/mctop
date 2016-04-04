@@ -1,3 +1,6 @@
+#ifndef __H_MSMALLSORT__
+#define __H_MSMALLSORT__
+
 /* Function used to do a binary search for binary insertion sort */
 static __inline int
 mbininssort_find(SORT_TYPE* dst, const SORT_TYPE x, const size_t size)
@@ -124,3 +127,5 @@ minssort(SORT_TYPE* dst, const size_t size)
       dst[i] = min;
     }
 }
+
+#endif

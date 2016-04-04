@@ -1,3 +1,6 @@
+#ifndef __H_MQSORT__
+#define __H_MQSORT__
+
 /* adapted from https://github.com/swenson/sort */
 
 #include <nmmintrin.h>
@@ -11,8 +14,7 @@
 
 #define SORT_SWAP(x,y) {SORT_TYPE __SORT_SWAP_t = (x); (x) = (y); (y) = __SORT_SWAP_t;}
 
-
-#include <mbininssort.h>
+#include <msmallsort.h>
 
 static __inline int
 mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivot)
@@ -253,3 +255,5 @@ mqsort(SORT_TYPE* dst, const size_t size)
   mqsort_recursive(dst, 0, size - 1);
 #endif
 }
+
+#endif

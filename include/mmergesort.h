@@ -1,10 +1,14 @@
+#ifndef __H_MMERGESORT__
+#define __H_MMERGESORT__
 /* adapted from https://github.com/swenson/sort */
 
 #define SORT_TYPE int
 
-
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
+
+#include <msmallsort.h>
+
 
 static inline void
 mmerge(SORT_TYPE* inl, SORT_TYPE* inr, const size_t len,
@@ -156,3 +160,5 @@ mmergesort2(SORT_TYPE* src, const size_t size)
 
   free(help);
 }
+
+#endif
