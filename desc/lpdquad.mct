@@ -9668,3 +9668,8 @@
 3    1    4.040730
 3    2    4.285011
 3    3    4.951753
+#Cache_levels 4
+Cache_level 0   Latency 0      SizeOS 32    SizeEst 32   
+Cache_level 1   Latency 7      SizeOS 32    SizeEst 32   
+Cache_level 2   Latency 18     SizeOS 256   SizeEst 256  
+Cache_level 3   Latency 45     SizeOS 30720 SizeEst 33792

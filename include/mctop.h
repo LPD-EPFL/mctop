@@ -198,6 +198,7 @@ extern "C" {
   size_t mctop_get_num_nodes(mctop_t* topo);
   size_t mctop_get_num_cores_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
+  size_t mctop_get_num_hwc_per_core(mctop_t* topo);
 
   /* cache */
   typedef enum 
@@ -207,8 +208,8 @@ extern "C" {
       L2,
       L3,			/* LLC = L3 */
     } mctop_cache_level_t;
-  #define L1  L1D
-  #define LLC L3
+#define L1  L1D
+#define LLC L3
 
   size_t mctop_get_cache_size_kb(mctop_t* topo, mctop_cache_level_t level);
   /* estimated size and latency not defined for L1I */
@@ -230,6 +231,8 @@ extern "C" {
   uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);
   socket_t* mctop_hwcid_get_socket(mctop_t* topo, const uint hwcid);
   hwc_gs_t* mctop_hwcid_get_core(mctop_t* topo, const uint hwcid);
+  uint mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid);
+  uint mctop_hwcid_get_nth_core_in_socket(mctop_t* topo, const uint hwcid);
 
   /* queries ************************************************************************ */
   uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -376,6 +379,10 @@ extern "C" {
     uint hwc_id;
     uint local_node;
     uint nth_socket;
+
+    uint nth_hwc_in_core;
+    uint nth_hwc_in_socket;
+    uint nth_core_socket;
   } mctop_thread_info_t;
 
   __attribute__((unused)) static const char* mctop_alloc_policy_desc[MCTOP_ALLOC_NUM] = 
@@ -435,6 +442,10 @@ extern "C" {
   uint mctop_alloc_is_pinned();	     /* is thread pinned? */
   int mctop_alloc_get_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
   int mctop_alloc_get_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
+  uint mctop_alloc_get_hw_context_seq_id_in_core(); /* seq id of the hw context of this thread
+						       in it's core (0=1st hyperthread, 1=2nd?, ..) */
+  uint mctop_alloc_get_hw_context_seq_id_in_socket(); /* seq id of the hw context of this thread in it's socket */
+  uint mctop_alloc_get_core_seq_id_in_socket(); /* seq id of the core of this thread in it's socket */
   int mctop_alloc_get_local_node();    /* local NUMA node of thread */
   int mctop_alloc_get_node_seq_id();   /* sequence id of the node that this thread is using. For example, the allocator
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
@@ -481,19 +492,19 @@ extern "C" {
   } mctop_wq_t;
 
   typedef __attribute__((aligned(64))) struct mctop_queue
-  {
-    volatile uint64_t lock;
-    volatile size_t size;
-    struct mctop_qnode* head;
-    struct mctop_qnode* tail;
-    volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
-    uint next_q[0];
+				       {
+					 volatile uint64_t lock;
+					 volatile size_t size;
+					 struct mctop_qnode* head;
+					 struct mctop_qnode* tail;
+					 volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
+					 uint next_q[0];
   } mctop_queue_t;
 
   typedef __attribute__((aligned(64))) struct mctop_qnode
-  {
-    struct mctop_qnode* next;
-    const void* data;
+				       {
+					 struct mctop_qnode* next;
+					 const void* data;
   } mctop_qnode_t;
 
   mctop_wq_t* mctop_wq_create(mctop_alloc_t* alloc);

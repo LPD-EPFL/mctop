@@ -67,10 +67,16 @@ mctop_get_num_cores_per_socket(mctop_t* topo)
   return topo->sockets[0].n_cores;
 }
 
-size_t
+inline size_t
 mctop_get_num_hwc_per_socket(mctop_t* topo)
 {
   return topo->sockets[0].n_hwcs;
+}
+
+inline size_t
+mctop_get_num_hwc_per_core(mctop_t* topo)
+{
+  return topo->n_hwcs_per_core;
 }
 
 sibling_t*
@@ -262,6 +268,40 @@ mctop_hwcid_get_core(mctop_t* topo, const uint hwcid)
     {
       return hwc->parent;
     }
+}
+
+uint
+mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid)
+{
+  hw_context_t* hwc = &topo->hwcs[hwcid];
+  if (hwc->type == CORE)
+    {
+      return 0;
+    }
+  hwc_gs_t* core = hwc->parent;
+  for (int i = 0; i < core->n_hwcs; i++)
+    {
+      if (core->hwcs[i]->id == hwc->id)
+	{
+	  return i;
+	}
+    }
+  assert(0);
+}
+
+uint
+mctop_hwcid_get_nth_core_in_socket(mctop_t* topo, const uint hwcid)
+{
+  hwc_gs_t* core = mctop_hwcid_get_core(topo, hwcid);
+  hwc_gs_t* core_first = mctop_socket_get_first_gs_core(core->socket);
+  uint i = 0;
+  while (core_first && core->id != core_first->id)
+    {
+      i++;
+      core_first = core_first->next;
+    }
+
+  return i;
 }
 
 

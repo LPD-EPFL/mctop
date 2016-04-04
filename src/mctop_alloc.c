@@ -702,7 +702,6 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
 		{
 		  uint hwcid = i;
 
-
 		  FAI_U32(&alloc->n_hwcs_used);
 		  alloc->hwcs_used[hwcid] = 1;
 
@@ -724,6 +723,12 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
 			  __mctop_thread_info.nth_socket = s;
 			}
 		    }
+
+		  __mctop_thread_info.nth_hwc_in_core = mctop_hwcid_get_nth_hwc_in_core(alloc->topo, hwcid);
+		  __mctop_thread_info.nth_core_socket = mctop_hwcid_get_nth_core_in_socket(alloc->topo, hwcid);
+		  __mctop_thread_info.nth_hwc_in_socket =
+		    (__mctop_thread_info.nth_core_socket * mctop_get_num_hwc_per_core(alloc->topo)) +
+		    __mctop_thread_info.nth_hwc_in_core;
 		  return ret;
  		}
 	    }
@@ -752,10 +757,12 @@ mctop_alloc_thread_print()
 {
   if (mctop_alloc_is_pinned())
     {
-      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u / node seq id %-3u\n",
+      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u | SEQ ids: hwc %2u  core %2u  node %2u\n",
 	     mctop_alloc_get_id(),
 	     mctop_alloc_get_hw_context_id(),
 	     mctop_alloc_get_local_node(),
+	     mctop_alloc_get_hw_context_seq_id_in_core(),
+	     mctop_alloc_get_core_seq_id_in_socket(),
 	     mctop_alloc_get_node_seq_id());
     }
   else
@@ -882,6 +889,36 @@ mctop_alloc_get_hw_context_id()
   return 0;
 }
 
+uint
+mctop_alloc_get_hw_context_seq_id_in_core()
+{
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.nth_hwc_in_core;
+    }
+  return 0;
+}
+
+uint
+mctop_alloc_get_hw_context_seq_id_in_socket()
+{
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.nth_hwc_in_socket;
+    }
+  return 0;
+}
+
+uint
+mctop_alloc_get_core_seq_id_in_socket()
+{
+  if (likely(mctop_alloc_is_pinned()))
+    {
+      return __mctop_thread_info.nth_core_socket;
+    }
+  return 0;
+}
+
 int
 mctop_alloc_get_local_node()
 {
@@ -917,4 +954,3 @@ mctop_alloc_malloc_free(void* mem, const size_t size)
 {
   numa_free(mem, size);
 }
-
