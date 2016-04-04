@@ -24,7 +24,6 @@ ll_random_latency(const size_t size_bytes)
   return lat;
 }
 
-
 const size_t mctop_cache_n_lvls = 3;
 
 static int
@@ -90,10 +89,10 @@ mctop_cache_size_estimate()
 	{
 	  stp = 1024;
 	}
-      size_t sensitivity = 1.5 * latencies[lvl - 1];
+      size_t sensitivity = 1.1 * latencies[lvl - 1];
       int min = stp;
       size_t max = n_steps * stp;
-      printf("Looking for L%d size (%d to %zu KB, step %zu)\n",
+      printf("## Looking for L%d size (%d to %zu KB, step %zu KB)\n",
 	     lvl, min, max, stp);
 
       ticks* lat = calloc_assert(n_steps, sizeof(ticks));
@@ -102,32 +101,27 @@ mctop_cache_size_estimate()
       for (kb = min; kb < max; kb += stp)
 	{
 	  lat[n] = ll_random_latency(((kb - 4) * KB));
-	  /* printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", */
-	  /* 	 n, kb, lat[n]); */
+	  /* printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", n, kb, lat[n]); */
 	  n++;
 	}
 
       cdf_t* cdf = cdf_calc(lat + 1, n - 1);
       //      cdf_t* cdf = cdf_calc(lat, n);
-      //      cdf_print(cdf);
-#warning FIX: bug with DEBUG=1 compilation
+      /* cdf_print(cdf); */
       cdf_cluster_t* cc = cdf_cluster(cdf, sensitivity, 0);
       //      cdf_cluster_print(cc);
 
-      size_t tlat = cc->clusters[1].val_max;
-     
+      size_t tlat = cc->clusters[0].val_max;
 
       for (kb = min, n = 0; kb < max && lat[n] <= tlat; kb += stp, n++);
       kb -= stp;
     
       size_t clat = array_get_min(lat, n - 1);
-      /* printf("-- Lat = %zu\n", clat); */
-      /* printf("-- Siz = %zu KB\n", kb); */
 
       latencies[lvl] = clat;
       sizes[lvl] = kb;
 
-      printf("-- Level %d / Latency: %-4zu / Size: OS: %-5zu KB Esimated: %zu KB\n",
+      printf("#### Level %d / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
 	     lvl, clat, sizes_OS[lvl], sizes[lvl]);
 
       cdf_cluster_free(cc);
