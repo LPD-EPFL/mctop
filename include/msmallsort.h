@@ -86,7 +86,7 @@ mbininssort(SORT_TYPE* dst, const size_t size)
 static inline void
 in_register_sort(__m128* data)
 {
-
+  
   __m128 i1 = _mm_min_ps(data[0],data[1]);
   __m128 i2 = _mm_max_ps(data[0],data[1]);
   __m128 i3 = _mm_min_ps(data[2],data[3]);

@@ -41,7 +41,7 @@ mmerge(SORT_TYPE* inl, SORT_TYPE* inr, const size_t len,
 void
 mmergesort(SORT_TYPE* dst, const size_t size)
 {
-  const size_t small_array = 1;
+  const size_t small_array = 16;
 
   SORT_TYPE* arrays[2];
   arrays[0] = dst;
@@ -53,8 +53,9 @@ mmergesort(SORT_TYPE* dst, const size_t size)
   for (c = 0; c < size; c += small_array)
     {
       //      mbininssort(dst + c, small_array);
-      minssort(dst + c, small_array);
-      //in_register_sort((__m128*) (dst + c));
+      SORT_TYPE* m = dst + c;
+      //      minssort(m, small_array);
+      in_register_sort((__m128*) (m));
     }
 
   //  mbininssort(dst + c, size - c);
