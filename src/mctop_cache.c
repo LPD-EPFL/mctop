@@ -85,7 +85,7 @@ mctop_cache_info_free(mctop_cache_info_t* mci)
 mctop_cache_info_t*
 mctop_cache_size_estimate()
 {
-  /* +1 for 0: i cache */
+  /* +1 level for 0: i cache */
   mctop_cache_info_t* mci = mctop_cache_info_create(mctop_cache_n_lvls + 1);
 
   int sizes_OS_ok = mctop_cache_size_read_OS(mci->sizes_OS);
@@ -98,7 +98,7 @@ mctop_cache_size_estimate()
   
   mci->sizes_estimated[0] = 4;
 
-  const size_t n_steps_fix = 12;
+  const size_t n_steps_fix = 32;
       
 
   for (int lvl = 1; lvl <= mctop_cache_n_lvls; lvl++)
@@ -109,10 +109,26 @@ mctop_cache_size_estimate()
 	{
 	  stp = 1024;
 	}
-      size_t sensitivity = 1.1 * mci->latencies[lvl - 1];
-      int min = stp;
+      size_t sensitivity = 1.2 * mci->latencies[lvl - 1];
+      int64_t min = stp;
       size_t max = n_steps * stp;
-      printf("## Looking for L%d cache size (%d to %zu KB, step %zu KB)\n",
+
+      size_t size_OS = mci->sizes_OS[lvl];
+      if (size_OS > 0)
+	{
+	  const size_t n_steps_side = 8;
+	  min = size_OS;
+	  n_steps = 0;
+	  while (n_steps++ < n_steps_side && min > stp)
+	    {
+	      min -= stp;
+	    }
+	  max = size_OS + (n_steps_side * stp);
+	  n_steps += n_steps_side + 1;
+	}
+
+
+      printf("## Looking for L%d cache size (%zu to %zu KB, step %zu KB)\n",
 	     lvl, min, max, stp);
 
       ticks* lat = calloc_assert(n_steps, sizeof(ticks));
@@ -120,9 +136,13 @@ mctop_cache_size_estimate()
       size_t n = 0, kb;
       for (kb = min; kb < max; kb += stp)
 	{
-	  lat[n] = ll_random_latency(((kb - 4) * KB));
-	  #warning optimize by breaking here?
-	  /* printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", n, kb, lat[n]); */
+	  lat[n] = ll_random_latency(((kb * 0.98) * KB));
+
+	  //	  printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", n, kb, lat[n]);
+	  if (n > 1 && lat[n] > (lat[n - 1] +  sensitivity))
+	    {
+	      break;
+	    }
 	  n++;
 	}
 
