@@ -74,9 +74,10 @@ mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
   /*     return; */
   /*   } */
   /* else */
-  if (n <= 16)
+  if (n < 16)
     {
-      mbininssort(&dst[left], n);
+      /* mbininssort(&dst[left], n); */
+      minssort(&dst[left], n);
       return;
     }
 
@@ -163,6 +164,13 @@ mqsort_iter(SORT_TYPE* arr, const size_t low, const size_t high)
     {
       register stack_e_t se = stack_pop(stack, top);
       top--;
+
+      if ((se.high - se.low) < 16)
+	{
+	  minssort(arr + se.low, se.high - se.low + 1);
+	  continue;
+	}
+
       const int p = mqsort_partition1(arr, se.low, se.high);
       if ((p - 1) > se.low)
 	{

@@ -48,10 +48,12 @@ mmergesort(SORT_TYPE* dst, const size_t size)
   size_t c;
   for (c = 0; c < size; c += small_array)
     {
-      mbininssort(dst + c, small_array);
+      //      mbininssort(dst + c, small_array);
+      minssort(dst + c, small_array);
       //in_register_sort((__m128*) (dst + c));
     }
 
+  //  mbininssort(dst + c, size - c);
   mbininssort(dst + c, size - c);
 
   // merging!
