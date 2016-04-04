@@ -55,6 +55,14 @@ extern "C" {
   typedef struct hwc_gs socket_t;
   typedef struct hwc_gs hwc_group_t;
 
+  typedef struct mctop_cache_info
+  {
+    uint n_levels;
+    uint64_t* latencies;
+    uint64_t* sizes_OS;
+    uint64_t* sizes_estimated;
+  } mctop_cache_info_t;
+
   typedef struct mctop
   {
     uint n_levels;		/* num. of latency lvls */
@@ -70,6 +78,7 @@ extern "C" {
     struct hw_context* hwcs;	/* pointers to hwcs */
     uint n_siblings;		/* total number of sibling relationships */
     struct sibling** siblings;	/* pointers to sibling relationships */
+    mctop_cache_info_t* cache;	/* pointer to cache information */
     double* mem_bandwidths_r;	/* Read mem. bandwidth of each socket, maximum */
     double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
     double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
@@ -169,6 +178,8 @@ extern "C" {
   void mctop_free(mctop_t* topo);
   void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_r, double** mem_bw_r1, double** mem_bw_w, double** mem_bw_w1);
   void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
+  void mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci);
+
   void mctop_print(mctop_t* topo);
   void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
 
@@ -496,4 +507,5 @@ extern "C" {
 #endif
 
 #endif	/* __H_MCTOP__ */
+
 

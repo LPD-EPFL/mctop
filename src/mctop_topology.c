@@ -250,6 +250,15 @@ mctop_print(mctop_t* topo)
 #define PD_2 "|||"
   printf(PD_0" MCTOP Topology   / #HW contexts: %u / #Sockets: %u / Socket ref.: %u-xxxx / SMT: %d \n", 
 	 topo->n_hwcs, topo->n_sockets, topo->socket_level, topo->is_smt);
+  if (topo->cache)
+    {
+      printf(PD_0" #Cache lvls: %u\n", topo->cache->n_levels - 1);
+      for (int i = 1; i < topo->cache->n_levels; i++)
+	{
+	  printf(PD_1" Level %u / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
+		 i, topo->cache->latencies[i], topo->cache->sizes_OS[i], topo->cache->sizes_estimated[i]);
+	}
+    }
   printf(PD_0" #Latency lvls: %u / Latencies: ", topo->n_levels);
   for (int i = 0; i < topo->n_levels; i++)
     {
@@ -739,6 +748,12 @@ mctop_fix_horizontal_links(mctop_t* topo)
 
   darray_free(smt_hwcs);
   darray_free(siblings_all);
+}
+
+void
+mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci)
+{
+  topo->cache = mci;
 }
 
 
