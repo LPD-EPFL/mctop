@@ -89,6 +89,7 @@ cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
   int sensitivity = sens;
   cdf_cluster_t* cc = NULL;
 
+
   do
     {
       cdf_cluster_point_t clusters[cdf->n_points];

@@ -1,5 +1,5 @@
 /*   
- *   File: helper.h
+ *   File: cdf.h
  *   Author: Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
  *   Description: commulative distribution functions
  *

@@ -19,6 +19,7 @@ VFLAGS = -D_GNU_SOURCE
 UNAME := $(shell uname -n)
 
 CC := cc
+CPP := g++
 
 ifeq ($(UNAME), lpdquad)
 ifneq ($(TSX), 0)
@@ -65,7 +66,7 @@ INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profile
 
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o ${SRCPATH}/numa_sparc.o \
 	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o \
-	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o 
+	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_cache.o
 
 mctop: 	${MCTOP_OBJS} ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS}
@@ -106,6 +107,15 @@ work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
 work_queue_sort1: ${TSTPATH}/work_queue_sort1.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort1.o -o work_queue_sort1 -lmctop ${LDFLAGS} ${MALLOC}
 
+sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
+
+sort1: ${TSTPATH}/sort1.o libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.o -o sort1 -lmctop ${LDFLAGS} ${MALLOC}
+
+sortcc: ${TSTPATH}/sortcc.o libmctop.a ${INCLUDES} 
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.o -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
+
 numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
 
@@ -117,7 +127,7 @@ $(SRCPATH)/%.o:: $(SRCPATH)/%.c
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
 $(TSTPATH)/%.o:: $(TSTPATH)/%.c 
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -I./sort_algos/sort -o $@ -c $<
 
 
 ################################################################################
