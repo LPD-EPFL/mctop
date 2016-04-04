@@ -82,11 +82,30 @@ mbininssort(SORT_TYPE* dst, const size_t size)
   mbininssort_start(dst, 1, size);
 }
 
+//4-wide bitonic merge network
+inline void bitonic_merge(__m128 a, __m128 b, __m128* res_lo, __m128* res_hi) {
+    b = _mm_shuffle_ps(b,b,_MM_SHUFFLE(0,1,2,3));
+    __m128 l1 = _mm_min_ps(a,b);
+    __m128 h1 = _mm_max_ps(a,b);
+    __m128 l1p = _mm_shuffle_ps(l1,h1,_MM_SHUFFLE(1,0,1,0));
+    __m128 h1p = _mm_shuffle_ps(l1,h1,_MM_SHUFFLE(3,2,3,2));
+    __m128 l2 = _mm_min_ps(l1p, h1p);
+    __m128 h2 = _mm_max_ps(l1p, h1p);
+    __m128 l2u = _mm_unpacklo_ps(l2,h2);
+    __m128 h2u = _mm_unpackhi_ps(l2,h2);
+    __m128 l2p = _mm_shuffle_ps(l2u,h2u,_MM_SHUFFLE(1,0,1,0));
+    __m128 h2p = _mm_shuffle_ps(l2u,h2u,_MM_SHUFFLE(3,2,3,2));
+    __m128 l3 = _mm_min_ps(l2p,h2p);
+    __m128 h3 = _mm_max_ps(l2p,h2p);
+    *res_lo = _mm_unpacklo_ps(l3,h3);
+    *res_hi = _mm_unpackhi_ps(l3,h3);
+}
 
 static inline void
-in_register_sort(__m128* data)
+sse_sort_16elements_32bits(__m128* data)
 {
-  
+  SORT_TYPE temp1[8] __attribute__((aligned(64))); 
+  SORT_TYPE temp2[8] __attribute__((aligned(64))); 
   __m128 i1 = _mm_min_ps(data[0],data[1]);
   __m128 i2 = _mm_max_ps(data[0],data[1]);
   __m128 i3 = _mm_min_ps(data[2],data[3]);
@@ -109,6 +128,22 @@ in_register_sort(__m128* data)
   data[1] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(3,1,3,1));
   data[2] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
   data[3] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
+  __m128 last; 
+  assert((((uintptr_t)temp1) & 15) == 0);
+  __m128 *dest1 = (__m128 *)temp1; 
+
+  bitonic_merge(data[0],data[1],dest1, &dest1[1]);
+
+  __m128 *dest2 = (__m128 *)temp2; 
+  bitonic_merge(data[2],data[3],dest2,&dest2[1]);
+  
+  long i;
+  for (i = 0; i < 8; i++) {
+    ((SORT_TYPE*)data)[i] = temp1[i];
+  }
+  for (i = 8; i < 16; i++) {
+    ((SORT_TYPE*)data)[i] = temp2[i-8];
+  }
 }
 
 void
