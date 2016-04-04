@@ -199,6 +199,22 @@ extern "C" {
   size_t mctop_get_num_cores_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
 
+  /* cache */
+  typedef enum 
+    {
+      L1I,			/* L1 instruction */
+      L1D,			/* L1D = L1 */
+      L2,
+      L3,			/* LLC = L3 */
+    } mctop_cache_level_t;
+  #define L1  L1D
+  #define LLC L3
+
+  size_t mctop_get_cache_size_kb(mctop_t* topo, mctop_cache_level_t level);
+  /* estimated size and latency not defined for L1I */
+  size_t mctop_get_cache_size_estimated_kb(mctop_t* topo, mctop_cache_level_t level);
+  size_t mctop_get_cache_latency(mctop_t* topo, mctop_cache_level_t level);
+
   /* socket getters ***************************************************************** */
   hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
   hw_context_t* mctop_socket_get_nth_hwc(socket_t* socket, const uint nth);
@@ -501,6 +517,7 @@ extern "C" {
   uint mctop_wq_thread_enter(mctop_wq_t* wq);   /* inform the others that you are working on WQ. Returns 1 if last thread. */
   uint mctop_wq_thread_exit(mctop_wq_t* wq);	/* inform the others that you stopped working on WQ. Returns 1 if last thread. */
   uint mctop_wq_is_last_thread(mctop_wq_t* wq);	/* Returns 1 if it's the last active thread. */
+
 
 #ifdef __cplusplus
 }

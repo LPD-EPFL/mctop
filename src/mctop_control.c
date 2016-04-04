@@ -88,6 +88,39 @@ mctop_get_sibling_with_sockets(mctop_t* topo, socket_t* s0, socket_t* s1)
   return NULL;
 }
 
+size_t
+mctop_get_cache_size_kb(mctop_t* topo, mctop_cache_level_t level)
+{
+  mctop_cache_info_t* mci = topo->cache;
+  if (mci)
+    {
+      return mci->sizes_OS[level] ? mci->sizes_OS[level] : mci->sizes_estimated[level];
+    }
+  return 0;
+}
+  /* estimated size and latency not defined for L1I */
+size_t
+mctop_get_cache_size_estimated_kb(mctop_t* topo, mctop_cache_level_t level)
+{
+  if (topo->cache)
+    {
+      return topo->cache->sizes_estimated[level];
+    }
+  return 0;
+}
+
+size_t
+mctop_get_cache_latency(mctop_t* topo, mctop_cache_level_t level)
+{
+  if (topo->cache)
+    {
+      return topo->cache->latencies[level];
+    }
+  return 0;
+}
+
+
+
 /* socket getters ***************************************************************** */
 
 inline hw_context_t*
