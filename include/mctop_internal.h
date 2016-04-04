@@ -16,6 +16,7 @@ extern "C" {
 
   mctop_cache_info_t* mctop_cache_size_estimate();
   void mctop_cache_info_free(mctop_cache_info_t* mci);
+  mctop_cache_info_t* mctop_cache_info_create(const uint n_levels);
 
 #ifdef __cplusplus
 }
