@@ -3,12 +3,15 @@
 ################################################################################
 
 CFLAGS = -O2
+CPPFLAGS = -O2
 
 ifeq (${DEBUG},1)
 CFLAGS = -O0 -ggdb -g 
+CPPFLAGS = -O0 -ggdb -g 
 endif
 
 CFLAGS += -Wall -std=c99
+CPPFLAGS += -Wall
 
 INCLUDE = include
 SRCPATH = src
@@ -19,6 +22,7 @@ VFLAGS = -D_GNU_SOURCE
 UNAME := $(shell uname -n)
 
 CC := cc
+GPP := g++
 
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
@@ -91,6 +95,13 @@ work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
 
 work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} -ljemalloc
+
+merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
+	${GPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} -ljemalloc
+
+merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
+	${GPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
+
 
 ################################################################################
 ## .o compilation generic rules ################################################
