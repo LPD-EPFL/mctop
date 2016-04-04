@@ -128,8 +128,8 @@ sse_sort_16elements_32bits(__m128* data)
   data[1] = _mm_shuffle_ps(l11,l13,_MM_SHUFFLE(3,1,3,1));
   data[2] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
   data[3] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
-  __m128 last; 
-  assert((((uintptr_t)temp1) & 15) == 0);
+  /* __m128 last;  */
+  /* assert((((uintptr_t)temp1) & 15) == 0); */
   __m128 *dest1 = (__m128 *)temp1; 
 
   bitonic_merge(data[0],data[1],dest1, &dest1[1]);
