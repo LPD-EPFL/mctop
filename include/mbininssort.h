@@ -107,3 +107,20 @@ in_register_sort(__m128* data)
   data[2] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(2,0,2,0));
   data[3] = _mm_shuffle_ps(l12,l14,_MM_SHUFFLE(3,1,3,1));
 }
+
+void
+minssort(SORT_TYPE* dst, const size_t size)
+{
+  for (int i = 0; i < size; i++)
+    {
+      SORT_TYPE min = dst[i];
+      for (int j = i + 1; j < size; j++)
+	{
+	  if (dst[j] < min)
+	    {
+	      min = dst[j];
+	    }
+	}
+      dst[i] = min;
+    }
+}
