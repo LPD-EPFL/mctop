@@ -46,8 +46,9 @@ mmergesort(SORT_TYPE* dst, const size_t size)
   SORT_TYPE* arrays[2];
   arrays[0] = dst;
   int ret = posix_memalign((void**) &arrays[1], 64, size * sizeof(SORT_TYPE));
+  long i;
   assert(!ret && arrays[1] != NULL);
-
+  
   //  step with "small" sort
   size_t c;
   for (c = 0; c < size; c += small_array)
@@ -55,7 +56,7 @@ mmergesort(SORT_TYPE* dst, const size_t size)
       //      mbininssort(dst + c, small_array);
       SORT_TYPE* m = dst + c;
       //      minssort(m, small_array);
-      in_register_sort((__m128*) (m));
+      sse_sort_16elements_32bits((__m128*) (m));
     }
 
   //  mbininssort(dst + c, size - c);
@@ -64,7 +65,7 @@ mmergesort(SORT_TYPE* dst, const size_t size)
   // merging!
 
   uint input_array = 0;
-  size_t sorted_size = small_array;
+  size_t sorted_size = small_array / 2;
   do
     {
       const uint output_array = !input_array;
