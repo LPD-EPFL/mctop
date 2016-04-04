@@ -16,13 +16,23 @@ CPPFLAGS += -Wall
 INCLUDE = include
 SRCPATH = src
 TSTPATH = tests
-LDFLAGS = -lrt -lm -pthread -L.
+LDFLAGS = -lrt -lm -lpthread -L.
 VFLAGS = -D_GNU_SOURCE
 
 UNAME := $(shell uname -n)
 
 CC := cc
-GPP := g++
+CPP := g++
+
+ifeq ($(UNAME), lpdquad)
+ifneq ($(TSX), 0)
+TSX = 1
+endif
+endif
+
+ifeq ($(TSX),1)
+CFLAGS += -D__TSX__ -mrtm
+endif
 
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
@@ -37,17 +47,18 @@ endif
 OS_NAME = $(shell uname -s)
 
 ifeq ($(OS_NAME), Linux)
-	LDFLAGS += -lnuma
+LDFLAGS += -lnuma
+MALLOC += -ljemalloc
 endif
 
 ifeq ($(OS_NAME), SunOS)
-	LDFLAGS += -llgrp
+LDFLAGS += -llgrp
 endif
 
 
 default: mctop
-all: mctop mct_load mctop_latency tests
-tests: run_on_node0 allocator work_queue work_queue_sort
+all: mctop mct_load tests
+tests: run_on_node0 allocator work_queue work_queue_sort work_queue_sort1 numa_alloc
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -56,9 +67,11 @@ INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profile
 ## basic tools #################################################################
 ################################################################################
 
+FORCE:
+
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o ${SRCPATH}/numa_sparc.o \
 	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o \
-	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o 
+	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_cache.o
 
 mctop: 	${MCTOP_OBJS} ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS}
@@ -74,7 +87,7 @@ mctop_latency: ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/
 ## libmctop.a ##################################################################
 ################################################################################
 
-MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o \
+MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/numa_sparc.o \
 	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o ${SRCPATH}/mctop_wq.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
@@ -91,16 +104,31 @@ allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
 
 work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} -ljemalloc
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} ${MALLOC}
 
 work_queue_sort: ${TSTPATH}/work_queue_sort.o libmctop.a ${INCLUDES}
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} -ljemalloc
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort.o -o work_queue_sort -lmctop ${LDFLAGS} ${MALLOC}
+
+work_queue_sort1: ${TSTPATH}/work_queue_sort1.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue_sort1.o -o work_queue_sort1 -lmctop ${LDFLAGS} ${MALLOC}
+
+sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
+
+sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC} -msse4
+
+sortcc: ${TSTPATH}/sortcc.o libmctop.a ${INCLUDES} 
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.o -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
+
+numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
 
 merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
-	${GPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} -ljemalloc
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} -ljemalloc
 
 merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
-	${GPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
 
 
 ################################################################################
@@ -111,7 +139,7 @@ $(SRCPATH)/%.o:: $(SRCPATH)/%.c
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
 $(TSTPATH)/%.o:: $(TSTPATH)/%.c 
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -I./sort_algos/sort -o $@ -c $<
 
 
 ################################################################################
@@ -119,7 +147,7 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 ################################################################################
 
 clean:
-	rm src/*.o *.a
+	rm src/*.o *.a tests/*.o
 
 
 ################################################################################
@@ -133,3 +161,4 @@ install: libmctop.a
 	sudo cp desc/* ${IPATH}
 	sudo cp libmctop.a /usr/lib/
 	sudo cp include/mctop.h /usr/include/
+

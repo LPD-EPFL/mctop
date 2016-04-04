@@ -481,11 +481,15 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 
   alloc->policy = policy;
 
+#ifdef __x86_64__
   alloc->hwcs_all = numa_bitmask_alloc(topo->n_hwcs);
   for (int i = 0; i < topo->n_hwcs; i++) 
     {
       alloc->hwcs_all = numa_bitmask_setbit(alloc->hwcs_all, topo->hwcs[i].id);
     }
+#elif defined(__sparc)
+  alloc->hwcs_all = lgrp_root(lgrp_cookie);
+#endif
 
   alloc->bw_proportions = NULL;
 
@@ -598,7 +602,9 @@ mctop_alloc_free(mctop_alloc_t* alloc)
 {
   free(alloc->hwcs);
   free((void*) alloc->hwcs_used);
+#ifdef __x86_64__
   free(alloc->hwcs_all);
+#endif
   if (alloc->sockets != NULL)
     {
       free(alloc->sockets);
@@ -658,14 +664,11 @@ mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth)
 int
 mctop_alloc_pin_all(mctop_alloc_t* alloc)
 {
-  struct bitmask* bmask = numa_bitmask_alloc(alloc->topo->n_hwcs);
-  for (int i = 0; i < alloc->n_hwcs; i++)
-    {
-      bmask = numa_bitmask_setbit(bmask, alloc->hwcs[i]);
-    }
-
-  int ret = numa_sched_setaffinity(0, bmask);
-  numa_bitmask_free(bmask);
+#if __x86_64__
+  int ret = numa_sched_setaffinity(0, alloc->hwcs_all);
+#elif defined(__sparc)
+  int ret = lgrp_affinity_set(P_LWPID, P_MYID, alloc->hwcs_all, LGRP_AFF_STRONG);
+#endif
   return ret;
 }
 
@@ -737,9 +740,8 @@ mctop_alloc_unpin()
     {
       DAF_U32(&alloc->n_hwcs_used);
       alloc->hwcs_used[mctop_alloc_get_id()] = 0;
-      int ret = numa_sched_setaffinity(0, alloc->hwcs_all);
+      int ret = mctop_alloc_pin_all(alloc);
       __mctop_thread_info.is_pinned = 0;
-      __asm volatile ("mfence");
       return ret;
     }
   return 1;
@@ -818,14 +820,17 @@ mctop_alloc_node_to_nth_socket(mctop_alloc_t* alloc, const uint node)
 struct bitmask* 
 mctop_alloc_create_nodemask(mctop_alloc_t* alloc)
 {
+#if __x86_64__
   struct bitmask* nodemask = numa_allocate_nodemask();
   for (int n = 0; n < alloc->n_sockets; n++)
     {
       uint node = mctop_alloc_get_nth_node(alloc, n);
       nodemask = numa_bitmask_setbit(nodemask, node);
     }
-
   return nodemask;
+#else
+  return NULL;
+#endif
 }
 
 inline double

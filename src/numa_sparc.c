@@ -3,12 +3,15 @@
 #  include <sys/lgrp_user.h>
 #  include <malloc.h>
 #  include <strings.h>
+#  include <sys/types.h>
+#  include <sys/mman.h>
 
-#include <numa_sparc.h>
+#  include <numa_sparc.h>
 
 extern int mctop_set_cpu(int cpu);
 
 lgrp_cookie_t lgrp_cookie;
+volatile uint lgrp_cookie_init = 0;
 
 static int numa_to_core[64] = 
   {
@@ -37,39 +40,28 @@ numa_set_preferred(uint node)
 void*
 numa_alloc_onnode(size_t size, uint node)
 {
-  /* int core = numa_to_core[node]; */
-  /* uint core_prev = getcpuid(); */
+  /* lgrp_id_t root = lgrp_root(lgrp_cookie); */
+  /* lgrp_affinity_t current = lgrp_affinity_get(P_LWPID, P_MYID, root); */
+  /* printf("--> I'm on %d\n", current); */
+  numa_run_on_node(node);
+  /* current = lgrp_affinity_get(P_LWPID, P_MYID, root); */
+  /* printf("<-- I'm on %d\n", current); */
 
-  /* if (core < 0) */
-  /*   { */
-  /*     int c = 0; */
-  /*     while (1) */
-  /* 	{ */
-  /* 	  if (!set_cpu(c)) */
-  /* 	    { */
-  /* 	      break; */
-  /* 	    } */
+  void* m = malloc(size);
+  if (m != NULL)
+    {
+      madvise(m, size, MADV_ACCESS_LWP);
+      *(volatile int*) m = 0;
+      bzero(m, size);
+    }
 
-  /* 	  int node_home = gethomelgroup() - 1; */
-  /* 	  if (node_home == node) */
-  /* 	    { */
-  /* 	      numa_to_core[node] = c; */
-  /* 	      set_cpu(c); */
-  /* 	      break; */
-  /* 	    } */
-  /* 	  c++; */
-  /* 	} */
-  /*   } */
-  /* else */
-  /*   { */
-  /*     set_cpu(core); */
-  /*   } */
-  /* void* m = malloc(size); */
-  /* if (m != NULL) */
-  /*   { */
-  /*     bzero(m, size); */
-  /*   } */
-  /* set_cpu(core_prev); */
+  /* lgrp_affinity_set(P_LWPID, P_MYID, current, LGRP_AFF_STRONG); */
+  return m;
+}
+
+void* 
+numa_alloc_interleaved_subset(size_t size, void* mask)
+{
   void* m = malloc(size);
   return m;
 }
@@ -77,33 +69,12 @@ numa_alloc_onnode(size_t size, uint node)
 int
 numa_run_on_node(uint node)
 {
-  int core = numa_to_core[node];
-  if (core < 0)
-    {
-      int c = 0;
-      while (1)
-	{
-	  if (!mctop_set_cpu(c))
-	    {
-	      break;
-	    }
-
-	  int node_home = gethomelgroup() - 1;
-	  if (node_home == node)
-	    {
-	      numa_to_core[node] = c;
-	      mctop_set_cpu(c);
-	      break;
-	    }
-	  c++;
-	}
-    }
-  else
-    {
-      mctop_set_cpu(core);
-    }
-
-  return 1;
+  lgrp_id_t root = lgrp_root(lgrp_cookie);
+  lgrp_id_t lgrp_array[SPARC_LGRP_MAX_NODES];
+  int ret = lgrp_children(lgrp_cookie, root, lgrp_array, SPARC_LGRP_MAX_NODES);
+  int cret = ret;
+  ret = ret && lgrp_affinity_set(P_LWPID, P_MYID, lgrp_array[node], LGRP_AFF_STRONG);
+  return ret;
 }
 
 void

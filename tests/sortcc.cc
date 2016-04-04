@@ -1,13 +1,17 @@
 #include <mctop.h>
 #include <pthread.h>
 #include <getopt.h>
+#include <limits.h>
 #if __x86_64__
 #  include <numaif.h>
 #endif
 
+#include <algorithm>    // std::sort
+
 void* test_pin(void* params);
 
-volatile int* array, * array_out;
+int* array, * array_out, * chunks, chunk_size;
+uint chunks_per_thread = 1;
 
 #define mrand(x) xorshf96(&x[0], &x[1], &x[2])
 
@@ -16,9 +20,9 @@ seed_rand()
 {
   unsigned long* seeds;
   seeds = (unsigned long*) malloc(64);
-  seeds[0] = 1;
-  seeds[1] = 2;
-  seeds[2] = 3;
+  seeds[0] = 11233311;
+  seeds[1] = 2123123;
+  seeds[2] = 313131222;
   return seeds;
 }
 
@@ -81,29 +85,20 @@ typedef struct wq_data
   int* array;
 } wq_data_t;
 
-static inline wq_data_t*
-wq_data_create(const uint interl, const uint sorted, const size_t len, int* array)
-{
-  wq_data_t* wqd = malloc(sizeof(wq_data_t));      
-  wqd->interleaved = interl;
-  wqd->sorted = sorted;
-  wqd->len = len;
-  wqd->array = array;
-  return wqd;
-}
 
 int
 main(int argc, char **argv) 
 {
-  size_t array_len = 128 * 1024 * 1024LL;
-  const size_t array_max = 8192;
+  size_t array_len = 256 * 1024 * 1024LL;
+  /* const int array_max = 8192; */
 
   char mct_file[100];
   uint manual_file = 0;
   int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
-  mctop_alloc_policy test_policy = 1;
-  uint test_run_pin = 0;
+  mctop_alloc_policy test_policy = MCTOP_ALLOC_SEQUENTIAL;
+  const uint test_run_pin = 1;
+  uint test_random_type = 0;
 
   struct option long_options[] = 
     {
@@ -118,7 +113,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:rs:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -142,7 +137,10 @@ main(int argc, char **argv)
 	  test_num_hwcs_per_socket = atoi(optarg);
 	  break;
 	case 'p':
-	  test_policy = atoi(optarg);
+	  test_policy = (mctop_alloc_policy) atoi(optarg);
+	  break;
+	case 'g':
+	  chunks_per_thread = atoi(optarg);
 	  break;
 	case 's':
 	  {
@@ -151,7 +149,7 @@ main(int argc, char **argv)
 	  }
 	  break;
 	case 'r':
-	  test_run_pin = 1;
+	  test_random_type = atoi(optarg);
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -177,54 +175,86 @@ main(int argc, char **argv)
   if (topo)
     {
       //      mctop_print(topo);
-
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
-      mctop_alloc_print(alloc);
+      /* mctop_alloc_print(alloc); */
       mctop_alloc_print_short(alloc);
 
       mctop_wq_t* wq = mctop_wq_create(alloc);
 
-      struct bitmask* nodemask = mctop_alloc_create_nodemask(alloc);
-
       unsigned long* seeds = seed_rand();
 
       const size_t array_siz = array_len * sizeof(int);
-      array = numa_alloc_interleaved_subset(array_siz, nodemask);
+      array = (int*) malloc(array_siz);
       assert(array != NULL);
+      array_out = (int*) malloc(array_siz);
+      assert(array_out != NULL);
 
-      for (size_t i = 0; i < array_len; i++)
-      	{
-      	  array[i] = mrand(seeds) % array_max;
-      	}
+      const uint n_chunks = chunks_per_thread * alloc->n_hwcs;
+
+      chunks = (int*) malloc(n_chunks * sizeof(int));
+      chunk_size = array_len / n_chunks;
+
+      for (int i = 0; i <  n_chunks; i++)
+	{
+	  chunks[i] = i * chunk_size;
+	}
+
+      switch (test_random_type)
+	{
+	case 0:
+	  printf("  // Knuth shuffle \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = i;
+	    }
+	  for (size_t i = array_len - 1; i > 0; i--)
+	    {
+	      const uint j = mrand(seeds) % array_len;
+	      const int tmp = array[i];
+	      array[i] = array[j];
+	      array[j] = tmp;
+	    }
+	  break;
+	case 1:
+	  printf("  // Random 32bit \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = mrand(seeds) % INT_MAX;
+	    }
+	  break;
+	case 2:
+	  printf("  // Already sorted \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = i;
+	    }
+	  break;
+	case 3:
+	  {
+	    printf("  // Already sorted - but array[0] <-> array[N-1] \n");
+	    for (size_t i = 0; i < array_len; i++)
+	      {
+		array[i] = i;
+	      }
+	    int tmp = array[0];
+	    array[0] = array[array_len - 1];
+	    array[array_len - 1] = tmp;
+	  }
+	  break;
+	case 4:
+	  printf("  // Reverse sorted \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[array_len - 1 - i] = i;
+	    }
+	  break;
+	}
+      
 
       free(seeds);
 
-      const int page_size = getpagesize();
-      const size_t array_len_pages = array_siz / page_size;
-      const uint per_page = page_size / sizeof(uint);
-
-
-      void* arrayv = (void*) array;
-      int node_prev = get_numa_node(arrayv, alloc->n_sockets), n_pages = 0, chunk_size = -1;
-      for (uint p = 0; p < array_len_pages; p++)
-	{
-	  n_pages++;
-	  int node = get_numa_node(arrayv, alloc->n_sockets);
-	  if (node != node_prev && chunk_size < 0)
-	    {
-	      chunk_size = n_pages * page_size;
-	    }
-	  //	  printf("%p on %d\n", arrayv, node); 
-	  wq_data_t* wqd = wq_data_create(1, 0, per_page, arrayv);
-	  mctop_wq_enqueue_node(wq, node, wqd);
-	  arrayv += page_size;
-	  
-	}
-
-      mctop_wq_print(wq);
-      printf("# Data = %llu MB (chunk size = %d = %llu MB)\n",
-	     array_siz / (1024 * 1024LL),
-	     chunk_size, chunk_size / (1024 * 1024LL));
+      printf("# Data = %llu MB -- #Chunks = %d -- Per chunk = %lu MB\n",
+	     array_siz / (1024 * 1024LL), n_chunks, (chunk_size * sizeof(int)) / (1024 * 1024));
 
       if (test_run_pin)
 	{
@@ -278,54 +308,18 @@ main(int argc, char **argv)
 		}
 	    }
 
-	  free((void*) array_out);
 	}
 
       mctop_wq_free(wq);
       mctop_alloc_free(alloc);
 
       mctop_free(topo);
-
-      numa_free((void*) array, array_siz);
-#ifdef __x86_64__
-      numa_free_nodemask(nodemask);
-#endif
+      free((void*) array);
+      free(chunks);
     }
   return 0;
 }
 
-#include <atomics.h>
-
-volatile uint32_t __barrier[2] = { 0, 0 };
-volatile uint64_t __exited  = 0;
-
-void
-barrier_wait(const uint nb, const uint n_threads)
-{
-  FAI_U32(&__barrier[nb]);
-  while (__barrier[nb] != n_threads)
-    {
-      PAUSE();
-    }
-}
-
-uint
-try_exit(const uint n_threads)
-{
-  do
-    {
-      uint cur_n_thr = __exited;
-      if (cur_n_thr == (n_threads - 1))
-	{
-	  return 0;
-	}
-      if (CAS_U64(&__exited, cur_n_thr, cur_n_thr + 1) == cur_n_thr)
-	{
-	  return 1;
-	}
-    }
-  while (1);
-}
 
 int
 cmpfunc(const void* a, const void* b)
@@ -368,48 +362,48 @@ wq_sort(wq_data_t* wpd)
   return 1;
 }
 
-wq_data_t*
-wq_merge(const wq_data_t* w0, const wq_data_t* w1)
-{
-  size_t len = w0->len + w1->len;
-  int* anew = malloc_assert(len * sizeof(int));
+// wq_data_t*
+// wq_merge(const wq_data_t* w0, const wq_data_t* w1)
+// {
+//   size_t len = w0->len + w1->len;
+//   int* anew = (int*) malloc_assert(len * sizeof(int));
 
-  uint i0 = 0, i1 = 0, o = 0;
-  while (i0 < w0->len && i1 < w1->len)
-    {
-      if (w0->array[i0] < w1->array[i1])
-	{
-	  anew[o++] = w0->array[i0++];
-	}
-      else
-	{
-	  anew[o++] = w1->array[i1++];
-	}
-    }
+//   uint i0 = 0, i1 = 0, o = 0;
+//   while (i0 < w0->len && i1 < w1->len)
+//     {
+//       if (w0->array[i0] < w1->array[i1])
+// 	{
+// 	  anew[o++] = w0->array[i0++];
+// 	}
+//       else
+// 	{
+// 	  anew[o++] = w1->array[i1++];
+// 	}
+//     }
 
-  while (i0 < w0->len)
-    {
-      anew[o++] = w0->array[i0++];
-    }
-  while (i1 < w1->len)
-    {
-      anew[o++] = w1->array[i1++];
-    }
+//   while (i0 < w0->len)
+//     {
+//       anew[o++] = w0->array[i0++];
+//     }
+//   while (i1 < w1->len)
+//     {
+//       anew[o++] = w1->array[i1++];
+//     }
 
-  if (w0->interleaved == 0)
-    {
-      free(w0->array);
-    }
-  if (w1->interleaved == 0)
-    {
-      free(w1->array);
-    }
+//   if (w0->interleaved == 0)
+//     {
+//       free(w0->array);
+//     }
+//   if (w1->interleaved == 0)
+//     {
+//       free(w1->array);
+//     }
 
-  free((void*) w0);
-  free((void*) w1);
+//   free((void*) w0);
+//   free((void*) w1);
 
-  return wq_data_create(0, 1, len, anew);
-}
+//   return wq_data_create(0, 1, len, anew);
+// }
 
 void*
 test_pin(void* params)
@@ -417,47 +411,31 @@ test_pin(void* params)
   mctop_wq_t* wq = (mctop_wq_t*) params;
   mctop_alloc_t* alloc = wq->alloc;
   mctop_alloc_pin(alloc);
+  const uint id = mctop_alloc_get_id();
 
-  mctop_wq_thread_enter(wq);
+  int my_chunk_offs = chunks[id * chunks_per_thread];
+  const size_t chunk_size_b = chunk_size * sizeof(int);
 
-  while (1)
+  /* if (id < 3) */
+  /*   { */
+  /*     printf("%-2d --> %d = %lu MB\n", */
+  /* 	     id, my_chunk_offs, chunk_size_b * chunks_per_thread / (1024*1024)); */
+  /*   } */
+
+  int* a = array + my_chunk_offs;
+  int* b = (int*) malloc(chunk_size_b * chunks_per_thread);
+  memcpy(b, a, chunk_size_b * chunks_per_thread);
+
+  for (int c = 0; c < chunks_per_thread; c++)
     {
-      wq_data_t* wqd = mctop_wq_dequeue(wq);
-      if (wqd != NULL)
-	{
-	  if (!wq_sort(wqd))
-	    {
-	      wq_data_t* wqd1 = mctop_wq_dequeue(wq);
-	      if (wqd1 != NULL)
-		{
-		  wq_sort(wqd1);
-		  wq_data_t* wqn = wq_merge(wqd, wqd1);
-		  mctop_wq_enqueue(wq, wqn);
-		}
-	      else
-		{
-		  if (mctop_wq_is_last_thread(wq))
-		    {
-		      array_out = wqd->array;
-		      free(wqd);
-		      break;
-		    }
-		  mctop_wq_enqueue(wq, wqd);
-		}
-	    }
-	  else
-	    {
-	      mctop_wq_enqueue(wq, wqd);
-	    }
-	}
-      else
-	{
-	  break;
-	}
+      // qsort(b + (c * chunk_size), chunk_size, sizeof(int), cmpfunc);
+      int* start = b + (c * chunk_size);
+      int* stop = start + chunk_size;
+      std::sort(start, stop);
+      // std::sort_heap(start, stop);
+      /* free(b); */
+      /* qsort(a, chunk_size, sizeof(int), cmpfunc); */
     }
 
-  //  barrier_wait(1, alloc->n_hwcs);
-  mctop_wq_thread_exit(wq);
-  mctop_wq_stats_print(wq);
   return NULL;
 }

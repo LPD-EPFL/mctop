@@ -6,6 +6,11 @@
 int
 get_num_hw_ctx()
 {
+#ifdef __x86_64__
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+#endif
+
   int nc = 0;
   while (1)
     {
@@ -13,8 +18,18 @@ get_num_hw_ctx()
   	{
   	  break;
   	}
+#ifdef __x86_64__
+      CPU_SET(nc, &mask);
+#endif
       nc++;
     }
+
+#ifdef __x86_64__
+  sched_setaffinity(0, sizeof(cpu_set_t), &mask);
+#elif defined(__sparc)
+  processor_bind(P_LWPID, P_MYID, PBIND_NONE, NULL);
+#endif
+  
   return nc;
 }
 

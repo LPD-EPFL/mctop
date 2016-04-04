@@ -87,6 +87,6 @@ void printArray2(uint *y, const long n, const int assert)
         if (assert)
           assert(y[i] == (uint)i);
         else
-          printf("x[%ld] = %lu \n",i,y[i]);
+          printf("x[%ld] = %u \n",i,y[i]);
     }
 }

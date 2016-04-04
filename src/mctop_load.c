@@ -5,6 +5,11 @@ mctop_t*
 mctop_load(const char* mct_file)
 {
   clock_t cstart = clock();
+
+#if defined(__sparc__)
+    lgrp_cookie_initialize();
+#endif
+
   char file_open[100], hostname[100];
   if (mct_file != NULL)
     {

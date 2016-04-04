@@ -1,6 +1,7 @@
 #include <mctop.h>
 #include <pthread.h>
 #include <getopt.h>
+#include <limits.h>
 #if __x86_64__
 #  include <numaif.h>
 #endif
@@ -95,15 +96,18 @@ wq_data_create(const uint interl, const uint sorted, const size_t len, int* arra
 int
 main(int argc, char **argv) 
 {
-  size_t array_len = 128 * 1024 * 1024LL;
-  const size_t array_max = 8192;
+  size_t array_len = 256 * 1024 * 1024LL;
+  /* const int array_max = 8192; */
+  size_t page_size = getpagesize();
+  uint use_numa_interleave = 1;
 
   char mct_file[100];
   uint manual_file = 0;
   int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = 1;
-  uint test_run_pin = 0;
+  const uint test_run_pin = 1;
+  uint test_random_type = 0;
 
   struct option long_options[] = 
     {
@@ -118,7 +122,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:rs:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -138,11 +142,17 @@ main(int argc, char **argv)
 	case 'n':
 	  test_num_threads = atoi(optarg);
 	  break;
+	case 'i':
+	  use_numa_interleave = atoi(optarg);
+	  break;
 	case 'c':
 	  test_num_hwcs_per_socket = atoi(optarg);
 	  break;
 	case 'p':
 	  test_policy = atoi(optarg);
+	  break;
+	case 'g':
+	  page_size = atoi(optarg) * 1024LL;
 	  break;
 	case 's':
 	  {
@@ -151,7 +161,7 @@ main(int argc, char **argv)
 	  }
 	  break;
 	case 'r':
-	  test_run_pin = 1;
+	  test_random_type = atoi(optarg);
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -179,7 +189,7 @@ main(int argc, char **argv)
       //      mctop_print(topo);
 
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
-      mctop_alloc_print(alloc);
+      /* mctop_alloc_print(alloc); */
       mctop_alloc_print_short(alloc);
 
       mctop_wq_t* wq = mctop_wq_create(alloc);
@@ -189,17 +199,70 @@ main(int argc, char **argv)
       unsigned long* seeds = seed_rand();
 
       const size_t array_siz = array_len * sizeof(int);
-      array = numa_alloc_interleaved_subset(array_siz, nodemask);
+
+      if (use_numa_interleave)
+	{
+	  array = numa_alloc_interleaved_subset(array_siz, nodemask);
+	}
+      else
+	{
+	  array = malloc(array_siz);
+	}
+
       assert(array != NULL);
 
-      for (size_t i = 0; i < array_len; i++)
-      	{
-      	  array[i] = mrand(seeds) % array_max;
-      	}
+      switch (test_random_type)
+	{
+	case 0:
+	  printf("  // Knuth shuffle \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = i;
+	    }
+	  for (size_t i = array_len - 1; i > 0; i--)
+	    {
+	      const uint j = mrand(seeds) % array_len;
+	      const int tmp = array[i];
+	      array[i] = array[j];
+	      array[j] = tmp;
+	    }
+	  break;
+	case 1:
+	  printf("  // Random 32bit \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = mrand(seeds) % INT_MAX;
+	    }
+	  break;
+	case 2:
+	  printf("  // Already sorted \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = i;
+	    }
+	  break;
+	case 3:
+	  printf("  // Already sorted - but array[0] <-> array[N-1] \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[i] = i;
+	    }
+	  int tmp = array[0];
+	  array[0] = array[array_len - 1];
+	  array[array_len - 1] = tmp;
+	  break;
+	case 4:
+	  printf("  // Reverse sorted \n");
+	  for (size_t i = 0; i < array_len; i++)
+	    {
+	      array[array_len - 1 - i] = i;
+	    }
+	  break;
+	}
+      
 
       free(seeds);
 
-      const int page_size = getpagesize();
       const size_t array_len_pages = array_siz / page_size;
       const uint per_page = page_size / sizeof(uint);
 
@@ -216,7 +279,14 @@ main(int argc, char **argv)
 	    }
 	  //	  printf("%p on %d\n", arrayv, node); 
 	  wq_data_t* wqd = wq_data_create(1, 0, per_page, arrayv);
-	  mctop_wq_enqueue_node(wq, node, wqd);
+	  if (use_numa_interleave)
+	    {
+	      mctop_wq_enqueue_node(wq, node, wqd);
+	    }
+	  else
+	    {
+	      mctop_wq_enqueue_node(wq, p % alloc->n_sockets, wqd);
+	    }
 	  arrayv += page_size;
 	  
 	}

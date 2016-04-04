@@ -172,7 +172,6 @@ extern "C" {
   void mctop_print(mctop_t* topo);
   void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
 
-
   /* ******************************************************************************** */
   /* MCTOP CONTROL IF */
   /* ******************************************************************************** */
@@ -335,7 +334,11 @@ extern "C" {
     uint* hwcs;
     volatile uint n_hwcs_used;
     volatile uint8_t* hwcs_used;
+#ifdef __x86_64__
     struct bitmask* hwcs_all;
+#else
+    lgrp_id_t hwcs_all;
+#endif
   } mctop_alloc_t;
 
   typedef struct mctop_thread_info
