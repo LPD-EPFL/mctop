@@ -29,20 +29,28 @@ typedef struct darray_iter
 
 
 darray_t* darray_create();
+darray_t* darray_create_copy(darray_t* from);
 void darray_free(darray_t* da);
 void darray_empty(darray_t* da);
 
 void darray_add(darray_t* da, uintptr_t elem);
 void darray_add_double(darray_t* da, double elem);
 int darray_add_uniq(darray_t* da, uintptr_t elem);
+void darray_push(darray_t* da, uintptr_t elem); /* add as a first elem */
+
+uintptr_t darray_get(darray_t* da, const size_t idx);
+int darray_elem_is_at(darray_t* da, uintptr_t elem, const size_t idx);
+
 
 int darray_exists(darray_t* da, uintptr_t elem);
 size_t darray_get_num_elems(darray_t* da);
 uintptr_t darray_get_elem_n(darray_t* da, uintptr_t n);
 
+int darray_remove(darray_t* da, uintptr_t elem);
+int darray_pop(darray_t* da, uintptr_t* elem); /* return the first element */
+
 void darray_sort(darray_t* da);
 void darray_copy(darray_t* to, darray_t* from);
-
 
 void darray_iter_init(darray_iter_t* dai, darray_t* da);
 int darray_iter_next(darray_iter_t* dai, uintptr_t* elem);
