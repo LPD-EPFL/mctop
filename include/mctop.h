@@ -504,10 +504,34 @@ extern "C" {
     mctop_barrier_t* barrier;
   } mctop_node_tree_t;
 
+  typedef enum
+    {
+      DESTINATION,		/* merged data go on this node */
+      SOURCE_ONLY		/* this nodes just gives data  */
+    } mctop_node_tree_role;
+    
+  typedef struct mctop_node_tree_work
+  {
+    mctop_node_tree_role node_role; /* DESTINATION or SOURCE_ONLY */
+    uint num_hw_contexts;
+    uint num_hw_contexts_my_node;
+    uint num_hw_contexts_other_node;
+  } mctop_node_tree_work_t;
 
   mctop_node_tree_t* mctop_alloc_node_tree_create(mctop_alloc_t* alloc);
   void mctop_node_tree_print(mctop_node_tree_t* nt);
   void mctop_node_tree_free(mctop_node_tree_t* nt);
+
+  uint mctop_node_tree_get_num_levels(mctop_node_tree_t* nt);
+
+  /* returns 0 if the node of does not have work at this level */
+  uint mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl,
+					    mctop_node_tree_work_t* ntw);
+  /* returns 0 if the node of does not have work at this level */
+  uint mctop_node_tree_barrier_wait(mctop_node_tree_t* nt, const uint lvl);
+
+  /* waits on all threads */
+  void mctop_node_tree_barrier_wait_all(mctop_node_tree_t* nt);
 
 
   /* ******************************************************************************** */

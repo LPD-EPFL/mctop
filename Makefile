@@ -104,6 +104,9 @@ run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
 
+node_tree: ${TSTPATH}/node_tree.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/node_tree.o -o node_tree -lmctop ${LDFLAGS}
+
 work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} ${MALLOC}
 

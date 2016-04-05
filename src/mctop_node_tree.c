@@ -204,3 +204,85 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
 }
 
 
+static mctop_nt_pair_t*
+mctop_nt_get_pair_for_node(mctop_node_tree_t* nt, const uint lvl, const uint node)
+{
+  if (lvl >= nt->n_levels)
+    {
+      return NULL;
+    }
+  mctop_nt_lvl_t* level = &nt->levels[lvl];
+  for (int p = 0; p < level->n_pairs; p++)
+    {
+      mctop_nt_pair_t* pair = &level->pairs[p];
+      if (pair->nodes[0] == node || pair->nodes[1] == node)
+	{
+	  return pair;
+	}
+    }
+  return NULL;
+}
+
+uint
+mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mctop_node_tree_work_t* ntw)
+{
+  const uint node = mctop_alloc_get_node_seq_id();
+  mctop_nt_pair_t* pair = mctop_nt_get_pair_for_node(nt, lvl, node);
+  if (pair == NULL)		/* no work for me! */
+    {
+      return 0;
+    }
+
+  if (ntw != NULL)
+    {
+      uint other_node;
+      if (pair->nodes[0] == node)
+	{
+	  ntw->node_role = DESTINATION;
+	  other_node = pair->nodes[1];
+	}
+      else
+	{
+	  ntw->node_role = SOURCE_ONLY;
+	  other_node = pair->nodes[0];
+	}
+    
+      ntw->num_hw_contexts_my_node = nt->alloc->n_hwcs_per_socket[node];
+      ntw->num_hw_contexts_other_node = nt->alloc->n_hwcs_per_socket[other_node];
+      ntw->num_hw_contexts = ntw->num_hw_contexts_my_node + ntw->num_hw_contexts_other_node;
+    }
+  return 1;
+}
+
+
+inline uint
+mctop_node_tree_get_num_levels(mctop_node_tree_t* nt)
+{
+  return nt->n_levels;
+}
+
+static mctop_barrier_t*
+mctop_node_tree_get_barrier_level(mctop_node_tree_t* nt, const uint lvl)
+{
+  return nt->levels[lvl].barrier;
+}
+
+uint
+mctop_node_tree_barrier_wait(mctop_node_tree_t* nt, const uint lvl)
+{
+  if (!mctop_node_tree_get_work_description(nt, lvl, NULL))
+    {
+      return 0;
+    }
+  
+  mctop_barrier_t* level_barrier = mctop_node_tree_get_barrier_level(nt, lvl);
+  mctop_barrier_wait(level_barrier);
+  return 1;
+}
+
+
+void
+mctop_node_tree_barrier_wait_all(mctop_node_tree_t* nt)
+{
+  mctop_barrier_wait(nt->barrier);
+}
