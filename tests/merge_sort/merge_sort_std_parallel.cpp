@@ -29,7 +29,7 @@ int main(int argc,char *argv[]){
 
     long array_size_mb = atol(argv[1]);
 
-    n = array_size_mb * 1024 * 1024 / sizeof(uint);
+    n = array_size_mb * 1024 * 1024LL / sizeof(uint);
     n = n & 0xFFFFFFFFFFFFFFF0L;
     
     assert (n%4==0);

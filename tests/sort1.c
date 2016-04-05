@@ -204,8 +204,8 @@ main(int argc, char **argv)
   
   for (int i = 0; i < n_chunks; i++)
     {
-      //      mqsort(array + chunks[i], chunk_size);
-      mmergesort(array + chunks[i], chunk_size);
+      mqsort(array + chunks[i], chunk_size);
+      /* mmergesort(array + chunks[i], chunk_size); */
     }
 
   clock_gettime(CLOCK_REALTIME, &stop);

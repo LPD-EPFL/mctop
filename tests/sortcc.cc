@@ -194,7 +194,7 @@ main(int argc, char **argv)
       chunks = (int*) malloc(n_chunks * sizeof(int));
       chunk_size = array_len / n_chunks;
 
-      for (int i = 0; i <  n_chunks; i++)
+      for (uint i = 0; i < n_chunks; i++)
 	{
 	  chunks[i] = i * chunk_size;
 	}
@@ -270,7 +270,7 @@ main(int argc, char **argv)
 	  struct timespec start, stop;
 	  clock_gettime(CLOCK_REALTIME, &start);
 
-	  for(int t = 0; t < n_hwcs; t++)
+	  for(uint t = 0; t < n_hwcs; t++)
 	    {
 	      int rc = pthread_create(&threads[t], &attr, test_pin, wq);
 	      if (rc)
@@ -282,7 +282,7 @@ main(int argc, char **argv)
 
 	  pthread_attr_destroy(&attr);
 
-	  for(int t = 0; t < n_hwcs; t++)
+	  for(uint t = 0; t < n_hwcs; t++)
 	    {
 	      int rc = pthread_join(threads[t], &status);
 	      if (rc) 
@@ -426,7 +426,7 @@ test_pin(void* params)
   int* b = (int*) malloc(chunk_size_b * chunks_per_thread);
   memcpy(b, a, chunk_size_b * chunks_per_thread);
 
-  for (int c = 0; c < chunks_per_thread; c++)
+  for (uint c = 0; c < chunks_per_thread; c++)
     {
       // qsort(b + (c * chunk_size), chunk_size, sizeof(int), cmpfunc);
       int* start = b + (c * chunk_size);

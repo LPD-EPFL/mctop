@@ -27,14 +27,7 @@ mqsort_partition(SORT_TYPE* dst, const int left, const int right, const int pivo
 
   for (int i = left; i < right; i++)
     {
-      /* int cmp = SORT_CMP(dst[i], value); */
-
-      /* check if everything is all the same */
-      /* if (cmp != 0) */
-      /* 	{ */
-	  //      	  all_same &= 0;
       all_same &= (dst[i] == value);
-      	/* } */
 
       if (dst[i] < value)
 	{
@@ -70,12 +63,6 @@ mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
     }
 
   const uint n = right - left + 1;
-  /* if (n == 16 && is_aligned_16((uintptr_t) &dst[left])) */
-  /*   { */
-  /*     in_register_sort((__m128*) &dst[left]); */
-  /*     return; */
-  /*   } */
-  /* else */
   if (n < 16)
     {
       /* mbininssort(&dst[left], n); */
@@ -83,7 +70,7 @@ mqsort_recursive(SORT_TYPE* dst, const int left, const int right)
       return;
     }
 
-  const int pivot = left + ((right - left) >> 1);
+  const int pivot = left + (n >> 1);
   const int new_pivot = mqsort_partition(dst, left, right, pivot);
 
   /* check for partition all equal */
@@ -116,7 +103,6 @@ mqsort_partition1(SORT_TYPE* arr, const int l, const int h)
 
   return (i + 1);
 }
- 
 
 typedef struct stack_e
 {
@@ -150,7 +136,7 @@ void
 mqsort_iter(SORT_TYPE* arr, const size_t low, const size_t high)
 {
   // Create an auxiliary stack
-  const size_t stack_size = ((high - low)  >> 1) + 1;
+  const size_t stack_size = ((high - low) >> 1) + 1;
   stack_e_t* stack;
   int ret = posix_memalign((void**) &stack, 64, stack_size * sizeof(stack_e_t));
   assert(!ret && stack != NULL);
@@ -158,31 +144,29 @@ mqsort_iter(SORT_TYPE* arr, const size_t low, const size_t high)
   register int top = -1;   // initialize top of stack
 
   // push initial values of l and h to stack
-  top++;
-  stack_push(stack, top, low, high);
+  //  top++;
+  stack_push(stack, ++top, low, high);
 
   // Keep popping from stack while is not empty
   while (likely(top >= 0))
     {
-      register stack_e_t se = stack_pop(stack, top);
-      top--;
+      register stack_e_t se = stack_pop(stack, top--);
 
-      if ((se.high - se.low) < 16)
+      const uint size = se.high - se.low + 1;
+      if (size < 32)
 	{
-	  minssort(arr + se.low, se.high - se.low + 1);
+	  minssort(arr + se.low, size);
 	  continue;
 	}
 
       const int p = mqsort_partition1(arr, se.low, se.high);
       if ((p - 1) > se.low)
 	{
-	  top++;
-	  stack_push(stack, top, se.low, p - 1);
+	  stack_push(stack, ++top, se.low, p - 1);
 	}
       if ((p + 1) < se.high)
 	{
-	  top++;
-	  stack_push(stack, top, p + 1, se.high);
+	  stack_push(stack, ++top, p + 1, se.high);
 	}
     }
 
