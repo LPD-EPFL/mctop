@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <helper.h>
 #include <cdf.h>
 
@@ -23,7 +24,6 @@ ll_random_latency(const size_t size_bytes)
   free(mem);
   return lat;
 }
-
 
 const size_t mctop_cache_n_lvls = 3;
 
@@ -61,12 +61,13 @@ mctop_cache_size_read_OS(size_t* sizes)
   return ret;
 }
 
-
-void
+mctop_cache_info_t*
 mctop_cache_size_estimate()
 {
-  size_t sizes_OS[mctop_cache_n_lvls];
-  int sizes_OS_ok = mctop_cache_size_read_OS(sizes_OS);
+  /* +1 level for 0: i cache */
+  mctop_cache_info_t* mci = mctop_cache_info_create(mctop_cache_n_lvls + 1);
+
+  int sizes_OS_ok = mctop_cache_size_read_OS(mci->sizes_OS);
   if (!sizes_OS_ok)
     {
       fprintf(stderr, "MCTOP Warning: Can't read cache sizes from OS\n");
@@ -74,26 +75,39 @@ mctop_cache_size_estimate()
 
   const size_t KB = 1024;
   
-  ticks latencies[mctop_cache_n_lvls + 1];
-  ticks sizes[mctop_cache_n_lvls + 1];
-  latencies[0] = 0;
-  sizes[0] = 4;
+  mci->sizes_estimated[0] = 4;
 
-  const size_t n_steps_fix = 12;
+  const size_t n_steps_fix = 32;
       
 
   for (int lvl = 1; lvl <= mctop_cache_n_lvls; lvl++)
     {
       size_t n_steps = (lvl * n_steps_fix);
-      size_t stp = 4 * sizes[lvl - 1];
+      size_t stp = 4 * mci->sizes_estimated[lvl - 1];
       if (stp > 1024)
 	{
 	  stp = 1024;
 	}
-      size_t sensitivity = 1.5 * latencies[lvl - 1];
-      int min = stp;
+      size_t sensitivity = 1.2 * mci->latencies[lvl - 1];
+      int64_t min = stp;
       size_t max = n_steps * stp;
-      printf("Looking for L%d size (%d to %zu KB, step %zu)\n",
+
+      size_t size_OS = mci->sizes_OS[lvl];
+      if (size_OS > 0)
+	{
+	  const size_t n_steps_side = 8;
+	  min = size_OS;
+	  n_steps = 0;
+	  while (n_steps++ < n_steps_side && min > stp)
+	    {
+	      min -= stp;
+	    }
+	  max = size_OS + (n_steps_side * stp);
+	  n_steps += n_steps_side + 1;
+	}
+
+
+      printf("## Looking for L%d cache size (%zu to %zu KB, step %zu KB)\n",
 	     lvl, min, max, stp);
 
       ticks* lat = calloc_assert(n_steps, sizeof(ticks));
@@ -101,40 +115,44 @@ mctop_cache_size_estimate()
       size_t n = 0, kb;
       for (kb = min; kb < max; kb += stp)
 	{
-	  lat[n] = ll_random_latency(((kb - 4) * KB));
-	  /* printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", */
-	  /* 	 n, kb, lat[n]); */
+	  lat[n] = ll_random_latency(((kb * 0.98) * KB));
+
+	  //	  printf("[%2zu[ %-5zu KB -> %-5zu cycles\n", n, kb, lat[n]);
+	  if (n > 1 && lat[n] > (lat[n - 1] +  sensitivity))
+	    {
+	      break;
+	    }
 	  n++;
 	}
 
       cdf_t* cdf = cdf_calc(lat + 1, n - 1);
       //      cdf_t* cdf = cdf_calc(lat, n);
-      //      cdf_print(cdf);
-#warning FIX: bug with DEBUG=1 compilation
+      /* cdf_print(cdf); */
       cdf_cluster_t* cc = cdf_cluster(cdf, sensitivity, 0);
       //      cdf_cluster_print(cc);
 
-      size_t tlat = cc->clusters[1].val_max;
-     
+      size_t tlat = cc->clusters[0].val_max;
 
       for (kb = min, n = 0; kb < max && lat[n] <= tlat; kb += stp, n++);
       kb -= stp;
     
       size_t clat = array_get_min(lat, n - 1);
-      /* printf("-- Lat = %zu\n", clat); */
-      /* printf("-- Siz = %zu KB\n", kb); */
 
-      latencies[lvl] = clat;
-      sizes[lvl] = kb;
+      mci->latencies[lvl] = clat;
+      mci->sizes_estimated[lvl] = kb;
 
-      printf("-- Level %d / Latency: %-4zu / Size: OS: %-5zu KB Esimated: %zu KB\n",
-	     lvl, clat, sizes_OS[lvl], sizes[lvl]);
+      printf("## Cache L%d / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
+	     lvl, clat, mci->sizes_OS[lvl], mci->sizes_estimated[lvl]);
 
       cdf_cluster_free(cc);
       cdf_free(cdf);
 
       free(lat);
     }
+
+  mci->sizes_estimated[0] = mci->sizes_OS[0];
+
+  return mci;
 }
 
 //#warning Maybe add the mem. eop numbers in the topology!

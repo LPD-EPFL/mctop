@@ -2,6 +2,7 @@
 #include <mctop_mem.h>
 #include <mctop_profiler.h>
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <atomics.h>
 #include <strings.h>
 #include <time.h>
@@ -43,13 +44,12 @@ volatile double* mem_bw_gbps_r, * mem_bw_gbps_w;
 
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
-void mctop_cache_size_estimate();
-
 
 static cache_line_t* cache_lines_create(const size_t size_bytes, const int on_node);
 static void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint use_numa);
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
+void print_cache_info(mctop_cache_info_t* mci, test_format_t test_format, const char* hostname);
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
 void print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock,
 			 const char* rw, test_format_t test_format, const char* hn);
@@ -677,11 +677,6 @@ main(int argc, char **argv)
   double dvfs_up_dur;
   test_dvfs = dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, &dvfs_up_dur);
 
-
-  mctop_cache_size_estimate();
-  exit(0);
-
-
 #if defined(__sparc__)
   lgrp_cookie_initialize();
 #endif
@@ -911,8 +906,7 @@ main(int argc, char **argv)
     }
 
   mctop_t* topo = NULL;
-#define MCTOP_PREDEFINED_LAT_TABLE 0
-#if MCTOP_PREDEFINED_LAT_TABLE == 0
+
   if (!test_mem_augment)
     {
       for(int t = 0; t < test_num_threads; t++)
@@ -952,7 +946,7 @@ main(int argc, char **argv)
       cdf_cluster_t* cc = cdf_cluster(cdf, test_cdf_cluster_offset, test_num_clusters_hint);
       if (cc == NULL)
 	{
-	  fprintf(stderr, "*** Error: Could not create an appropriate clusterings of cores. Rerun mctop with:\n"
+	  fprintf(stderr, "*MCTOP Error: Could not create an appropriate clusterings of cores. Rerun mctop with:\n"
 		  "\t1. more repetitions (-r)\n"
 		  "\t2. on time mem. latency measurements (-m1)\n");
 	  exit(-1);
@@ -1006,6 +1000,7 @@ main(int argc, char **argv)
       print_lat_table(lat_table_norm, test_num_hw_ctx, test_num_sockets, test_format, AR_2D, is_smt_cpu, hostname);
 
       topo = mctop_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, cc, is_smt_cpu);
+
       table_free((void**) lat_table_norm, test_num_hw_ctx);
       cdf_cluster_free(cc);
       cdf_free(cdf);
@@ -1015,22 +1010,17 @@ main(int argc, char **argv)
       topo = mctop_load(NULL);
     }
 
-#else
-  int is_smt_cpu = is_smt2;
-  test_num_sockets = n_sockets2;
-  test_num_hw_ctx = n_hwcs2;
-  const int n = test_num_hw_ctx;
-  ticks** lat_table_norm = (ticks**) table_malloc(n, n, sizeof(ticks));
-
-  for (int x = 0; x < test_num_hw_ctx; x++)
+  if (!test_mem_augment || (test_mem_augment && topo->cache == NULL))
     {
-      for (int y = 0; y < test_num_hw_ctx; y++)
-	{
-	  lat_table_norm[x][y] = lat_table2[x][y];
-	}
+      printf("#### Calculating cache latencies / sizes\n");
+      mctop_cache_info_t* mci = mctop_cache_size_estimate();
+      print_cache_info(mci, test_format, hostname);
+      mctop_cache_info_add(topo, mci);
     }
-  topo = mctop_construct(lat_table_norm, test_num_hw_ctx, mem_lat_table, test_num_sockets, NULL, is_smt_cpu);
-#endif
+  else if (test_mem_augment)
+    {
+      printf("## Topology already contains cache info!\n");
+    }
 
   int mem_lat_new = 1;
   if (test_do_mem >= ON_TOPO)
@@ -1216,7 +1206,7 @@ print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format,
 	if (ofp == NULL) 
 	  {
 	    ofp_open = 0;
-	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    fprintf(stderr, "MCTOP Error: Cannot open output file %s! Using stderr instead.\n", out_file);
 	    ofp = stderr;
 	  }
 	fprintf(ofp, "#%s #HWCs %zu #Nodes %zu SMT %u\n", hostname, n, n_sockets, is_smt);
@@ -1238,6 +1228,39 @@ print_lat_table(void* lt, size_t n, size_t n_sockets, test_format_t test_format,
     }
   if (test_format != NONE)
     {
+      printf("##########################################################################\n");
+    }
+}
+
+void 
+print_cache_info(mctop_cache_info_t* mci, test_format_t test_format, const char* hostname)
+{
+  if (test_format == MCT_FILE)
+    {
+      printf("## Cache info ########################################################\n");
+      char out_file[50];
+      sprintf(out_file, "./desc/%s.mct", hostname);
+      printf("## MCTOP output in: %s\n", out_file);
+
+      int ofp_open = 1;
+      FILE* ofp = fopen(out_file, "a");
+      if (ofp == NULL) 
+	{
+	  ofp_open = 0;
+	  fprintf(stderr, "MCTOP Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	  ofp = stderr;
+	}
+
+      fprintf(ofp, "#Cache_levels %d\n", mci->n_levels);
+      for (int i = 0; i < mci->n_levels; i++)
+	{
+	  fprintf(ofp, "Cache_level %d   Latency %-5zu  SizeOS %-5zu SizeEst %-5zu\n",
+		  i, mci->latencies[i], mci->sizes_OS[i], mci->sizes_estimated[i]);
+	}
+      if (ofp_open)
+	{
+	  fclose(ofp);
+	}
       printf("##########################################################################\n");
     }
 }
@@ -1294,7 +1317,7 @@ print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_form
 	if (ofp == NULL) 
 	  {
 	    ofp_open = 0;
-	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    fprintf(stderr, "MCTOP Error: Cannot open output file %s! Using stderr instead.\n", out_file);
 	    ofp = stderr;
 	  }
 	fprintf(ofp, "#Mem_latencies %zu\n", n_sockets);
@@ -1372,7 +1395,7 @@ print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock
 	if (ofp == NULL) 
 	  {
 	    ofp_open = 0;
-	    fprintf(stderr, "** Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	    fprintf(stderr, "MCTOP Error: Cannot open output file %s! Using stderr instead.\n", out_file);
 	    ofp = stderr;
 	  }
 	fprintf(ofp, "#Mem_bw-%s %zu\n", rw, n_sockets);

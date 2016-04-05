@@ -55,6 +55,14 @@ extern "C" {
   typedef struct hwc_gs socket_t;
   typedef struct hwc_gs hwc_group_t;
 
+  typedef struct mctop_cache_info
+  {
+    uint n_levels;
+    uint64_t* latencies;
+    uint64_t* sizes_OS;
+    uint64_t* sizes_estimated;
+  } mctop_cache_info_t;
+
   typedef struct mctop
   {
     uint n_levels;		/* num. of latency lvls */
@@ -70,6 +78,7 @@ extern "C" {
     struct hw_context* hwcs;	/* pointers to hwcs */
     uint n_siblings;		/* total number of sibling relationships */
     struct sibling** siblings;	/* pointers to sibling relationships */
+    mctop_cache_info_t* cache;	/* pointer to cache information */
     double* mem_bandwidths_r;	/* Read mem. bandwidth of each socket, maximum */
     double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
     double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
@@ -169,6 +178,8 @@ extern "C" {
   void mctop_free(mctop_t* topo);
   void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_r, double** mem_bw_r1, double** mem_bw_w, double** mem_bw_w1);
   void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
+  void mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci);
+
   void mctop_print(mctop_t* topo);
   void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
 
@@ -187,6 +198,23 @@ extern "C" {
   size_t mctop_get_num_nodes(mctop_t* topo);
   size_t mctop_get_num_cores_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
+  size_t mctop_get_num_hwc_per_core(mctop_t* topo);
+
+  /* cache */
+  typedef enum 
+    {
+      L1I,			/* L1 instruction */
+      L1D,			/* L1D = L1 */
+      L2,
+      L3,			/* LLC = L3 */
+    } mctop_cache_level_t;
+#define L1  L1D
+#define LLC L3
+
+  size_t mctop_get_cache_size_kb(mctop_t* topo, mctop_cache_level_t level);
+  /* estimated size and latency not defined for L1I */
+  size_t mctop_get_cache_size_estimated_kb(mctop_t* topo, mctop_cache_level_t level);
+  size_t mctop_get_cache_latency(mctop_t* topo, mctop_cache_level_t level);
 
   /* socket getters ***************************************************************** */
   hw_context_t* mctop_socket_get_first_hwc(socket_t* socket);
@@ -203,6 +231,8 @@ extern "C" {
   uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);
   socket_t* mctop_hwcid_get_socket(mctop_t* topo, const uint hwcid);
   hwc_gs_t* mctop_hwcid_get_core(mctop_t* topo, const uint hwcid);
+  uint mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid);
+  uint mctop_hwcid_get_nth_core_in_socket(mctop_t* topo, const uint hwcid);
 
   /* queries ************************************************************************ */
   uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -349,6 +379,10 @@ extern "C" {
     uint hwc_id;
     uint local_node;
     uint nth_socket;
+
+    uint nth_hwc_in_core;
+    uint nth_hwc_in_socket;
+    uint nth_core_socket;
   } mctop_thread_info_t;
 
   __attribute__((unused)) static const char* mctop_alloc_policy_desc[MCTOP_ALLOC_NUM] = 
@@ -408,6 +442,10 @@ extern "C" {
   uint mctop_alloc_is_pinned();	     /* is thread pinned? */
   int mctop_alloc_get_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
   int mctop_alloc_get_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
+  uint mctop_alloc_get_hw_context_seq_id_in_core(); /* seq id of the hw context of this thread
+						       in it's core (0=1st hyperthread, 1=2nd?, ..) */
+  uint mctop_alloc_get_hw_context_seq_id_in_socket(); /* seq id of the hw context of this thread in it's socket */
+  uint mctop_alloc_get_core_seq_id_in_socket(); /* seq id of the core of this thread in it's socket */
   int mctop_alloc_get_local_node();    /* local NUMA node of thread */
   int mctop_alloc_get_node_seq_id();   /* sequence id of the node that this thread is using. For example, the allocator
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
@@ -454,19 +492,19 @@ extern "C" {
   } mctop_wq_t;
 
   typedef __attribute__((aligned(64))) struct mctop_queue
-  {
-    volatile uint64_t lock;
-    volatile size_t size;
-    struct mctop_qnode* head;
-    struct mctop_qnode* tail;
-    volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
-    uint next_q[0];
+				       {
+					 volatile uint64_t lock;
+					 volatile size_t size;
+					 struct mctop_qnode* head;
+					 struct mctop_qnode* tail;
+					 volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
+					 uint next_q[0];
   } mctop_queue_t;
 
   typedef __attribute__((aligned(64))) struct mctop_qnode
-  {
-    struct mctop_qnode* next;
-    const void* data;
+				       {
+					 struct mctop_qnode* next;
+					 const void* data;
   } mctop_qnode_t;
 
   mctop_wq_t* mctop_wq_create(mctop_alloc_t* alloc);
@@ -491,9 +529,11 @@ extern "C" {
   uint mctop_wq_thread_exit(mctop_wq_t* wq);	/* inform the others that you stopped working on WQ. Returns 1 if last thread. */
   uint mctop_wq_is_last_thread(mctop_wq_t* wq);	/* Returns 1 if it's the last active thread. */
 
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif	/* __H_MCTOP__ */
+
 

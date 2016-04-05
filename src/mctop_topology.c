@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <darray.h>
 
 cdf_cluster_t* mctop_infer_clustering(uint64_t** lat_table_norm, const size_t N);
@@ -250,6 +251,15 @@ mctop_print(mctop_t* topo)
 #define PD_2 "|||"
   printf(PD_0" MCTOP Topology   / #HW contexts: %u / #Sockets: %u / Socket ref.: %u-xxxx / SMT: %d \n", 
 	 topo->n_hwcs, topo->n_sockets, topo->socket_level, topo->is_smt);
+  if (topo->cache)
+    {
+      printf(PD_0" #Cache lvls: %u\n", topo->cache->n_levels - 1);
+      for (int i = 1; i < topo->cache->n_levels; i++)
+	{
+	  printf(PD_1" Level %u / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
+		 i, topo->cache->latencies[i], topo->cache->sizes_OS[i], topo->cache->sizes_estimated[i]);
+	}
+    }
   printf(PD_0" #Latency lvls: %u / Latencies: ", topo->n_levels);
   for (int i = 0; i < topo->n_levels; i++)
     {
@@ -739,6 +749,32 @@ mctop_fix_horizontal_links(mctop_t* topo)
 
   darray_free(smt_hwcs);
   darray_free(siblings_all);
+}
+
+mctop_cache_info_t*
+mctop_cache_info_create(const uint n_levels)
+{
+  mctop_cache_info_t* mci = malloc_assert(sizeof(mctop_cache_info_t));
+  mci->n_levels = n_levels;
+  mci->latencies = calloc_assert(n_levels, sizeof(uint64_t));
+  mci->sizes_OS = calloc_assert(n_levels, sizeof(uint64_t));
+  mci->sizes_estimated = calloc_assert(n_levels, sizeof(uint64_t));
+  return mci;
+}
+
+void
+mctop_cache_info_free(mctop_cache_info_t* mci)
+{
+  free(mci->latencies);
+  free(mci->sizes_OS);
+  free(mci->sizes_estimated);
+  free(mci);
+}
+
+void
+mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci)
+{
+  topo->cache = mci;
 }
 
 

@@ -1,5 +1,104 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <time.h>
+
+typedef enum
+  {
+    MEM_LAT,
+    MEM_BW_READ,
+    MEM_BW1_READ,
+    MEM_BW_WRITE,
+    MEM_BW1_WRITE,
+    CACHE,
+    UKNOWN,
+    MCTOP_DTYPE_N,
+  }  mctop_dtype_t;
+
+const char* mctop_dtypes[] =
+  {
+    "#Mem_latencies",
+    "#Mem_bw-READ",
+    "#Mem_bw1-READ",
+    "#Mem_bw-WRITE",
+    "#Mem_bw1-WRITE",
+    "#Cache_levels",
+    "Uknown header",
+    "Invalid measurements",
+  };
+
+static mctop_dtype_t
+mctop_dtype_get(const char* in)
+{
+  for (int i = 0; i < MCTOP_DTYPE_N; i++)
+    {
+      if (strcmp(in, mctop_dtypes[i]) == 0)
+	{
+	  return (mctop_dtype_t) i;
+	}
+    }
+  return UKNOWN;
+}
+
+
+static uint
+mctop_load_mem_lat(FILE* ifile, const uint n_hwcs, const uint n_sockets, uint64_t** mem_lat_table)
+{
+  for (uint x = 0; x < (n_hwcs * n_sockets); x++)
+    {
+      uint xc, yc, mlat;
+      if (fscanf(ifile, "%u %u %u", &xc, &yc, &mlat) != 3)
+	{
+	  return 0;
+	}
+      mem_lat_table[xc][yc] = mlat;
+    }
+  return 1;
+}
+
+static uint
+mctop_load_mem_bw(FILE* ifile, const uint n_sockets, double** bw_table)
+{
+  for (uint x = 0; x < (n_sockets * n_sockets); x++)
+    {
+      uint xc, yc;
+      double bw;
+      if (fscanf(ifile, "%u %u %lf", &xc, &yc, &bw) != 3)
+	{
+	  return 0;
+	}
+      bw_table[xc][yc] = bw;
+    }
+  return 1;
+}
+
+static mctop_cache_info_t*
+mctop_load_cache_info(mctop_cache_info_t* existing, FILE* ifile, const uint n_levels)
+{
+  mctop_cache_info_t* mci = mctop_cache_info_create(n_levels);
+  for (int i = 0; i < n_levels; i++)
+    {
+      char null[4][100];
+      int l;
+      uint64_t lat, size_OS, size_est;
+      if(fscanf(ifile, "%s %d %s %zu %s %zu %s %zu",
+		null[0], &l, null[1], &lat, null[2], &size_OS, null[3], &size_est) != 8)
+	{
+	  mctop_cache_info_free(mci);
+	  return existing;
+	}
+      mci->latencies[i] = lat;
+      mci->sizes_OS[i] = size_OS;
+      mci->sizes_estimated[i] = size_est;
+    }
+
+  if (existing != NULL)
+    {
+      mctop_cache_info_free(existing);
+    }
+
+  return mci;
+}
+		   
 
 mctop_t*
 mctop_load(const char* mct_file)
@@ -7,7 +106,7 @@ mctop_load(const char* mct_file)
   clock_t cstart = clock();
 
 #if defined(__sparc__)
-    lgrp_cookie_initialize();
+  lgrp_cookie_initialize();
 #endif
 
   char file_open[100], hostname[100];
@@ -40,13 +139,15 @@ mctop_load(const char* mct_file)
 	}
     }
 
+  mctop_dtype_t type = MCTOP_DTYPE_N;
+
   uint n_hwcs, n_sockets, is_smt;
   char discard[4][30];
   int ret = fscanf(ifile, "%s %s %u %s %u %s %u",
 		   discard[0], discard[1], &n_hwcs, discard[2], &n_sockets, discard[3], &is_smt);
   if (ret != 7)
     {
-      fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
+      fprintf(stderr, "MCTOP Error: Incorrect MCT file %s! Reason: Header line\n", file_open);
       return NULL;
     }
 
@@ -56,172 +157,94 @@ mctop_load(const char* mct_file)
   double** mem_bw_table1_r = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table1_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
+  mctop_cache_info_t* cache_info = NULL;
 
-  uint correct = 1, has_lat = 1;;
+  uint8_t* have_data = calloc_assert(MCTOP_DTYPE_N, sizeof(uint8_t));
+
+  uint correct = 1;
   for (uint x = 0; x < (n_hwcs * n_hwcs); x++)
     {
       uint xc, yc, lat;
-      int ret = fscanf(ifile, "%u %u %u", &xc, &yc, &lat);
-      if (ret != 3)
+      if (fscanf(ifile, "%u %u %u", &xc, &yc, &lat) != 3)
 	{
-	  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-	  has_lat = 0;
 	  correct = 0;
 	  break;
 	}
       lat_table[xc][yc] = lat;
     }
 
-  uint has_mem_lat = 1;
-  if (correct)
+  while (correct)
     {
-      uint ns;
-      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
-      if (ret != 2)
+      char dtype[128];
+      int param;
+      if (fscanf(ifile, "%s %d", dtype, &param) == 2)
 	{
-	  fprintf(stderr, "MCTOP Warning: No memory latency measurements in %s!\n", file_open);
-	  has_mem_lat = 0;
+	  type = mctop_dtype_get(dtype);
+	  if (have_data[type])
+	    {
+	      fprintf(stderr, "MCTOP Warning: Duplicate data for %s in in %s!\n", 
+		      mctop_dtypes[type], file_open);
+	    }
+	  have_data[type] = 1;
+	  switch (type)
+	    {
+	    case MEM_LAT:
+	      correct = mctop_load_mem_lat(ifile, n_hwcs, n_sockets, mem_lat_table);
+	      break;
+	    case MEM_BW_READ:
+	      correct = mctop_load_mem_bw(ifile, n_sockets, mem_bw_table_r);
+	      break;
+	    case MEM_BW1_READ:
+	      correct = mctop_load_mem_bw(ifile, n_sockets, mem_bw_table1_r);
+	      break;
+	    case MEM_BW_WRITE:
+	      correct = mctop_load_mem_bw(ifile, n_sockets, mem_bw_table_w);
+	      break;
+	    case MEM_BW1_WRITE:
+	      correct = mctop_load_mem_bw(ifile, n_sockets, mem_bw_table1_w);
+	      break;
+	    case CACHE:
+	      cache_info = mctop_load_cache_info(cache_info, ifile, param);
+	      correct = (cache_info != NULL);
+	      break;
+	    case UKNOWN:
+	    case MCTOP_DTYPE_N:	/* just for compilation warning */
+	      correct = 0;
+	      break;
+	    }
 	}
       else
 	{
-	  for (uint x = 0; x < (n_hwcs * n_sockets); x++)
-	    {
-	      uint xc, yc, mlat;
-	      int ret = fscanf(ifile, "%u %u %u", &xc, &yc, &mlat);
-	      if (ret != 3)
-		{
-		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-		  correct = 0;
-		  has_mem_lat = 0;
-		  break;
-		}
-	      mem_lat_table[xc][yc] = mlat;
-	    }
-	}
-    }
-
-  uint has_mem_bw = 1;
-  if (correct)
-    {
-      uint ns;
-      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
-      if (ret != 2)
-	{
-	  fprintf(stderr, "MCTOP Warning: No max read memory bandwidth measurements in %s!\n", file_open);
-	  has_mem_bw = 0;
-	}
-      else
-	{
-	  for (uint x = 0; x < (n_sockets * n_sockets); x++)
-	    {
-	      uint xc, yc;
-	      double bw;
-	      int ret = fscanf(ifile, "%u %u %lf", &xc, &yc, &bw);
-	      if (ret != 3)
-		{
-		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-		  has_mem_bw = 0;
-		  correct = 0;
-		  break;
-		}
-	      mem_bw_table_r[xc][yc] = bw;
-	    }
-	}
-    }
-
-  if (correct)
-    {
-      uint ns;
-      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
-      if (ret != 2)
-	{
-	  fprintf(stderr, "MCTOP Warning: No single-threaded read memory bandwidth measurements in %s!\n", file_open);
-	  has_mem_bw = 0;
-	}
-      else
-	{
-	  for (uint x = 0; x < (n_sockets * n_sockets); x++)
-	    {
-	      uint xc, yc;
-	      double bw;
-	      int ret = fscanf(ifile, "%u %u %lf", &xc, &yc, &bw);
-	      if (ret != 3)
-		{
-		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-		  has_mem_bw = 0;
-		  correct = 0;
-		  break;
-		}
-	      mem_bw_table1_r[xc][yc] = bw;
-	    }
-	}
-    }
-
-  if (correct)
-    {
-      uint ns;
-      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
-      if (ret != 2)
-	{
-	  fprintf(stderr, "MCTOP Warning: No max write memory bandwidth measurements in %s!\n", file_open);
-	  has_mem_bw = 0;
-	}
-      else
-	{
-	  for (uint x = 0; x < (n_sockets * n_sockets); x++)
-	    {
-	      uint xc, yc;
-	      double bw;
-	      int ret = fscanf(ifile, "%u %u %lf", &xc, &yc, &bw);
-	      if (ret != 3)
-		{
-		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-		  has_mem_bw = 0;
-		  correct = 0;
-		  break;
-		}
-	      mem_bw_table_w[xc][yc] = bw;
-	    }
-	}
-    }
-
-  if (correct)
-    {
-      uint ns;
-      int ret = fscanf(ifile, "%s %u", discard[0], &ns);
-      if (ret != 2)
-	{
-	  fprintf(stderr, "MCTOP Warning: No single-threaded write memory bandwidth measurements in %s!\n", file_open);
-	  has_mem_bw = 0;
-	}
-      else
-	{
-	  for (uint x = 0; x < (n_sockets * n_sockets); x++)
-	    {
-	      uint xc, yc;
-	      double bw;
-	      int ret = fscanf(ifile, "%u %u %lf", &xc, &yc, &bw);
-	      if (ret != 3)
-		{
-		  fprintf(stderr, "MCTOP Error: Incorrect MCT file %s!\n", file_open);
-		  has_mem_bw = 0;
-		  correct = 0;
-		  break;
-		}
-	      mem_bw_table1_w[xc][yc] = bw;
-	    }
+	  break;
 	}
     }
 
   mctop_t* topo = NULL;
-  if (correct && has_lat)
+  if (correct)
     {
-      uint64_t** mlat = (has_mem_lat) ? mem_lat_table : NULL;
+      uint64_t** mlat = have_data[MEM_LAT] ? mem_lat_table : NULL;
       topo = mctop_construct(lat_table, n_hwcs, mlat, n_sockets, NULL, is_smt);
-      if (has_mem_bw)
+      uint has_mem_bw_all = have_data[MEM_BW_READ] && have_data[MEM_BW1_READ] &&
+      	have_data[MEM_BW_WRITE] && have_data[MEM_BW1_WRITE];
+      uint has_mem_bw_any = have_data[MEM_BW_READ] && have_data[MEM_BW1_READ] &&
+	have_data[MEM_BW_WRITE] && have_data[MEM_BW1_WRITE];
+      if (has_mem_bw_all)
 	{
 	  mctop_mem_bandwidth_add(topo, mem_bw_table_r, mem_bw_table1_r, mem_bw_table_w, mem_bw_table1_w);
 	}
+      else if (has_mem_bw_any)
+	{
+	  fprintf(stderr, "MCTOP Warning: Incomplete memory bandwidth data in %s! Ignore.\n", file_open);
+	}
+
+      if (cache_info != NULL)
+	{
+	  mctop_cache_info_add(topo, cache_info);
+	}
+    }
+  else
+    {
+      fprintf(stderr, "MCTOP Error: Incorrect MCT file %s! Reason: %s\n", file_open, mctop_dtypes[type]);
     }
 
   table_free((void**) lat_table, n_hwcs);
@@ -231,6 +254,8 @@ mctop_load(const char* mct_file)
   table_free((void**) mem_bw_table_w, n_hwcs);
   table_free((void**) mem_bw_table1_w, n_hwcs);
   fclose(ifile);
+
+  free(have_data);
 
   double dur = (clock() - cstart) / (double) CLOCKS_PER_SEC;
   printf("MCTOP Info: Topology loaded in %.3f ms\n", 1000 * dur);
