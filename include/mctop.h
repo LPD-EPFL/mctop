@@ -499,6 +499,43 @@ extern "C" {
   uint mctop_wq_is_last_thread(mctop_wq_t* wq);	/* Returns 1 if it's the last active thread. */
 
 
+  typedef uint64_t mctop_ticks;
+
+#if defined(__i386__)
+  static inline mctop_ticks
+  mctop_getticks(void)
+  {
+    mctop_ticks ret;
+
+    __asm__ __volatile__("rdtsc" : "=A" (ret));
+    return ret;
+  }
+#elif defined(__x86_64__)
+  static inline mctop_ticks
+  mctop_getticks(void)
+  {
+    unsigned hi, lo;
+    __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+    return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+  }
+#elif defined(__sparc__)
+  static inline mctop_ticks
+  mctop_getticks()
+  {
+    mctop_ticks ret = 0;
+    __asm__ __volatile__ ("rd %%tick, %0" : "=r" (ret) : "0" (ret));
+    return ret;
+  }
+#elif defined(__tile__)
+#include <arch/cycle.h>
+  static inline mctop_ticks
+  mctop_getticks()
+  {
+    return get_cycle_count();
+  }
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
