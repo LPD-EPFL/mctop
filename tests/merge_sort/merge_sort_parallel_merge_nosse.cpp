@@ -200,13 +200,25 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
         dest[k++] = b[j++];
 }
 
+#define MCTOP_P_STEP(__steps, __a, __b)		\
+  {						\
+    __b = mctop_getticks();			\
+    mctop_ticks __d = __b - __a;		\
+    printf("Step %zu : %-10zu cycles = %-10zu us\n",	\
+	   __steps++, __d, __d / 2100);			\
+    __a = __b;						\
+  }
+
+
 void *merge(void *args) {
   merge_args_t *myargs = (merge_args_t *)args;
-  long res1;
 
+  mctop_ticks __a = mctop_getticks(), __b, __steps = 0;
   mctop_alloc_pin(myargs->alloc);
+  MCTOP_P_STEP(__steps, __a, __b);
+
   //numa_run_on_node(myargs->node);
-  long size1, size2, desti, i;
+  long size1, size2, desti;
   long a = 0, aprime = 0, b = 0, bprime = 0;
   if (myargs->i > 0) {
   long gamma = 0 + ((myargs->i) * (myargs->sizea + myargs->sizeb) / myargs->nthreads);
@@ -232,8 +244,11 @@ void *merge(void *args) {
 
   myargs->indicesa[myargs->i] = a;
   myargs->indicesb[myargs->i] = b;
+
+  MCTOP_P_STEP(__steps, __a, __b);
   
   pthread_barrier_wait(myargs->barrier_start1);
+
   if (myargs->i < myargs->nthreads - 1) {
     size1 = myargs->indicesa[myargs->i+1] - myargs->indicesa[myargs->i];
     size2 = myargs->indicesb[myargs->i+1] - myargs->indicesb[myargs->i];
@@ -245,7 +260,13 @@ void *merge(void *args) {
   desti = a+b;
   
   //printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myargs->i, a, b, desti, size1, size2, (uintptr_t) &myargs->a[a], (uintptr_t) &myargs->b[b]);
+
+  MCTOP_P_STEP(__steps, __a, __b);
+
   merge_serial(&myargs->a[a], &myargs->b[b], &myargs->dest[desti], size1, size2);
+
+  MCTOP_P_STEP(__steps, __a, __b);
+
   pthread_barrier_wait(myargs->barrier_end);
   return NULL;
 }
@@ -317,6 +338,8 @@ int main(int argc,char *argv[]){
     allocation_policy = (mctop_alloc_policy) atoi(argv[3]);
     mctop_t * topo = mctop_load(NULL);
     mctop_alloc_t *alloc = mctop_alloc_create(topo, threads, MCTOP_ALLOC_ALL, allocation_policy);
+    mctop_alloc_print_short(alloc);
+
     readArray2(a, n);
     memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(uint));
     __gnu_parallel::sort(a, a+(n/2));

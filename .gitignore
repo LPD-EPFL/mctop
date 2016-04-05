@@ -31,6 +31,8 @@
 *.so.*
 *.x86_64
 *~
+/#pile#
+/.#pile
 /.nfs0000000006da006300000015
 /.nfs0000000006da046700000154
 /2621440
@@ -40,9 +42,13 @@
 /mct_load
 /mctop
 /mctop_latency
+/merge_sort_parallel_merge
+/merge_sort_parallel_merge_nosse
+/merge_sort_seq_merge
 /merge_sort_std
 /merge_sort_std_parallel
 /numa_alloc
+/pile
 /run_on_node0
 /solaris
 /sort

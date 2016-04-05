@@ -113,10 +113,22 @@ void merge_serial(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
         dest[k++] = b[j++];
 }
 
+
+#define MCTOP_P_STEP(__steps, __a, __b)		\
+  {						\
+    __b = mctop_getticks();			\
+    mctop_ticks __d = __b - __a;		\
+    printf("Step %zu : %-10zu cycles = %-10zu us\n",	\
+	   __steps++, __d, __d / 2100);			\
+    __a = __b;						\
+  }
+
+
 void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
   //first take care of portions flowing over the 16-byte boundaries
     long i,j,k;
    
+    mctop_ticks __a = mctop_getticks(), __b, __steps = 0;
 
     i=0;
     j=0;
@@ -148,6 +160,7 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
     long size_a_128 = sizea / 4;
     long size_b_128 = sizeb / 4;
 
+    MCTOP_P_STEP(__steps, __a, __b);
 
     __m128* a128 = (__m128*) &a[i];
     __m128* b128 = (__m128*) &b[j];
@@ -168,8 +181,11 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
         crt_a++;
     }
 
-    while ((crt_a < size_a_128) || (crt_b < size_b_128)){
-        if ((crt_a < size_a_128) && ((crt_b>=size_b_128) || (_mm_comilt_ss(*(a128 + crt_a),*(b128 + crt_b))))){
+    const size_t size_ab = size_a_128 + size_b_128;
+    for (size_t ii = (crt_a + crt_b); ii < size_ab; ii++)
+      {
+       // while ((crt_a < size_a_128) || (crt_b < size_b_128)){
+	if ((crt_a < size_a_128) && ((crt_b>=size_b_128) || (_mm_comilt_ss(*(a128 + crt_a),*(b128 + crt_b))))){
             bitonic_merge(next,a128[crt_a],&(dest128[next_val]),&last);
             crt_a++;
         } else {
@@ -180,10 +196,15 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
         next=last;
     }
     *(dest128+next_val)=next;
-    i += size_a_128;
-    j += size_b_128;
+
+    MCTOP_P_STEP(__steps, __a, __b);
+
+    i += size_a_128<<2;
+    j += size_b_128<<2;
     //printf("[thread %ld] num_a = %ld, num_b = %ld k = %ld i = %ld, j = %ld\n", pthread_self(), num_a, num_b, k, i, j);
     k = i+j;
+
+    printf("processed %ld + missing left %ld / processed %ld + right %ld\n", i, num_a - i, j, num_b - j);
 
     while((i<num_a) && (j<num_b)) {
         if (a[i] < b[j])
@@ -198,15 +219,16 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
 
     while (j < num_b)
         dest[k++] = b[j++];
+
+    MCTOP_P_STEP(__steps, __a, __b);
 }
 
 void *merge(void *args) {
   merge_args_t *myargs = (merge_args_t *)args;
-  long res1;
 
   mctop_alloc_pin(myargs->alloc);
   //numa_run_on_node(myargs->node);
-  long size1, size2, desti, i;
+  long size1, size2, desti;
   long a = 0, aprime = 0, b = 0, bprime = 0;
   if (myargs->i > 0) {
   long gamma = 0 + ((myargs->i) * (myargs->sizea + myargs->sizeb) / myargs->nthreads);
@@ -318,6 +340,8 @@ int main(int argc,char *argv[]){
     allocation_policy = (mctop_alloc_policy) atoi(argv[3]);
     mctop_t * topo = mctop_load(NULL);
     mctop_alloc_t *alloc = mctop_alloc_create(topo, threads, MCTOP_ALLOC_ALL, allocation_policy);
+    mctop_alloc_print_short(alloc);
+
     readArray2(a, n);
     memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(uint));
     __gnu_parallel::sort(a, a+(n/2));
