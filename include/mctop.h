@@ -288,6 +288,8 @@ extern "C" {
 
   int mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem);
 
+  extern int mctop_set_cpu(int cpu);
+
   /* ******************************************************************************** */
   /* MCTOP Allocator */
   /* ******************************************************************************** */
@@ -400,6 +402,7 @@ extern "C" {
   /* Thread functions ************************************************************************************************** */
 
   int mctop_alloc_pin(mctop_alloc_t* alloc);
+  int mctop_alloc_pin_plus(mctop_alloc_t* alloc);
   int mctop_alloc_unpin();
   int mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth);
   int mctop_alloc_pin_all(mctop_alloc_t* alloc);

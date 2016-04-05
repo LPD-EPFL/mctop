@@ -572,7 +572,15 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
       fprintf(stderr, "MCTOP Warning: %u nodes, not power of 2. The tree will be inbalanced!\n", n_sockets);
     }
   int n_lvls = floor_log_2(n_sockets);
+
   printf("n_lvls = %d\n", n_lvls);
+
+  for (int lvl = (n_lvls - 1); lvl >= 0; lvl--)
+    {
+      printf(" -- lvl %d\n", lvl);
+
+      
+    }
 }
 
 void
@@ -701,9 +709,49 @@ mctop_alloc_pin_all(mctop_alloc_t* alloc)
 }
 
 
-/* pin to ONE hw context contained in alloc */
+/* pin to ONE hw context contained in alloc -- Does not support repin() */
 int
 mctop_alloc_pin(mctop_alloc_t* alloc)
+{
+  __mctop_thread_info.alloc = alloc;
+  const uint id = __mctop_thread_info.id = FAI_U32(&alloc->n_hwcs_used);
+  alloc->hwcs_used[id] = 1;
+
+  if (unlikely(alloc->policy == MCTOP_ALLOC_NONE))
+    {
+      return 1;
+    }
+
+  const uint hwcid = alloc->hwcs[id];
+  __mctop_thread_info.is_pinned = 1;
+  __mctop_thread_info.hwc_id = hwcid;
+
+  int ret = mctop_set_cpu(hwcid);
+#warning add for Opteron the mctop_hwcid_fix_numa_node
+  //mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+
+  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
+  socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
+  for (int s = 0; s < alloc->n_sockets; s++)
+    {
+      if (alloc->sockets[s] == socket)
+	{
+	  __mctop_thread_info.nth_socket = s;
+	}
+    }
+
+  __mctop_thread_info.nth_hwc_in_core = mctop_hwcid_get_nth_hwc_in_core(alloc->topo, hwcid);
+  __mctop_thread_info.nth_core_socket = mctop_hwcid_get_nth_core_in_socket(alloc->topo, hwcid);
+  __mctop_thread_info.nth_hwc_in_socket =
+    (__mctop_thread_info.nth_core_socket * mctop_get_num_hwc_per_core(alloc->topo)) +
+    __mctop_thread_info.nth_hwc_in_core;
+  return ret;
+}
+
+/* pin to ONE hw context contained in alloc -- Supports repin() 
+ ++  mctop_hwcid_fix_numa_node(alloc->topo, hwcid); */
+int
+mctop_alloc_pin_plus(mctop_alloc_t* alloc)
 {
   __mctop_thread_info.alloc = alloc;
   if (unlikely(mctop_alloc_is_pinned()))
@@ -764,6 +812,7 @@ mctop_alloc_pin(mctop_alloc_t* alloc)
     }
   return 0;
 }
+
 
 int
 mctop_alloc_unpin()
