@@ -546,22 +546,32 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
       break;
     }
 
+  alloc->global_barrier = malloc_assert(sizeof(mctop_barrier_t));
+  mctop_barrier_init(alloc->global_barrier, alloc->n_hwcs);
+
   alloc->n_cores = 0;
   alloc->n_hwcs_per_socket = NULL;
   alloc->n_cores_per_socket = NULL;
   alloc->node_to_nth_socket = NULL;
+  alloc->socket_barriers = NULL;
+
   if (alloc->policy != MCTOP_ALLOC_NONE)
     {
       alloc->n_hwcs_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       alloc->n_cores_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       mctop_alloc_details_calc(alloc, &alloc->n_cores, alloc->n_hwcs_per_socket, alloc->n_cores_per_socket);
+
+      alloc->socket_barriers = malloc_assert(topo->n_sockets * sizeof(mctop_barrier_t*));
       alloc->node_to_nth_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       for (int i = 0; i < alloc->n_sockets; i++)
 	{
 	  alloc->node_to_nth_socket[i] = alloc->sockets[i]->local_node;
+	  alloc->socket_barriers[i] = numa_alloc_onnode(sizeof(mctop_barrier_t),
+							alloc->sockets[i]->local_node);
+	  mctop_barrier_init(alloc->socket_barriers[i], alloc->n_hwcs_per_socket[i]);
 	}
     }
-  
+ 
   return alloc;
 }
 
@@ -654,6 +664,16 @@ mctop_alloc_free(mctop_alloc_t* alloc)
   if (alloc->bw_proportions != NULL)
     {
       free(alloc->bw_proportions);
+    }
+
+  free(alloc->global_barrier);
+  if (alloc->socket_barriers != NULL)
+    {
+      for (int i = 0; i < alloc->n_sockets; i++)
+	{
+	  numa_free(alloc->socket_barriers[i], sizeof(mctop_barrier_t));
+	}
+      free(alloc->socket_barriers);
     }
   free(alloc);
 }
@@ -1047,4 +1067,22 @@ void
 mctop_alloc_malloc_free(void* mem, const size_t size)
 {
   numa_free(mem, size);
+}
+
+/* barrier******************************************************************************** */
+
+void
+mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc)
+{
+  mctop_barrier_wait(alloc->global_barrier);
+}
+
+void
+mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc)
+{
+  if (mctop_alloc_is_pinned())
+    {
+      const uint on = mctop_alloc_get_node_seq_id();
+      mctop_barrier_wait(alloc->socket_barriers[on]);
+    }
 }

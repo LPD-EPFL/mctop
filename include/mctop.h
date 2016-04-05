@@ -296,6 +296,16 @@ extern "C" {
 
   extern int mctop_set_cpu(int cpu);
 
+
+  /* ******************************************************************************** */
+  /* Thread barriers */
+  /* ******************************************************************************** */
+
+  typedef pthread_barrier_t               mctop_barrier_t;
+#define mctop_barrier_init(barrier, n)  pthread_barrier_init(barrier, NULL, n)
+#define mctop_barrier_wait(barrier)     pthread_barrier_wait(barrier)
+#define mctop_barrier_destroy(barrier)  pthread_barrier_destroy(barrier)
+
   /* ******************************************************************************** */
   /* MCTOP Allocator */
   /* ******************************************************************************** */
@@ -345,6 +355,9 @@ extern "C" {
 #else
     lgrp_id_t hwcs_all;
 #endif
+
+    mctop_barrier_t** socket_barriers;
+    mctop_barrier_t* global_barrier;
   } mctop_alloc_t;
 
   typedef struct mctop_thread_info
@@ -429,6 +442,9 @@ extern "C" {
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
 
 
+  void mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc); /* wait for ALL threads handled by alloc to cross */
+  void mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
+
   /* Queries *********************************************************************************************************** */
 
   mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);
@@ -463,12 +479,6 @@ extern "C" {
   /* ******************************************************************************** */
   /* Node merge tree */
   /* ******************************************************************************** */
-
-typedef pthread_barrier_t               mctop_barrier_t;
-#define mctop_barrier_init(barrier, n)  pthread_barrier_init(barrier, NULL, n)
-#define mctop_barrier_wait(barrier)     pthread_barrier_wait(barrier)
-#define mctop_barrier_destroy(barrier)  pthread_barrier_destroy(barrier)
-
 
   typedef struct mctop_nt_pair
   {
