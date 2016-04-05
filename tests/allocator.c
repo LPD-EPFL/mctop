@@ -12,7 +12,7 @@ main(int argc, char **argv)
   int test_num_threads = 2;
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = MCTOP_ALLOC_SEQUENTIAL;
-  uint test_run_pin = 1;
+  uint test_run_pin = 0;
 
   struct option long_options[] = 
     {
@@ -27,7 +27,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r", long_options, &i);
 
       if(c == -1)
 	break;
@@ -52,6 +52,9 @@ main(int argc, char **argv)
 	  break;
 	case 'p':
 	  test_policy = atoi(optarg);
+	  break;
+	case 'r':
+	  test_run_pin = 1;
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -81,6 +84,9 @@ main(int argc, char **argv)
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       mctop_alloc_print(alloc);
       mctop_alloc_print_short(alloc);
+
+      mctop_alloc_node_merge_tree_create(alloc);
+
 
 
       if (test_run_pin)

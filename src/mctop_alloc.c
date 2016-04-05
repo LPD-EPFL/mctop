@@ -564,7 +564,7 @@ floor_log_2(uint n)
 
   /* create a node tree for hierarchical algorithms */
 void
-mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
+mctop_alloc_node_merge_tree_create(mctop_alloc_t* alloc)
 {
   const uint n_sockets = alloc->n_sockets;
   if ((n_sockets) & (n_sockets - 1))
@@ -575,12 +575,73 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
 
   printf("n_lvls = %d\n", n_lvls);
 
-  for (int lvl = (n_lvls - 1); lvl >= 0; lvl--)
-    {
-      printf(" -- lvl %d\n", lvl);
+  darray_t* socket_ids = darray_create(), * sids_avail = darray_create(), * sids_to_match = darray_create();
 
-      
+  for (int s = 0; s < n_sockets; s++)
+    {
+      darray_add(socket_ids, alloc->sockets[s]->id);
     }
+
+  socket_t* s[n_lvls][n_sockets];
+
+  for (int lvl = 0; lvl < n_lvls; lvl++)
+    {
+      uint lu = n_lvls - lvl - 1;
+      uint n_part = 2 << lvl;
+      printf(" ############## lvl %u - nodes %u - Sockets: \n", lu, n_part);
+
+      darray_empty(sids_avail);
+      darray_copy(sids_avail, socket_ids);
+      if (lvl == 0)
+	{
+	  darray_add(sids_to_match, darray_get(sids_avail, 0));
+	}
+      else
+	{
+	  darray_empty(sids_to_match);
+	  for (int n = 0; n < (n_part / 2); n++)
+	    {
+	      darray_add(sids_to_match, s[lvl - 1][n]->id);
+	    }
+	}
+      printf("::: to match: "); darray_print(sids_to_match);
+
+      socket_t* left;      
+      for (int i = 0; i < n_part; i += 2)
+	{
+	  uintptr_t sid;
+	  darray_pop(sids_to_match, &sid); 
+
+	  if (!darray_remove(sids_avail, sid))
+	    {
+	      darray_pop(sids_avail, &sid); 
+	    }
+	  printf("%lu <-", sid);
+
+
+	  left = mctop_id_get_hwc_gs(alloc->topo, sid);
+
+	  for (int j = 0; j < left->n_siblings; j++)
+	    {
+	      socket_t* right = mctop_sibling_get_other_socket(left->siblings_in[j], left);
+	      if (!darray_elem_is_at(sids_to_match, right->id, 0) &&
+		  darray_remove(sids_avail, right->id))
+		{
+		  double bw = mctop_socket_get_bw_to(left, right);
+		  uint lat = mctop_ids_get_latency(alloc->topo, sid, right->id);
+		  printf("[%u / %4.1f]- %u \n", lat, bw, right->id);
+
+		  s[lvl][i] = left;
+		  s[lvl][i + 1] = right;
+		  break;
+		}
+	    }
+	}
+    }
+
+  darray_free(sids_to_match);
+  darray_free(sids_avail);
+  darray_free(socket_ids);
 }
 
 void
@@ -900,6 +961,21 @@ mctop_alloc_node_to_nth_socket(mctop_alloc_t* alloc, const uint node)
 {
   return alloc->node_to_nth_socket[node];
 }
+
+/* get the seq id in mctop of the mctop id of a socket */
+int
+mctop_alloc_socket_seq_id(mctop_alloc_t* alloc, const uint socket_mctop_id)
+{
+  for (int i = 0; i < alloc->n_sockets; i++)
+    {
+      if (alloc->sockets[i]->id == socket_mctop_id)
+	{
+	  return i;
+	}
+    }
+  return -1;
+}
+
 
 struct bitmask* 
 mctop_alloc_create_nodemask(mctop_alloc_t* alloc)

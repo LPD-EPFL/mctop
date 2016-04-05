@@ -202,6 +202,12 @@ mctop_socket_get_local_node(socket_t* socket)
   return socket->local_node;
 }
 
+inline double
+mctop_socket_get_bw_to(socket_t* socket, socket_t* to)
+{
+  return socket->mem_bandwidths_r[to->local_node];
+}
+
 /* sibling getters ***************************************************************** */
 
 socket_t*
@@ -325,7 +331,7 @@ mctop_has_mem_bw(mctop_t* topo)
   return topo->has_mem == BANDWIDTH;
 }
 
-static hwc_gs_t*
+hwc_gs_t*
 mctop_id_get_hwc_gs(mctop_t* topo, const uint id)
 {
   uint lvl = mctop_id_get_lvl(id);

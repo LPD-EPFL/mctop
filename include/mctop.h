@@ -71,10 +71,10 @@ extern "C" {
     uint socket_level;		/* level of sockets */
     uint n_sockets;		/* num. of sockets/nodes */
     socket_t* sockets;		/* pointer to sockets/nodes */
-    uint is_smt;			/* is SMT enabled CPU */
-    uint n_hwcs_per_core;		/* if SMT, how many hw contexts per core? */
-    uint has_mem;			/* flag whether there are mem. latencies */
-    uint* node_to_socket;		/* node-id to socket-id translation */
+    uint is_smt;		/* is SMT enabled CPU */
+    uint n_hwcs_per_core;       /* if SMT, how many hw contexts per core? */
+    uint has_mem;	        /* flag whether there are mem. latencies */
+    uint* node_to_socket;       /* node-id to socket-id translation */
     struct hw_context* hwcs;	/* pointers to hwcs */
     uint n_siblings;		/* total number of sibling relationships */
     struct sibling** siblings;	/* pointers to sibling relationships */
@@ -90,23 +90,22 @@ extern "C" {
     uint id;			/* mctop id */
     uint level;			/* latency hierarchy lvl */
     mctop_type_t type;		/* HWC_GROUP or SOCKET */
-    uint latency;			/* comm. latency within group */
+    uint latency;		/* comm. latency within group */
     socket_t* socket;		/* Group: pointer to parent socket */
     struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
-    uint n_hwcs;			/* num. of hwcs descendants */
+    uint n_hwcs;		/* num. of hwcs descendants */
     struct hw_context** hwcs;	/* descendant hwcs */
-    uint n_cores;			/* num. of physical cores (if !smt = n_hwcs */
+    uint n_cores;	        /* num. of physical cores (if !smt = n_hwcs */
     uint n_children;		/* num. of hwc_group descendants */
     struct hwc_gs** children;	/* pointer to children hwcgroup */
-    struct hwc_gs* next;		/* link groups of a level to a list */
-    mctop_t* topo;		/* link to topology */
-    /* socket only info */
+    struct hwc_gs* next;	/* link groups of a level to a list */
+    mctop_t* topo;		/* link to topology socket only info */
     uint n_siblings;		/* number of other sockets */
     struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st, max bw from this to sibling */
     struct sibling** siblings_in;	/* pointers to other sockets, sorted closest 1st, max bw sibling to this */
     uint local_node;		/* local NUMA mem. node */
-    uint n_nodes;			/* num of nodes = topo->n_sockets */
-    uint* mem_latencies;		/* mem. latencies to NUMA nodes */
+    uint n_nodes;		/* num of nodes = topo->n_sockets */
+    uint* mem_latencies;	/* mem. latencies to NUMA nodes */
     double* mem_bandwidths_r;	/* Read mem. bandwidth of each socket, maximum */
     double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
     double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
@@ -225,6 +224,9 @@ extern "C" {
   size_t mctop_socket_get_num_cores(socket_t* socket);
   double mctop_socket_get_bw_local(socket_t* socket);
   double mctop_socket_get_bw_local_one(socket_t* socket);
+
+  double mctop_socket_get_bw_to(socket_t* socket, socket_t* to);
+
   uint mctop_socket_get_local_node(socket_t* socket);
 
   /* hwcid ************************************************************************** */
@@ -233,6 +235,9 @@ extern "C" {
   hwc_gs_t* mctop_hwcid_get_core(mctop_t* topo, const uint hwcid);
   uint mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid);
   uint mctop_hwcid_get_nth_core_in_socket(mctop_t* topo, const uint hwcid);
+
+  /* mctop id *********************************************************************** */
+  hwc_gs_t* mctop_id_get_hwc_gs(mctop_t* topo, const uint id);
 
   /* queries ************************************************************************ */
   uint mctop_hwcs_are_same_core(hw_context_t* a, hw_context_t* b);
@@ -401,8 +406,9 @@ extern "C" {
 
   /* Thread functions ************************************************************************************************** */
 
-  int mctop_alloc_pin(mctop_alloc_t* alloc);
-  int mctop_alloc_pin_plus(mctop_alloc_t* alloc);
+  int mctop_alloc_pin(mctop_alloc_t* alloc); /* does NOT fix numa node + cannot repin */
+  int mctop_alloc_pin_plus(mctop_alloc_t* alloc); /* mctop_alloc_pin + repin possible + fix numa node */
+
   int mctop_alloc_unpin();
   int mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth);
   int mctop_alloc_pin_all(mctop_alloc_t* alloc);
@@ -436,6 +442,8 @@ extern "C" {
   uint mctop_alloc_get_nth_node(mctop_alloc_t* alloc, const uint nth);
   /* get the seq id of the socket that corresponds to NUMA node node */
   uint mctop_alloc_node_to_nth_socket(mctop_alloc_t* alloc, const uint node);
+  /* get the seq id in mctop of the mctop id of a socket! -1 if not available */
+  int mctop_alloc_socket_seq_id(mctop_alloc_t* alloc, const uint socket_mctop_id);
 
   /* allocates and initialized a libnuma bitmask to be used in numa_alloc_interleaved_subset */
   struct bitmask* mctop_alloc_create_nodemask(mctop_alloc_t* alloc);
@@ -449,7 +457,16 @@ extern "C" {
   void mctop_alloc_malloc_free(void* mem, const size_t size);
 
 
-  /* Work Q *********************************************************************************************************** */
+  /* ******************************************************************************** */
+  /* Node merge tree */
+  /* ******************************************************************************** */
+
+  void mctop_alloc_node_merge_tree_create(mctop_alloc_t* alloc);
+
+
+  /* ******************************************************************************** */
+  /* Work Queues */
+  /* ******************************************************************************** */
 
   typedef struct mctop_wq
   {
@@ -500,7 +517,6 @@ extern "C" {
   uint mctop_wq_thread_enter(mctop_wq_t* wq);   /* inform the others that you are working on WQ. Returns 1 if last thread. */
   uint mctop_wq_thread_exit(mctop_wq_t* wq);	/* inform the others that you stopped working on WQ. Returns 1 if last thread. */
   uint mctop_wq_is_last_thread(mctop_wq_t* wq);	/* Returns 1 if it's the last active thread. */
-
 
   typedef uint64_t mctop_ticks;
 
