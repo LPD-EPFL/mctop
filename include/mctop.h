@@ -288,40 +288,6 @@ extern "C" {
 
   int mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem);
 
-
-  /* ******************************************************************************** */
-  /* AUX functions */
-  /* ******************************************************************************** */
-  void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
-  void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
-  void table_free(void** m, const size_t cols);
-
-  static inline void*
-  malloc_assert(size_t size)
-  {
-    void* m = malloc(size);
-    assert(m != NULL);
-    return m;
-  }
-
-  static inline void*
-  realloc_assert(void* old, size_t size)
-  {
-    void* m = realloc(old, size);
-    assert(m != NULL);
-    return m;
-  }
-
-  static inline void*
-  calloc_assert(size_t n, size_t size)
-  {
-    void* m = calloc(n, size);
-    assert(m != NULL);
-    return m;
-  }
-
-  extern int mctop_set_cpu(int cpu);
-
   /* ******************************************************************************** */
   /* MCTOP Allocator */
   /* ******************************************************************************** */
@@ -491,20 +457,23 @@ extern "C" {
     struct mctop_queue* queues[0];	/* or * ? */
   } mctop_wq_t;
 
-  typedef __attribute__((aligned(64))) struct mctop_queue
-				       {
-					 volatile uint64_t lock;
-					 volatile size_t size;
-					 struct mctop_qnode* head;
-					 struct mctop_qnode* tail;
-					 volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
-					 uint next_q[0];
+
+#define MCTOP_ALIGNED(al) __attribute__((aligned(al)))
+
+  typedef struct MCTOP_ALIGNED(64) mctop_queue
+  {
+    volatile uint64_t lock;
+    volatile size_t size;
+    struct mctop_qnode* head;
+    struct mctop_qnode* tail;
+    volatile uint8_t padding[64 - sizeof(uint64_t) - sizeof(size_t) - 2 * sizeof(struct mctop_qnode*)];
+    uint next_q[0];
   } mctop_queue_t;
 
-  typedef __attribute__((aligned(64))) struct mctop_qnode
-				       {
-					 struct mctop_qnode* next;
-					 const void* data;
+  typedef  struct MCTOP_ALIGNED(64) mctop_qnode
+  {
+    struct mctop_qnode* next;
+    const void* data;
   } mctop_qnode_t;
 
   mctop_wq_t* mctop_wq_create(mctop_alloc_t* alloc);
