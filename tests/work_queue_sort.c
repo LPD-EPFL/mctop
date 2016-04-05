@@ -372,7 +372,8 @@ wq_data_t*
 wq_merge(const wq_data_t* w0, const wq_data_t* w1)
 {
   size_t len = w0->len + w1->len;
-  int* anew = malloc_assert(len * sizeof(int));
+  int* anew = malloc(len * sizeof(int));
+  assert(anew != NULL);
 
   uint i0 = 0, i1 = 0, o = 0;
   while (i0 < w0->len && i1 < w1->len)

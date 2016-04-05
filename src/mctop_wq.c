@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 
 static mctop_queue_t* mctop_queue_create_on_seq(mctop_alloc_t* alloc, const uint sid);
 

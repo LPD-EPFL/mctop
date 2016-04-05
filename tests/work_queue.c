@@ -290,7 +290,8 @@ test_pin(void* params)
     }
 
   uint n_local = 0, n_total = 0;
-  uint* n_from = calloc_assert(8, sizeof(uint));
+  uint* n_from = calloc(8, sizeof(uint));
+  assert(n_from != NULL);
 
   printf("[%2d@%d] Initialized %-5zu chunks / %-10zu elems\n", hwcid, node, n_chunks, len_tot);
   barrier_wait(0, alloc->n_hwcs);

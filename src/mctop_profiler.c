@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <mctop_profiler.h>
 #include <math.h>
 
