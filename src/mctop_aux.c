@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 
 void**
 table_malloc(const size_t rows, const size_t cols, const size_t elem_size)

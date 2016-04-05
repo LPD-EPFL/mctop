@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 #include <darray.h>
 
 /* #define MA_DP(args...) printf(args) */
@@ -544,7 +545,34 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 	  alloc->node_to_nth_socket[i] = alloc->sockets[i]->local_node;
 	}
     }
+  
   return alloc;
+}
+
+static int
+floor_log_2(uint n)
+{
+  int pos = 0;
+  if (n >= 1<<16) { n >>= 16; pos += 16; }
+  if (n >= 1<< 8) { n >>=  8; pos +=  8; }
+  if (n >= 1<< 4) { n >>=  4; pos +=  4; }
+  if (n >= 1<< 2) { n >>=  2; pos +=  2; }
+  if (n >= 1<< 1) {           pos +=  1; }
+  return ((n == 0) ? (-1) : pos);
+}
+
+
+  /* create a node tree for hierarchical algorithms */
+void
+mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
+{
+  const uint n_sockets = alloc->n_sockets;
+  if ((n_sockets) & (n_sockets - 1))
+    {
+      fprintf(stderr, "MCTOP Warning: %u nodes, not power of 2. The tree will be inbalanced!\n", n_sockets);
+    }
+  int n_lvls = floor_log_2(n_sockets);
+  printf("n_lvls = %d\n", n_lvls);
 }
 
 void
