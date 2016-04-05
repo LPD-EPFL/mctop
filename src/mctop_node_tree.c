@@ -14,30 +14,6 @@ floor_log_2(uint n)
   return ((n == 0) ? (-1) : pos);
 }
 
-
-typedef struct mctop_nt_pair
-{
-  uint nodes[2];   /* 0 is the **receiving** node */
-  uint socket_ids[2];
-  /* more */
-} mctop_nt_pair_t;
-
-typedef struct mctop_nt_lvl
-{
-  uint n_nodes;
-  uint n_pairs;
-  mctop_nt_pair_t* pairs;
-} mctop_nt_lvl_t;
-
-typedef struct mctop_node_tree
-{
-  mctop_alloc_t* alloc;
-  uint n_levels;
-  uint n_nodes;
-  mctop_nt_lvl_t* levels;
-} mctop_node_tree_t;
-
-
 mctop_node_tree_t*
 mctop_node_tree_alloc(const uint n_lvls)
 {
@@ -57,6 +33,58 @@ mctop_node_tree_alloc(const uint n_lvls)
     }
 
   return nt;
+}
+
+void
+mctop_node_tree_free(mctop_node_tree_t* nt)
+{
+  for (int l = 0; l < nt->n_levels; l++)
+    {
+      free(nt->levels[l].pairs);
+      mctop_barrier_destroy(nt->levels[l].barrier);
+    }
+  free(nt->levels);
+  mctop_barrier_destroy(nt->barrier);
+  free(nt->barrier);
+  free(nt);
+}
+
+static void
+mctop_nt_get_nodes_lvl(mctop_node_tree_t* nt, const uint lvl, darray_t* nodes)
+{
+  darray_empty(nodes);
+  mctop_nt_lvl_t* level = &nt->levels[lvl];
+  for (int p = 0; p < level->n_pairs; p++)
+    {
+      darray_add(nodes, level->pairs[p].nodes[0]);
+      darray_add(nodes, level->pairs[p].nodes[1]);
+    }
+}
+
+
+void
+mctop_node_tree_add_barriers(mctop_node_tree_t* nt)
+{
+  nt->barrier = malloc_assert(sizeof(mctop_barrier_t));
+  mctop_barrier_init(nt->barrier, nt->alloc->n_hwcs);
+
+  darray_t* nodes = darray_create();
+  for (int l = 0; l < nt->n_levels; l++)
+    {
+      mctop_nt_get_nodes_lvl(nt, l, nodes);
+      size_t n_hwcs_lvl = 0;
+      DARRAY_FOR_EACH(nodes, n)
+	{
+	  uint node = DARRAY_GET_N(nodes, n);
+	  n_hwcs_lvl += nt->alloc->n_hwcs_per_socket[node];
+	}
+      
+      nt->levels[l].barrier = malloc_assert(sizeof(mctop_barrier_t));
+      mctop_barrier_init(nt->levels[l].barrier, n_hwcs_lvl);
+      /* printf(" LVL %d : %zu threads\n", l, n_hwcs_lvl); */
+    }
+
+  darray_free(nodes);
 }
 
 mctop_nt_pair_t*
@@ -96,7 +124,7 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
 }
 
   /* create a node tree for hierarchical algorithms */
-void
+mctop_node_tree_t*
 mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
 {
   const uint n_sockets = alloc->n_sockets;
@@ -166,9 +194,13 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc)
 	}
     }
 
-  mctop_node_tree_print(nt);
+  mctop_node_tree_add_barriers(nt);
 
   darray_free(sids_to_match);
   darray_free(sids_avail);
   darray_free(socket_ids);
+
+  return nt;
 }
+
+
