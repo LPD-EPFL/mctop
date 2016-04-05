@@ -91,29 +91,6 @@ long bs(uint* data, uint size, uint value) {
     return end;
 }
 
-void merge_serial(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
-    uint i,j;
-    i=0;
-    j=0;
-    int k=0;
-
-    while ((i<num_a) && (j<num_b))
-    {
-        if (a[i] < b[j])
-            dest[k++] = a[i++];
-
-        else
-            dest[k++] = b[j++];
-    }
-
-    while (i < num_a)
-        dest[k++] = a[i++];
-
-    while (j < num_b)
-        dest[k++] = b[j++];
-}
-
-
 #define MCTOP_P_STEP(__steps, __a, __b)		\
   {						\
     __b = mctop_getticks();			\
@@ -204,21 +181,34 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
     //printf("[thread %ld] num_a = %ld, num_b = %ld k = %ld i = %ld, j = %ld\n", pthread_self(), num_a, num_b, k, i, j);
     k = i+j;
 
-    printf("processed %ld + missing left %ld / processed %ld + right %ld\n", i, num_a - i, j, num_b - j);
-
-    while((i<num_a) && (j<num_b)) {
-        if (a[i] < b[j])
-            dest[k++] = a[i++];
-
-        else
-            dest[k++] = b[j++];
+    //printf("processed %ld + missing left %ld / processed %ld + right %ld\n", i, num_a - i, j, num_b - j);
+    
+    // bubble down the remainder of the elements
+    for (long counter = i; counter < num_a; counter++) {
+      dest[k] = a[counter];
+      uint temp;
+      long element = k;
+      while (dest[element] < dest[element-1]) {
+        temp = dest[element-1];
+        dest[element-1] = dest[element];
+        dest[element] = temp;
+        element--;
+      }
+      k++;
     }
 
-    while (i < num_a)
-        dest[k++] = a[i++];
-
-    while (j < num_b)
-        dest[k++] = b[j++];
+    for (long counter = j; counter < num_b; counter++) {
+      dest[k] = b[counter];
+      uint temp;
+      long element = k;
+      while (dest[element] < dest[element-1]) {
+        temp = dest[element-1];
+        dest[element-1] = dest[element];
+        dest[element] = temp;
+        element--;
+      }
+      k++;
+    }
 
     MCTOP_P_STEP(__steps, __a, __b);
 }
@@ -231,12 +221,12 @@ void *merge(void *args) {
   long size1, size2, desti;
   long a = 0, aprime = 0, b = 0, bprime = 0;
   if (myargs->i > 0) {
-  long gamma = 0 + ((myargs->i) * (myargs->sizea + myargs->sizeb) / myargs->nthreads);
-  long amin = max(0, (0+gamma-0-(myargs->sizeb+1)));
-  long amax = min(myargs->sizea+1, 0+gamma-0);
+  long gamma = ((myargs->i) * (myargs->sizea + myargs->sizeb) / myargs->nthreads);
+  long amin = max(0, (gamma-(myargs->sizeb+1)));
+  long amax = min(myargs->sizea+1, gamma);
   long aminprime = amin;
   long amaxprime = amax;
-  long length = gamma - 0 + 0 + 0;
+  long length = gamma;
   while ((aminprime + 1) != amaxprime) {
     aprime = (aminprime + amaxprime) / 2;
     bprime = length - aprime;
@@ -271,44 +261,6 @@ void *merge(void *args) {
   merge_do(&myargs->a[a], &myargs->b[b], &myargs->dest[desti], size1, size2);
   pthread_barrier_wait(myargs->barrier_end);
   return NULL;
-}
-
-void merge_sse(uint* aa, uint* bb, uint* dest_u, uint na, uint nb){
-    assert(na % 4 == 0 && nb%4 == 0);
-    //now use sse to merge
-    __m128* a = (__m128*) aa;
-    __m128* b = (__m128*) bb;
-    __m128* dest = (__m128*) dest_u;
-    uint num_a = na/4;
-    uint num_b = nb/4;
-
-    uint crt_a = 0;
-    uint crt_b = 0;
-    uint next_val = 0;
-
-    __m128 next;
-    __m128 last;
-
-    if (_mm_comilt_ss(*a,*b)){
-        next = *b;
-        crt_b++;
-    } else {
-        next = *a;
-        crt_a++;
-    }
-
-    while ((crt_a < num_a) || (crt_b < num_b)){
-        if ((crt_a < num_a) && ((crt_b>=num_b) || (_mm_comilt_ss(*(a + crt_a),*(b + crt_b))))){
-            bitonic_merge(next,a[crt_a],&(dest[next_val]),&last);
-            crt_a++;
-        } else {
-            bitonic_merge(next,b[crt_b],&(dest[next_val]),&last);
-            crt_b++;
-        }
-        next_val++;
-        next=last;
-    }
-    *(dest+next_val)=next;
 }
 
 int main(int argc,char *argv[]){
