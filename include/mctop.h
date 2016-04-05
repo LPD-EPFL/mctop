@@ -461,7 +461,7 @@ extern "C" {
   /* Node merge tree */
   /* ******************************************************************************** */
 
-  void mctop_alloc_node_merge_tree_create(mctop_alloc_t* alloc);
+  void mctop_alloc_node_tree_create(mctop_alloc_t* alloc);
 
 
   /* ******************************************************************************** */
