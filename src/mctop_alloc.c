@@ -442,18 +442,30 @@ mctop_alloc_prep_bw_bound(mctop_alloc_t* alloc, const uint n_hwcs_extra, int n_s
   free(sockets_bw);
 }
 
-static uint
-mctop_alloc_num_cores_calc(mctop_alloc_t* alloc)
+/* num cores
+   hwcs per socket
+   cores per socket
+*/
+static void
+mctop_alloc_details_calc(mctop_alloc_t* alloc, uint* n_cores, uint* n_hwcs_socket, uint* n_cores_socket)
 {
   darray_t* cores = darray_create();
   for (uint i = 0; i < alloc->n_hwcs; i++)
     {
-      hwc_gs_t* core = mctop_hwcid_get_core(alloc->topo, alloc->hwcs[i]);
-      darray_add_uniq(cores, core->id);
+      const uint hwcid = alloc->hwcs[i];
+      socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
+      const uint nth_socket = mctop_alloc_socket_seq_id(alloc, socket->id);
+      n_hwcs_socket[nth_socket]++;
+
+      hwc_gs_t* core = mctop_hwcid_get_core(alloc->topo, hwcid);
+      if (darray_add_uniq(cores, core->id))
+	{
+	  n_cores_socket[nth_socket]++;
+	}
     }
   uint n = darray_get_num_elems(cores);
   darray_free(cores);
-  return n;
+  *n_cores = n;
 }
 
 mctop_alloc_t*
@@ -535,10 +547,14 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
     }
 
   alloc->n_cores = 0;
+  alloc->n_hwcs_per_socket = NULL;
+  alloc->n_cores_per_socket = NULL;
   alloc->node_to_nth_socket = NULL;
   if (alloc->policy != MCTOP_ALLOC_NONE)
     {
-      alloc->n_cores = mctop_alloc_num_cores_calc(alloc);
+      alloc->n_hwcs_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
+      alloc->n_cores_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
+      mctop_alloc_details_calc(alloc, &alloc->n_cores, alloc->n_hwcs_per_socket, alloc->n_cores_per_socket);
       alloc->node_to_nth_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       for (int i = 0; i < alloc->n_sockets; i++)
 	{
@@ -558,6 +574,18 @@ mctop_alloc_print(mctop_alloc_t* alloc)
   for (int i = 0; i < alloc->n_sockets; i++)
     {
       printf("%u ", alloc->sockets[i]->id);
+    }
+  printf("\n");
+  printf("## # HW Ctx / socket : ");
+  for (int i = 0; i < alloc->n_sockets; i++)
+    {
+      printf("%-5u ", alloc->n_hwcs_per_socket[i]);
+    }
+  printf("\n");
+  printf("## # Cores / socket  : ");
+  for (int i = 0; i < alloc->n_sockets; i++)
+    {
+      printf("%-5u ", alloc->n_cores_per_socket[i]);
     }
   printf("\n");
   if (alloc->bw_proportions != NULL)
@@ -610,6 +638,14 @@ mctop_alloc_free(mctop_alloc_t* alloc)
   if (alloc->sockets != NULL)
     {
       free(alloc->sockets);
+    }
+  if (alloc->n_hwcs_per_socket)
+    {
+      free(alloc->n_hwcs_per_socket);
+    }
+  if (alloc->n_cores_per_socket)
+    {
+      free(alloc->n_cores_per_socket);
     }
   if (alloc->node_to_nth_socket != NULL)
     {

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #ifdef __x86_64__
 #  include <numa.h>
@@ -330,6 +331,8 @@ extern "C" {
     uint n_cores;
     uint n_sockets;
     socket_t** sockets;
+    uint* n_hwcs_per_socket;
+    uint* n_cores_per_socket;
     uint* node_to_nth_socket;
     double* bw_proportions;
     uint max_latency;
@@ -461,7 +464,40 @@ extern "C" {
   /* Node merge tree */
   /* ******************************************************************************** */
 
-  void mctop_alloc_node_tree_create(mctop_alloc_t* alloc);
+typedef pthread_barrier_t               mctop_barrier_t;
+#define mctop_barrier_init(barrier, n)  pthread_barrier_init(barrier, NULL, n)
+#define mctop_barrier_wait(barrier)     pthread_barrier_wait(barrier)
+#define mctop_barrier_destroy(barrier)  pthread_barrier_destroy(barrier)
+
+
+  typedef struct mctop_nt_pair
+  {
+    uint nodes[2];   /* 0 is the **receiving** node */
+    uint socket_ids[2];
+    /* more */
+  } mctop_nt_pair_t;
+
+  typedef struct mctop_nt_lvl
+  {
+    uint n_nodes;
+    uint n_pairs;
+    mctop_nt_pair_t* pairs;
+    mctop_barrier_t* barrier;
+  } mctop_nt_lvl_t;
+
+  typedef struct mctop_node_tree
+  {
+    mctop_alloc_t* alloc;
+    uint n_levels;
+    uint n_nodes;
+    mctop_nt_lvl_t* levels;
+    mctop_barrier_t* barrier;
+  } mctop_node_tree_t;
+
+
+  mctop_node_tree_t* mctop_alloc_node_tree_create(mctop_alloc_t* alloc);
+  void mctop_node_tree_print(mctop_node_tree_t* nt);
+  void mctop_node_tree_free(mctop_node_tree_t* nt);
 
 
   /* ******************************************************************************** */
