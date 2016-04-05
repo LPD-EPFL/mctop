@@ -10,69 +10,50 @@
 #include <parallel/algorithm>
 #include <numa.h>
 #include <mctop.h>
-#include <nmmintrin.h>
+#include "merge_utils.h"
 
 #define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))
 #define min(x, y) (x<y?x:y)
 #define max(x, y) (x<y?y:x)
 
+
+
 //pthread_mutex_t global_lock;
 
-void readArray2(uint [], const long);
-void printArray2(uint [], const long, const int);
+void readArray2(SORT_TYPE [], const long);
+void printArray2(SORT_TYPE [], const long, const int);
 
-uint *a __attribute__((aligned(64)));
-uint *x __attribute__((aligned(64)));
-uint *res __attribute__((aligned(64)));
+SORT_TYPE *a __attribute__((aligned(64)));
+SORT_TYPE *x __attribute__((aligned(64)));
+SORT_TYPE *res __attribute__((aligned(64)));
 
-long *indicesa __attribute__((aligned(64)));
-long *indicesb __attribute__((aligned(64)));
-long *res2 __attribute__((aligned(64)));
+long *help_array_a __attribute__((aligned(64)));
+long *help_array_b __attribute__((aligned(64)));
+
+long in_thread_partitions;
 
 
 //partition merge arguments
 typedef struct merge_args_t
 {
-    uint* a;
-    uint sizea;
-    uint* b;
-    uint sizeb;
-    uint* dest;
+    SORT_TYPE* a;
+    SORT_TYPE sizea;
+    SORT_TYPE* b;
+    SORT_TYPE sizeb;
+    SORT_TYPE* dest;
     int i;
-    long *indicesa;
-    long *indicesb;
-    long *res2;
+    long *help_array_a;
+    long *help_array_b;
     int node;
     int nthreads;
     pthread_barrier_t *barrier_start1;
-    pthread_barrier_t *barrier_start2;
     pthread_barrier_t *barrier_end;
     mctop_alloc_t *alloc;
 } merge_args_t;
 
 
-//4-wide bitonic merge network
-inline void bitonic_merge(__m128 a, __m128 b, __m128* res_lo, __m128* res_hi) {
-    b = _mm_shuffle_ps(b,b,_MM_SHUFFLE(0,1,2,3));
-    __m128 l1 = _mm_min_ps(a,b);
-    __m128 h1 = _mm_max_ps(a,b);
-    __m128 l1p = _mm_shuffle_ps(l1,h1,_MM_SHUFFLE(1,0,1,0));
-    __m128 h1p = _mm_shuffle_ps(l1,h1,_MM_SHUFFLE(3,2,3,2));
-    __m128 l2 = _mm_min_ps(l1p, h1p);
-    __m128 h2 = _mm_max_ps(l1p, h1p);
-    __m128 l2u = _mm_unpacklo_ps(l2,h2);
-    __m128 h2u = _mm_unpackhi_ps(l2,h2);
-    __m128 l2p = _mm_shuffle_ps(l2u,h2u,_MM_SHUFFLE(1,0,1,0));
-    __m128 h2p = _mm_shuffle_ps(l2u,h2u,_MM_SHUFFLE(3,2,3,2));
-    __m128 l3 = _mm_min_ps(l2p,h2p);
-    __m128 h3 = _mm_max_ps(l2p,h2p);
-    *res_lo = _mm_unpacklo_ps(l3,h3);
-    *res_hi = _mm_unpackhi_ps(l3,h3);
-}
-
-
 //binary search for a value in a vector
-long bs(uint* data, uint size, uint value) {
+long bs(SORT_TYPE* data, SORT_TYPE size, SORT_TYPE value) {
     long start = 0;
     long end = size-1;
     while (start <= end)
@@ -101,166 +82,27 @@ long bs(uint* data, uint size, uint value) {
   }
 
 
-void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
-  //first take care of portions flowing over the 16-byte boundaries
-    long i,j,k;
-   
-    mctop_ticks __a = mctop_getticks(), __b, __steps = 0;
-
-    i=0;
-    j=0;
-    k=0;
-
-    while((((((uintptr_t)&(a[i])) & 15) != 0) || ((((uintptr_t)&(b[j])) & 15) != 0)) && ((i<num_a) && (j<num_b)))
-    {
-        if (a[i] < b[j])
-            dest[k++] = a[i++];
-
-        else
-            dest[k++] = b[j++];
-    }
-
-    if (i == num_a || j == num_b) {
-      while (i < num_a)
-          dest[k++] = a[i++];
-
-      while (j < num_b)
-          dest[k++] = b[j++];
-      return;
-    }
-    //printf("[thread %ld] &a[i] = %ld &b[j] = %ld\n", pthread_self(), (uintptr_t) &a[i], (uintptr_t) &b[j]);
-    //printf("[thread %ld] num_a = %ld, num_b = %ld got alignment after %ld steps i = %ld, j = %ld\n", pthread_self(), num_a, num_b, k, i, j);
-    long sizea = num_a - i;
-    long sizeb = num_b - j;
-    //assert((sizea % 4) == 0);
-    //assert((sizeb % 4) == 0);
-    long size_a_128 = sizea / 4;
-    long size_b_128 = sizeb / 4;
-
-    MCTOP_P_STEP(__steps, __a, __b);
-
-    __m128* a128 = (__m128*) &a[i];
-    __m128* b128 = (__m128*) &b[j];
-    __m128* dest128 = (__m128*) &dest[k];
-
-    uint crt_a = 0;
-    uint crt_b = 0;
-    uint next_val = 0;
-
-    __m128 next;
-    __m128 last;
-
-    if (_mm_comilt_ss(*a128,*b128)){
-        next = *b128;
-        crt_b++;
-    } else {
-        next = *a128;
-        crt_a++;
-    }
-
-    const size_t size_ab = size_a_128 + size_b_128;
-    for (size_t ii = (crt_a + crt_b); ii < size_ab; ii++)
-      {
-       // while ((crt_a < size_a_128) || (crt_b < size_b_128)){
-	if ((crt_a < size_a_128) && ((crt_b>=size_b_128) || (_mm_comilt_ss(*(a128 + crt_a),*(b128 + crt_b))))){
-            bitonic_merge(next,a128[crt_a],&(dest128[next_val]),&last);
-            crt_a++;
-        } else {
-            bitonic_merge(next,b128[crt_b],&(dest128[next_val]),&last);
-            crt_b++;
-        }
-        next_val++;
-        next=last;
-    }
-    *(dest128+next_val)=next;
-
-    MCTOP_P_STEP(__steps, __a, __b);
-
-    i += size_a_128<<2;
-    j += size_b_128<<2;
-    //printf("[thread %ld] num_a = %ld, num_b = %ld k = %ld i = %ld, j = %ld\n", pthread_self(), num_a, num_b, k, i, j);
-    k = i+j;
-
-    //printf("processed %ld + missing left %ld / processed %ld + right %ld\n", i, num_a - i, j, num_b - j);
-    
-    // bubble down the remainder of the elements
-    for (long counter = i; counter < num_a; counter++) {
-      dest[k] = a[counter];
-      uint temp;
-      long element = k;
-      while (dest[element] < dest[element-1]) {
-        temp = dest[element-1];
-        dest[element-1] = dest[element];
-        dest[element] = temp;
-        element--;
-      }
-      k++;
-    }
-
-    for (long counter = j; counter < num_b; counter++) {
-      dest[k] = b[counter];
-      uint temp;
-      long element = k;
-      while (dest[element] < dest[element-1]) {
-        temp = dest[element-1];
-        dest[element-1] = dest[element];
-        dest[element] = temp;
-        element--;
-      }
-      k++;
-    }
-
-    MCTOP_P_STEP(__steps, __a, __b);
-}
 
 void *merge(void *args) {
   merge_args_t *myargs = (merge_args_t *)args;
 
   mctop_alloc_pin(myargs->alloc);
   //numa_run_on_node(myargs->node);
-  long size1, size2, desti;
-  long a = 0, aprime = 0, b = 0, bprime = 0;
-  if (myargs->i > 0) {
-  long gamma = ((myargs->i) * (myargs->sizea + myargs->sizeb) / myargs->nthreads);
-  long amin = max(0, (gamma-(myargs->sizeb+1)));
-  long amax = min(myargs->sizea+1, gamma);
-  long aminprime = amin;
-  long amaxprime = amax;
-  long length = gamma;
-  while ((aminprime + 1) != amaxprime) {
-    aprime = (aminprime + amaxprime) / 2;
-    bprime = length - aprime;
-    if (myargs->a[aprime] <= myargs->b[bprime])
-      aminprime = aprime;
-    else
-      amaxprime = aprime;
-  }
-  if (myargs->a[aminprime] <= myargs->b[length-amaxprime])
-    a = amaxprime;
-  else
-    a = aminprime;
-  b = length - a;
-  }
 
-  myargs->indicesa[myargs->i] = a;
-  myargs->indicesb[myargs->i] = b;
-  
-  pthread_barrier_wait(myargs->barrier_start1);
-  if (myargs->i < myargs->nthreads - 1) {
-    size1 = myargs->indicesa[myargs->i+1] - myargs->indicesa[myargs->i];
-    size2 = myargs->indicesb[myargs->i+1] - myargs->indicesb[myargs->i];
-  }
-  else {
-    size1 = myargs->sizea - myargs->indicesa[myargs->i];
-    size2 = myargs->sizeb - myargs->indicesb[myargs->i];
-  }
-  desti = a+b;
-  
-  //printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myargs->i, a, b, desti, size1, size2, (uintptr_t) &myargs->a[a], (uintptr_t) &myargs->b[b]);
-  pthread_barrier_wait(myargs->barrier_start2);
-  merge_do(&myargs->a[a], &myargs->b[b], &myargs->dest[desti], size1, size2);
-  pthread_barrier_wait(myargs->barrier_end);
+  merge_arrays(myargs->a, myargs->b, myargs->dest, myargs->sizea, myargs->sizeb, myargs->i, myargs->nthreads, myargs->help_array_a, myargs->help_array_b, myargs->barrier_start1, myargs->barrier_end);
+
   return NULL;
+}
+
+
+
+
+
+void merge(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, long sizea, long sizeb){
+
+
+
+
 }
 
 int main(int argc,char *argv[]){
@@ -272,13 +114,13 @@ int main(int argc,char *argv[]){
 
     long array_size_mb = atol(argv[1]);
 
-    n = array_size_mb * 1024 * (1024 / sizeof(uint));
+    n = array_size_mb * 1024 * (1024 / sizeof(SORT_TYPE));
     n = n & 0xFFFFFFFFFFFFFFF0L;
     
     assert (n%4==0);
-    a = (uint*) numa_alloc_onnode(n*sizeof(uint), 0);
-    x = (uint*) numa_alloc_onnode(n*sizeof(uint), 0);
-    res = (uint*) numa_alloc_onnode(n*sizeof(uint), 0);
+    a = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
+    x = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
+    res = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
 
     threads = atoi(argv[2]);
     assert(threads>0);
@@ -288,6 +130,11 @@ int main(int argc,char *argv[]){
     else
       srand(42);
 
+    if (argc > 5)
+      in_thread_partitions = atoi(argv[5]);
+    else
+      in_thread_partitions = threads;
+
 
     allocation_policy = (mctop_alloc_policy) atoi(argv[3]);
     mctop_t * topo = mctop_load(NULL);
@@ -295,20 +142,17 @@ int main(int argc,char *argv[]){
     mctop_alloc_print_short(alloc);
 
     readArray2(a, n);
-    memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(uint));
+    memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(SORT_TYPE));
     __gnu_parallel::sort(a, a+(n/2));
     __gnu_parallel::sort(x, x+(n/2));
     //printArray2(a, (n/2), 0);
     //printArray2(x, (n/2), 0);
     pthread_barrier_t *barrier11 = (pthread_barrier_t *)malloc(sizeof(pthread_barrier_t));
-    pthread_barrier_t *barrier12 = (pthread_barrier_t *)malloc(sizeof(pthread_barrier_t));
     pthread_barrier_t *barrier2 = (pthread_barrier_t *)malloc(sizeof(pthread_barrier_t));
     pthread_barrier_init(barrier11, NULL, threads+1);
-    pthread_barrier_init(barrier12, NULL, threads+1);
     pthread_barrier_init(barrier2, NULL, threads+1);
-    indicesa = (long*)malloc(threads * sizeof(long));
-    indicesb = (long*)malloc(threads * sizeof(long));
-    res2 = (long*)malloc(threads * sizeof(long));
+    help_array_a = (long*)malloc(threads * sizeof(long));
+    help_array_b = (long*)malloc(threads * sizeof(long));
     //printArray2(a, n/2, 0);
     //printArray2(x, n/2, 0);
     gettimeofday(&start, NULL);
@@ -319,14 +163,12 @@ int main(int argc,char *argv[]){
         merge_args->i = i;
         merge_args->node = i%2;
         merge_args->barrier_start1 = barrier11;
-        merge_args->barrier_start2 = barrier12;
         merge_args->barrier_end = barrier2;
         merge_args->nthreads = threads;
         merge_args->a = a;
         merge_args->b = x;
-        merge_args->indicesb = indicesb;
-        merge_args->indicesa = indicesa;
-        merge_args->res2 = res2;
+        merge_args->help_array_b = help_array_b;
+        merge_args->help_array_a = help_array_a;
         merge_args->dest = res;
         merge_args->sizea = n/2;
         merge_args->sizeb = n/2;
@@ -334,7 +176,6 @@ int main(int argc,char *argv[]){
         pthread_create(the_thread, NULL, merge, merge_args);
     }
     pthread_barrier_wait(barrier11);
-    pthread_barrier_wait(barrier12);
     pthread_barrier_wait(barrier2);
 
     gettimeofday(&stop, NULL);
@@ -349,7 +190,7 @@ int main(int argc,char *argv[]){
 }
 
 
-void readArray2(uint a[], const long limit)
+void readArray2(SORT_TYPE a[], const long limit)
 {
     long i;
     printf("Populating the array...");fflush(stdout);
@@ -360,7 +201,7 @@ void readArray2(uint a[], const long limit)
     // Knuth shuffle
     for (i=limit-1; i > 0; i--){
         long j = RAND_RANGE(i);
-        uint tmp = a[i];
+        SORT_TYPE tmp = a[i];
         a[i] = a[j];
         a[j] = tmp;
      }
@@ -368,12 +209,12 @@ void readArray2(uint a[], const long limit)
 }
 
 
-void printArray2(uint *y, const long n, const int assert)
+void printArray2(SORT_TYPE *y, const long n, const int assert)
 {
     long i;
     for(i = 0; i < n; i++){
         if (assert) {
-          if (y[i] != (uint)i) {
+          if (y[i] != (SORT_TYPE)i) {
             fprintf(stderr, "Error for i = %ld\n", i); fflush(stderr);
             assert(0);
           }
