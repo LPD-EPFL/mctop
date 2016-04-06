@@ -152,6 +152,9 @@ merge_sort_parallel_merge_notworking: ${TSTPATH}/merge_sort/merge_sort_parallel_
 merge_sort_merge_level: ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp libmctop.a ${INCLUDES} FORCE FORCE
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} -ljemalloc -fopenmp
 
+merge_sort_merge_level_up: ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp libmctop.a ${INCLUDES} FORCE FORCE
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp -o merge_sort_merge_level_up -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+
 merge_sort_parallel_merge_nosse: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} -ljemalloc -fopenmp
 
