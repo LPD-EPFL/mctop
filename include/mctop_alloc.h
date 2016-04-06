@@ -156,6 +156,7 @@ extern "C" {
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
 
   uint mctop_alloc_thread_is_node_leader(); /* mctop_alloc_thread_insocket_id() == 0 */
+  uint mctop_alloc_thread_is_node_last(); /* mctop_alloc_thread_insocket_id() == (n_hwcs in socket - 1) */
 
   /* Queries *********************************************************************************************************** */
 
@@ -215,6 +216,7 @@ extern "C" {
     uint n_nodes;
     mctop_nt_lvl_t* levels;
     mctop_barrier_t* barrier;
+    void** scratchpad;		/* share with the threads of your node */
   } mctop_node_tree_t;
 
   typedef enum
@@ -237,6 +239,10 @@ extern "C" {
   mctop_node_tree_t* mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for);
   void mctop_node_tree_print(mctop_node_tree_t* nt);
   void mctop_node_tree_free(mctop_node_tree_t* nt);
+
+  /* sets nt->scratchpad[node] and returns previous val */
+  void* mctop_node_tree_scratchpad_set(mctop_node_tree_t* nt, const uint node, void* mem);
+  void* mctop_node_tree_scratchpad_get(mctop_node_tree_t* nt, const uint node);
 
   uint mctop_node_tree_get_num_levels(mctop_node_tree_t* nt);
 

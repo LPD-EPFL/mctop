@@ -1040,6 +1040,20 @@ mctop_alloc_thread_is_node_leader()
   return 0;
 }
 
+/* mctop_alloc_thread_insocket_id() == (n_hwcs in socket - 1) */
+uint
+mctop_alloc_thread_is_node_last()
+{
+  if (likely(mctop_alloc_thread_is_pinned()))
+    {
+      mctop_alloc_t* alloc = __mctop_thread_info.alloc;
+      const uint node = mctop_alloc_thread_node_id();
+      int n_hwcs_node = mctop_alloc_get_num_hw_contexts_node(alloc, node);
+      return mctop_alloc_thread_insocket_id() == (n_hwcs_node - 1);
+    }
+  return 0;
+}
+
 uint
 mctop_alloc_thread_core_insocket_id()
 {
