@@ -16,6 +16,7 @@ CPPFLAGS += -Wall -msse4
 INCLUDE = include
 SRCPATH = src
 TSTPATH = tests
+MSTPATH = tests/merge_sort/
 LDFLAGS = -lrt -lm -lpthread -L.
 VFLAGS = -D_GNU_SOURCE
 
@@ -124,6 +125,9 @@ work_queue_sort1: ${TSTPATH}/work_queue_sort1.o libmctop.a ${INCLUDES}
 sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
 
+mctop_sort: ${TSTPATH}/mctop_sort.o ${MSTPATH}/mctop_sort.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS} ${MALLOC}
+
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC}
 
@@ -161,6 +165,9 @@ merge_sort_seq_merge: ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp libmctop.a 
 $(SRCPATH)/%.o:: $(SRCPATH)/%.c 
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
+$(MSTPATH)/%.o:: $(MSTPATH)/%.cc
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
+
 $(TSTPATH)/%.o:: $(TSTPATH)/%.c 
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -I./sort_algos/sort -o $@ -c $<
 
@@ -185,4 +192,3 @@ install: libmctop.a
 	sudo cp libmctop.a /usr/lib/
 	sudo cp include/mctop.h /usr/include/
 	sudo cp include/mctop_alloc.h /usr/include/
-
