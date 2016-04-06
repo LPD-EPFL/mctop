@@ -46,6 +46,7 @@ mctop_node_tree_free(mctop_node_tree_t* nt)
   free(nt->levels);
   mctop_barrier_destroy(nt->barrier);
   free(nt->barrier);
+  free(nt->scratchpad);
   free(nt);
 }
 
@@ -203,6 +204,7 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
     }
 
   mctop_node_tree_add_barriers(nt, barrier_for);
+  nt->scratchpad = calloc_assert(nt->n_nodes, sizeof(void*));
 
   darray_free(sids_to_match);
   darray_free(sids_avail);
@@ -293,4 +295,18 @@ void
 mctop_node_tree_barrier_wait_all(mctop_node_tree_t* nt)
 {
   mctop_barrier_wait(nt->barrier);
+}
+
+void*
+mctop_node_tree_scratchpad_set(mctop_node_tree_t* nt, const uint node, void* new)
+{
+  void* cur = nt->scratchpad[node];
+  nt->scratchpad[node] = new;
+  return cur;
+}
+ 
+void*
+mctop_node_tree_scratchpad_get(mctop_node_tree_t* nt, const uint node)
+{
+  return nt->scratchpad[node];
 }
