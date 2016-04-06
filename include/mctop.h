@@ -333,6 +333,21 @@ extern "C" {
   }
 #endif
 
+#define MCTOP_F_STEP(__steps, __a, __b)		\
+  mctop_ticks __steps = 0, __b, __a = mctop_getticks();	    
+  
+#define MCTOP_P_STEP(__steps, __a, __b, doit)			\
+  {								\
+    if (doit)							\
+      {								\
+	__b = mctop_getticks();					\
+	mctop_ticks __d = __b - __a;				\
+	printf("Step %-10zu : %-10zu cycles ~= %-10zu us\n",	\
+	       __steps++, __d, __d / 2100);			\
+	__a = __b;						\
+      }								\
+  }
+
 
 #ifdef __cplusplus
 }

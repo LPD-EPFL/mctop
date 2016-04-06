@@ -155,6 +155,8 @@ extern "C" {
   int mctop_alloc_thread_node_id();   /* sequence id of the node that this thread is using. For example, the allocator
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
 
+  uint mctop_alloc_thread_is_node_leader(); /* mctop_alloc_thread_insocket_id() == 0 */
+
   /* Queries *********************************************************************************************************** */
 
   mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);

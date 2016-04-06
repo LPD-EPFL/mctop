@@ -153,15 +153,13 @@ test_pin(void* params)
   mctop_node_tree_t* nt = (mctop_node_tree_t*) params;
   mctop_alloc_t* alloc = nt->alloc;
 
-  const size_t reps = 1e9;
-
   mctop_alloc_pin(nt->alloc);
+  /* mctop_alloc_thread_print(); */
 
   const uint my_node = mctop_alloc_thread_node_id();
   const uint my_node_id = mctop_alloc_thread_insocket_id();
-  printf("%u -- ", my_node_id); fflush(stdout);
   const size_t node_mem_size = memory_size / nt->n_nodes;
-  const size_t my_mem_size = node_mem_size / mctop_alloc_get_num_hw_contexts_node(alloc, my_node_id);
+  const size_t my_mem_size = node_mem_size / mctop_alloc_get_num_hw_contexts_node(alloc, my_node);
   
   int* my_mem_in = memory + (my_node * (node_mem_size / sizeof(int)) + (my_node_id * (my_mem_size / sizeof(int))));
   const uint node_leader = (my_node_id == 0);
@@ -172,13 +170,11 @@ test_pin(void* params)
     }
 
   mctop_alloc_barrier_wait_node(alloc);
+  MCTOP_F_STEP(s, a, b);
   int* my_mem_out = memory_nodes[my_node] + (my_node_id * (my_mem_size / sizeof(int)));
-
   memcpy(my_mem_out, my_mem_in, my_mem_size);
-
   mctop_alloc_barrier_wait_node(alloc);
-
-
+  MCTOP_P_STEP(s, a, b, mctop_alloc_thread_is_node_leader());
 
   for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {
@@ -188,17 +184,16 @@ test_pin(void* params)
 	  mctop_node_tree_barrier_wait(nt, l);
 	  if (node_leader)
 	    {
-	      printf("Thread %d on seq node %d. Work @ lvl%d! My node is %s\n",
-		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l,
-		     ntw.node_role == DESTINATION ? "DEST" : "SRC");
+	      /* printf("Thread %d on seq node %d. Work @ lvl%d! My node is %s\n", */
+	      /* 	     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l, */
+	      /* 	     ntw.node_role == DESTINATION ? "DEST" : "SRC"); */
 
 	    }
-	  for (volatile size_t i = 0; i < reps; i++);
 	}
       else
 	{
-	  printf("Thread %d on seq node %d. No work @ lvl%d!\n",
-		 mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
+	  /* printf("Thread %d on seq node %d. No work @ lvl%d!\n", */
+	  /* 	 mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l); */
 	}
     }
 
