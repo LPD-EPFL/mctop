@@ -76,50 +76,67 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
 
 
 
-static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, size_t sizea, size_t sizeb, long myid, long num_threads, long *help_array_a, long *help_array_b, pthread_barrier_t *barrier_start, pthread_barrier_t *barrier_end) {
+static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, size_t sizea, size_t sizeb, long myid, long num_threads) {
   long size1, size2, desti;
 
   // Evenly distribute the arrays: Francis, Mathieson. "A Benchmark Parallel Sort for Shared Memory Multiprocessors"
-  long alpha = 0, alpha_prime = 0, beta = 0, beta_prime = 0;
+  long my_alpha = 0, alpha_prime = 0, my_beta = 0, beta_prime = 0;
+  long gamma, alpha_min, alpha_max, alpha_prime_min, alpha_prime_max, length;
+  long next_alpha, next_beta;
   if (myid > 0) {
-  long gamma = ((myid) * (sizea + sizeb) / num_threads);
-  long alpha_min = max(0, (gamma-(sizeb+1)));
-  long alpha_max = min((long)sizea+1, gamma);
-  long alpha_prime_min = alpha_min;
-  long alpha_prime_max = alpha_max;
-  long length = gamma;
-  while ((alpha_prime_min + 1) != alpha_prime_max) {
-    alpha_prime = (alpha_prime_min + alpha_prime_max) / 2;
-    beta_prime = length - alpha_prime;
-    if (a[alpha_prime] <= b[beta_prime])
-      alpha_prime_min = alpha_prime;
+    gamma = ((myid) * (sizea + sizeb) / num_threads);
+    alpha_min = max(0, (gamma-(sizeb - 1 - 0 + 1)));
+    alpha_max = min((long)sizea - 1 + 1, gamma);
+    alpha_prime_min = alpha_min;
+    alpha_prime_max = alpha_max;
+    length = gamma;
+    while ((alpha_prime_min + 1) < alpha_prime_max) {
+      alpha_prime = (alpha_prime_min + alpha_prime_max) / 2;
+      beta_prime = length - alpha_prime;
+      if (a[alpha_prime] <= b[beta_prime])
+        alpha_prime_min = alpha_prime;
+      else
+        alpha_prime_max = alpha_prime;
+    }
+    if (a[alpha_prime_min] <= b[length-alpha_prime_max])
+      my_alpha = alpha_prime_max;
     else
-      alpha_prime_max = alpha_prime;
-  }
-  if (a[alpha_prime_min] <= b[length-alpha_prime_max])
-    alpha = alpha_prime_max;
-  else
-    alpha = alpha_prime_min;
-    beta = length - alpha;
+      my_alpha = alpha_prime_min;
+    my_beta = length - my_alpha;
   }
 
-  help_array_a[myid] = alpha;
-  help_array_b[myid] = beta;
-
-  pthread_barrier_wait(barrier_start);
   if (myid < num_threads - 1) {
-    size1 = help_array_a[myid+1] - help_array_a[myid];
-    size2 = help_array_b[myid+1] - help_array_b[myid];
+    gamma = ((myid+1) * (sizea + sizeb) / num_threads);
+    alpha_min = max(0, (gamma-(sizeb - 1 - 0 +1)));
+    alpha_max = min((long)sizea - 1 + 1, gamma);
+    alpha_prime_min = alpha_min;
+    alpha_prime_max = alpha_max;
+    length = gamma;
+    while ((alpha_prime_min + 1) != alpha_prime_max) {
+      alpha_prime = (alpha_prime_min + alpha_prime_max) / 2;
+      beta_prime = length - alpha_prime;
+      if (a[alpha_prime] < b[beta_prime])
+        alpha_prime_min = alpha_prime;
+      else
+        alpha_prime_max = alpha_prime;
+    }
+    if (a[alpha_prime_min] <= b[length-alpha_prime_max])
+      next_alpha = alpha_prime_max;
+    else
+      next_alpha = alpha_prime_min;
+    next_beta = length - next_alpha;
+    
+    size1 = next_alpha - my_alpha;
+    size2 = next_beta - my_beta;
   }
   else {
-    size1 = sizea - help_array_a[myid];
-    size2 = sizeb - help_array_b[myid];
+    size1 = sizea - my_alpha;
+    size2 = sizeb - my_beta;
   }
-  desti = alpha+beta;
-
-  //printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myid, a, b, desti, size1, size2, (uintptr_t) &a[a], (uintptr_t) &b[b]);
-  merge_arrays_unaligned_sse(&a[alpha], &b[beta], &dest[desti], size1, size2);
-  pthread_barrier_wait(barrier_end);
+  desti = my_alpha + my_beta;
+  printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myid, my_alpha, my_beta, desti, size1, size2, (uintptr_t) &a[my_alpha], (uintptr_t) &b[my_beta]);
+  assert(size1 > 0 && size2 > 0);
+  merge_arrays_unaligned_sse(&a[my_alpha], &b[my_beta], &dest[desti], size1, size2);
 }
 
 #endif
