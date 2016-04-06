@@ -113,8 +113,6 @@ void merge_serial(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
 
 void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
   //first take care of portions flowing over the 16-byte boundaries
-    long skip_a=0;
-    long skip_b=0;
     long i,j,k;
    
 
@@ -252,7 +250,7 @@ void merge_sse(uint* aa, uint* bb, uint* dest_u, uint na, uint nb){
 }
 
 int main(int argc,char *argv[]){
-    long n, i, threads;
+    long n, threads;
     struct timeval start, stop;
     unsigned long usec;
     mctop_alloc_policy allocation_policy;

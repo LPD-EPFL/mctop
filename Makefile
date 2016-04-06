@@ -127,8 +127,8 @@ sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC} -msse4
 
-sortcc: ${TSTPATH}/sortcc.o libmctop.a ${INCLUDES} 
-	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.o -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
+sortcc: libmctop.a ${INCLUDES} 
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.cc -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
 
 numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
