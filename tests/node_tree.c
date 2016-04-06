@@ -95,9 +95,13 @@ main(int argc, char **argv)
       assert(memory);
 
       memory_len = memory_size / sizeof(*memory);
+      for (uint i = 0; i < memory_len; i++)
+	{
+	  memory[i] = i;
+	}
 
 
-      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc);
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
       mctop_node_tree_print(nt);
 
       if (test_run_pin)
@@ -155,6 +159,7 @@ test_pin(void* params)
 
   const uint my_node = mctop_alloc_thread_node_id();
   const uint my_node_id = mctop_alloc_thread_insocket_id();
+  printf("%u -- ", my_node_id); fflush(stdout);
   const size_t node_mem_size = memory_size / nt->n_nodes;
   const size_t my_mem_size = node_mem_size / mctop_alloc_get_num_hw_contexts_node(alloc, my_node_id);
   
@@ -170,7 +175,6 @@ test_pin(void* params)
   int* my_mem_out = memory_nodes[my_node] + (my_node_id * (my_mem_size / sizeof(int)));
 
   memcpy(my_mem_out, my_mem_in, my_mem_size);
-
 
   mctop_alloc_barrier_wait_node(alloc);
 

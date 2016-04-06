@@ -229,7 +229,10 @@ extern "C" {
     uint num_hw_contexts_other_node;
   } mctop_node_tree_work_t;
 
-  mctop_node_tree_t* mctop_alloc_node_tree_create(mctop_alloc_t* alloc);
+  /*  barrier_for = HW_CONTEXT : initialize barriers for the # of hw contexts of the node
+      barrier_for = CORE       : initialize barriers for the # of cores of the node
+   */
+  mctop_node_tree_t* mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for);
   void mctop_node_tree_print(mctop_node_tree_t* nt);
   void mctop_node_tree_free(mctop_node_tree_t* nt);
 
