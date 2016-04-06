@@ -202,8 +202,8 @@ data_alloc(const size_t len)
 {
   struct wq_data* data = malloc(sizeof(struct wq_data) +
 				(len + 1) * sizeof(size_t));      
-  data->from = mctop_alloc_get_hw_context_id();
-  data->node = mctop_alloc_get_local_node();
+  data->from = mctop_alloc_thread_hw_context_id();
+  data->node = mctop_alloc_thread_local_node();
   data->len = len;
   return data;
 }
@@ -267,8 +267,8 @@ test_pin(void* params)
   mctop_alloc_pin(alloc);
 
   unsigned long* seeds = seed_rand();
-  const uint hwcid = mctop_alloc_get_hw_context_id();
-  const uint node = mctop_alloc_get_local_node();
+  const uint hwcid = mctop_alloc_thread_hw_context_id();
+  const uint node = mctop_alloc_thread_local_node();
 
   //  const uint _creps_n = _creps * (node + 1);
   const uint _creps_n = _creps * ((2 * node) + 1);
@@ -290,7 +290,8 @@ test_pin(void* params)
     }
 
   uint n_local = 0, n_total = 0;
-  uint* n_from = calloc_assert(8, sizeof(uint));
+  uint* n_from = calloc(8, sizeof(uint));
+  assert(n_from != NULL);
 
   printf("[%2d@%d] Initialized %-5zu chunks / %-10zu elems\n", hwcid, node, n_chunks, len_tot);
   barrier_wait(0, alloc->n_hwcs);

@@ -872,12 +872,6 @@ mctop_mem_bandwidth_add(mctop_t* topo,
   mctop_fix_siblings_by_bandwidth(topo);
 }
 
-static double
-mctop_socket_get_bw_to(socket_t* from, socket_t* to)
-{
-  return from->mem_bandwidths_r[to->local_node];
-}
-
 static void
 mctop_fix_siblings_by_bandwidth(mctop_t* topo)
 {

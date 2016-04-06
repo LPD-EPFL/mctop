@@ -47,6 +47,7 @@
 /merge_sort_seq_merge
 /merge_sort_std
 /merge_sort_std_parallel
+/node_tree
 /numa_alloc
 /pile
 /run_on_node0

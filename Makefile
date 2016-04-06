@@ -58,7 +58,6 @@ endif
 
 default: mctop
 all: mctop mct_load tests
-tests: run_on_node0 allocator work_queue work_queue_sort work_queue_sort1 numa_alloc
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -88,7 +87,8 @@ mctop_latency: ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/
 ################################################################################
 
 MCTOPLIB_OBJS := ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/numa_sparc.o \
-	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o ${SRCPATH}/mctop_wq.o
+	${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_graph.o ${SRCPATH}/mctop_alloc.o ${SRCPATH}/mctop_wq.o \
+	${SRCPATH}/mctop_node_tree.o
 
 libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 	ar cr libmctop.a ${MCTOPLIB_OBJS} ${INCLUDE}/mctop.h
@@ -97,11 +97,20 @@ libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 ## tests/ | Compiled with libmctop.a and mctop.h from base folder #############
 ################################################################################
 
+tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_sort1 sort sort1 sortcc \
+	 numa_alloc mergesort
+
+mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
+	merge_sort_parallel_merge_nosse merge_sort_seq_merge
+
 run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/run_on_node0.o -o run_on_node0 -lmctop ${LDFLAGS}
 
 allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
+
+node_tree: ${TSTPATH}/node_tree.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/node_tree.o -o node_tree -lmctop ${LDFLAGS}
 
 work_queue: ${TSTPATH}/work_queue.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/work_queue.o -o work_queue -lmctop ${LDFLAGS} ${MALLOC}
@@ -118,8 +127,8 @@ sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC} -msse4
 
-sortcc: ${TSTPATH}/sortcc.o libmctop.a ${INCLUDES} 
-	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.o -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
+sortcc: libmctop.a ${INCLUDES} 
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sortcc.cc -o sortcc -lmctop ${LDFLAGS} ${MALLOC}
 
 numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}

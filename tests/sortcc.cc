@@ -405,13 +405,15 @@ wq_sort(wq_data_t* wpd)
 //   return wq_data_create(0, 1, len, anew);
 // }
 
+int mctop_alloc_thread_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
+
 void*
 test_pin(void* params)
 {
   mctop_wq_t* wq = (mctop_wq_t*) params;
   mctop_alloc_t* alloc = wq->alloc;
   mctop_alloc_pin(alloc);
-  const uint id = mctop_alloc_get_id();
+  const uint id = mctop_alloc_thread_id();
 
   int my_chunk_offs = chunks[id * chunks_per_thread];
   const size_t chunk_size_b = chunk_size * sizeof(int);

@@ -1,4 +1,5 @@
 #include <mctop.h>
+#include <mctop_internal.h>
 
 static mctop_queue_t* mctop_queue_create_on_seq(mctop_alloc_t* alloc, const uint sid);
 
@@ -298,7 +299,7 @@ mctop_wq_enqueue(mctop_wq_t* wq, const void* data)
   INC(__mctop_wq_prof_enqueue_n);
   GETTICKS_IN(__s);
 
-  mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  mctop_queue_t* qu = wq->queues[mctop_alloc_thread_node_id()];
   mctop_queue_enqueue(qu, data);
 
   GETTICKS_IN(__e);
@@ -325,7 +326,7 @@ mctop_wq_dequeue(mctop_wq_t* wq)
 {
   GETTICKS_IN(__s);
 
-  mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  mctop_queue_t* qu = wq->queues[mctop_alloc_thread_node_id()];
   void* data = mctop_queue_dequeue(qu);
   if (data != NULL)
     {
@@ -359,7 +360,7 @@ void*
 mctop_wq_dequeue_local(mctop_wq_t* wq)
 {
   GETTICKS_IN(__s);
-  mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  mctop_queue_t* qu = wq->queues[mctop_alloc_thread_node_id()];
   void* data = mctop_queue_dequeue(qu);
 
   GETTICKS_IN(__e);
@@ -372,7 +373,7 @@ mctop_wq_dequeue_local(mctop_wq_t* wq)
 void*
 mctop_wq_dequeue_remote(mctop_wq_t* wq)
 {
-  const mctop_queue_t* qu = wq->queues[mctop_alloc_get_node_seq_id()];
+  const mctop_queue_t* qu = wq->queues[mctop_alloc_thread_node_id()];
   for (int q = 0; q < wq->n_queues; q++)
     {
       GETTICKS_IN(__s);

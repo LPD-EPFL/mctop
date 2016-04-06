@@ -12,6 +12,14 @@ darray_create()
   return da;
 }
 
+darray_t*
+darray_create_copy(darray_t* from)
+{
+  darray_t* da = darray_create();
+  darray_copy(da, from);
+  return da;
+}
+
 void
 darray_free(darray_t* da)
 {
@@ -26,27 +34,28 @@ darray_empty(darray_t* da)
   da->n_elems = 0;
 } 
 
+#define DARRAY_RESIZE(da)					\
+  if (unlikely(da->n_elems == da->size))			\
+    {								\
+      size_t size_new = DARRAY_GROW_MUL * da->size;		\
+      da->array = realloc_assert(da->array,			\
+				 size_new * sizeof(uintptr_t));	\
+      da->size = size_new;					\
+    }
+  
+
+
 void
 darray_add(darray_t* da, uintptr_t elem)
 {
-  if (unlikely(da->n_elems == da->size))
-    {
-      size_t size_new = DARRAY_GROW_MUL * da->size;
-      da->array = realloc_assert(da->array, size_new * sizeof(uintptr_t));
-      da->size = size_new;
-    }
+  DARRAY_RESIZE(da);
   da->array[da->n_elems++] = elem;
 }
 
 void
 darray_add_double(darray_t* da, double elem)
 {
-  if (unlikely(da->n_elems == da->size))
-    {
-      size_t size_new = DARRAY_GROW_MUL * da->size;
-      da->array = realloc_assert(da->array, size_new * sizeof(uintptr_t));
-      da->size = size_new;
-    }
+  DARRAY_RESIZE(da);
   uintptr_t* ptr = da->array + da->n_elems++;
   double* ptrd = (double*) ptr;
   *ptrd = elem;
@@ -61,6 +70,79 @@ darray_add_uniq(darray_t* da, uintptr_t elem)
     }
   darray_add(da, elem);
   return 1;
+}
+
+
+static void
+darray_shift_right(darray_t* da)
+{
+  DARRAY_RESIZE(da);
+  if (da->n_elems++ == 0)
+    {
+      return;
+    }
+
+  for (int i = da->n_elems - 1; i > 0; i--)
+    {
+      da->array[i] = da->array[i - 1];
+    }
+  da->array[0] = 0;
+}
+
+void
+darray_push(darray_t* da, uintptr_t elem)
+{
+  darray_shift_right(da);
+  da->array[0] = elem;
+}
+
+
+int
+darray_remove(darray_t* da, uintptr_t elem)
+{
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      if (unlikely(elem == da->array[i]))
+	{
+	  da->n_elems--;
+	  for (int j = i; j < da->n_elems; j++)
+	    {
+	      da->array[j] = da->array[j + 1];
+	    }
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+int
+darray_pop(darray_t* da, uintptr_t* elem)
+{
+  if (unlikely(da->n_elems == 0))
+    {
+      return 0;
+    }
+
+  *elem = da->array[0];
+  da->n_elems--;
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      da->array[i] = da->array[i + 1];
+    }
+  return 1;
+}
+
+
+inline uintptr_t
+darray_get(darray_t* da, const size_t idx)
+{
+  return da->array[idx];
+}
+
+int
+darray_elem_is_at(darray_t* da, uintptr_t elem, const size_t idx)
+{
+  return da->array[idx] == elem;
 }
 
 inline int			
