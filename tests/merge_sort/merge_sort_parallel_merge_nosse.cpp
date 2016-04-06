@@ -9,7 +9,7 @@
 #include <malloc.h>
 #include <parallel/algorithm>
 #include <numa.h>
-#include <mctop.h>
+#include <mctop_alloc.h>
 #include <nmmintrin.h>
 
 #define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))

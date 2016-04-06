@@ -178,4 +178,5 @@ install: libmctop.a
 	sudo cp desc/* ${IPATH}
 	sudo cp libmctop.a /usr/lib/
 	sudo cp include/mctop.h /usr/include/
+	sudo cp include/mctop_alloc.h /usr/include/
 
