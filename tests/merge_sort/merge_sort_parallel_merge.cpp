@@ -11,6 +11,7 @@
 #include <numa.h>
 #include <mctop_alloc.h>
 #include <nmmintrin.h>
+#include "merge_utils.h"
 
 #define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))
 #define min(x, y) (x<y?x:y)
@@ -89,8 +90,8 @@ void *merge(void *args) {
   mctop_alloc_pin(myargs->alloc);
   //numa_run_on_node(myargs->node);
 
-  merge_arrays(myargs->a, myargs->b, myargs->dest, myargs->sizea, myargs->sizeb, myargs->i, myargs->nthreads, myargs->help_array_a, myargs->help_array_b, myargs->barrier_start1, myargs->barrier_end);
-
+  merge_arrays(myargs->a, myargs->b, myargs->dest, myargs->sizea, myargs->sizeb, myargs->i, myargs->nthreads);
+  pthread_barrier_wait(myargs->barrier_end);
   return NULL;
 }
 
@@ -175,7 +176,6 @@ int main(int argc,char *argv[]){
         merge_args->alloc = alloc;
         pthread_create(the_thread, NULL, merge, merge_args);
     }
-    pthread_barrier_wait(barrier11);
     pthread_barrier_wait(barrier2);
 
     gettimeofday(&stop, NULL);
