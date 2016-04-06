@@ -137,7 +137,7 @@ test_pin(void* params)
 
   mctop_alloc_barrier_wait_all(alloc);
 
-  const size_t reps = 1e9;
+  /* const size_t reps = 1e9; */
 
   mctop_alloc_pin_plus(alloc);
 

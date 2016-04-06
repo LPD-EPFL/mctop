@@ -58,7 +58,6 @@ endif
 
 default: mctop
 all: mctop mct_load tests
-tests: run_on_node0 allocator work_queue work_queue_sort work_queue_sort1 numa_alloc
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
 	${SRCPATH}/barrier.o ${INCLUDE}/cdf.h ${INCLUDE}/darray.h ${INCLUDE}/mctop_crawler.h
@@ -97,6 +96,12 @@ libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 ################################################################################
 ## tests/ | Compiled with libmctop.a and mctop.h from base folder #############
 ################################################################################
+
+tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_sort1 sort sort1 sortcc \
+	 numa_alloc mergesort
+
+mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
+	merge_sort_parallel_merge_nosse merge_sort_seq_merge
 
 run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/run_on_node0.o -o run_on_node0 -lmctop ${LDFLAGS}

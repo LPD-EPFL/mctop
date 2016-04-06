@@ -226,7 +226,7 @@ mctop_nt_get_pair_for_node(mctop_node_tree_t* nt, const uint lvl, const uint nod
 uint
 mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mctop_node_tree_work_t* ntw)
 {
-  const uint node = mctop_alloc_get_node_seq_id();
+  const uint node = mctop_alloc_thread_node_id();
   mctop_nt_pair_t* pair = mctop_nt_get_pair_for_node(nt, lvl, node);
   if (pair == NULL)		/* no work for me! */
     {

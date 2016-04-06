@@ -776,7 +776,7 @@ int
 mctop_alloc_pin_plus(mctop_alloc_t* alloc)
 {
   __mctop_thread_info.alloc = alloc;
-  if (unlikely(mctop_alloc_is_pinned()))
+  if (unlikely(mctop_alloc_thread_is_pinned()))
     {
       mctop_alloc_unpin();
     }
@@ -840,10 +840,10 @@ int
 mctop_alloc_unpin()
 {
   mctop_alloc_t* alloc = __mctop_thread_info.alloc;
-  if (mctop_alloc_is_pinned())
+  if (mctop_alloc_thread_is_pinned())
     {
       DAF_U32(&alloc->n_hwcs_used);
-      alloc->hwcs_used[mctop_alloc_get_id()] = 0;
+      alloc->hwcs_used[mctop_alloc_thread_id()] = 0;
       int ret = mctop_alloc_pin_all(alloc);
       __mctop_thread_info.is_pinned = 0;
       return ret;
@@ -854,20 +854,20 @@ mctop_alloc_unpin()
 void
 mctop_alloc_thread_print()
 {
-  if (mctop_alloc_is_pinned())
+  if (mctop_alloc_thread_is_pinned())
     {
       printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u | SEQ ids: hwc %2u  core %2u  node %2u\n",
-	     mctop_alloc_get_id(),
-	     mctop_alloc_get_hw_context_id(),
-	     mctop_alloc_get_local_node(),
-	     mctop_alloc_get_hw_context_seq_id_in_core(),
-	     mctop_alloc_get_core_seq_id_in_socket(),
-	     mctop_alloc_get_node_seq_id());
+	     mctop_alloc_thread_id(),
+	     mctop_alloc_thread_hw_context_id(),
+	     mctop_alloc_thread_local_node(),
+	     mctop_alloc_thread_incore_id(),
+	     mctop_alloc_thread_core_insocket_id(),
+	     mctop_alloc_thread_node_id());
     }
   else
     {
       printf("[MCTOP ALLOC] NOT pinned : id %-3d / hwc id --- / node --- / node seq id ---\n",
-	     mctop_alloc_get_id());
+	     mctop_alloc_thread_id());
     }
 }
 
@@ -885,6 +885,12 @@ inline uint
 mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc)
 {
   return alloc->n_hwcs;
+}
+
+inline uint
+mctop_alloc_get_num_hw_contexts_node(mctop_alloc_t* alloc, const uint sid)
+{
+  return alloc->n_hwcs_per_socket[sid];
 }
 
 const char* 
@@ -982,21 +988,21 @@ mctop_alloc_ids_get_latency(mctop_alloc_t* alloc, const uint id0, const uint id1
 /* thread ******************************************************************************** */
 
 uint
-mctop_alloc_is_pinned()
+mctop_alloc_thread_is_pinned()
 {
   return __mctop_thread_info.is_pinned;
 }
 
 int
-mctop_alloc_get_id()
+mctop_alloc_thread_id()
 {
   return __mctop_thread_info.id;
 }
 
 int
-mctop_alloc_get_hw_context_id()
+mctop_alloc_thread_hw_context_id()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.hwc_id;
     }
@@ -1004,9 +1010,9 @@ mctop_alloc_get_hw_context_id()
 }
 
 uint
-mctop_alloc_get_hw_context_seq_id_in_core()
+mctop_alloc_thread_incore_id()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.nth_hwc_in_core;
     }
@@ -1014,9 +1020,9 @@ mctop_alloc_get_hw_context_seq_id_in_core()
 }
 
 uint
-mctop_alloc_get_hw_context_seq_id_in_socket()
+mctop_alloc_thread_insocket_id()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.nth_hwc_in_socket;
     }
@@ -1024,9 +1030,9 @@ mctop_alloc_get_hw_context_seq_id_in_socket()
 }
 
 uint
-mctop_alloc_get_core_seq_id_in_socket()
+mctop_alloc_thread_core_insocket_id()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.nth_core_socket;
     }
@@ -1034,9 +1040,9 @@ mctop_alloc_get_core_seq_id_in_socket()
 }
 
 int
-mctop_alloc_get_local_node()
+mctop_alloc_thread_local_node()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.local_node;
     }
@@ -1044,9 +1050,9 @@ mctop_alloc_get_local_node()
 }
 
 int
-mctop_alloc_get_node_seq_id()
+mctop_alloc_thread_node_id()
 {
-  if (likely(mctop_alloc_is_pinned()))
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.nth_socket;
     }
@@ -1080,9 +1086,9 @@ mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc)
 void
 mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc)
 {
-  if (mctop_alloc_is_pinned())
+  if (mctop_alloc_thread_is_pinned())
     {
-      const uint on = mctop_alloc_get_node_seq_id();
+      const uint on = mctop_alloc_thread_node_id();
       mctop_barrier_wait(alloc->socket_barriers[on]);
     }
 }

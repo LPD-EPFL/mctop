@@ -429,26 +429,26 @@ extern "C" {
   int mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth);
   int mctop_alloc_pin_all(mctop_alloc_t* alloc);
 
-  void mctop_alloc_thread_print();     /* print current threads pin details */
-  uint mctop_alloc_is_pinned();	     /* is thread pinned? */
-  int mctop_alloc_get_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
-  int mctop_alloc_get_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
-  uint mctop_alloc_get_hw_context_seq_id_in_core(); /* seq id of the hw context of this thread
-						       in it's core (0=1st hyperthread, 1=2nd?, ..) */
-  uint mctop_alloc_get_hw_context_seq_id_in_socket(); /* seq id of the hw context of this thread in it's socket */
-  uint mctop_alloc_get_core_seq_id_in_socket(); /* seq id of the core of this thread in it's socket */
-  int mctop_alloc_get_local_node();    /* local NUMA node of thread */
-  int mctop_alloc_get_node_seq_id();   /* sequence id of the node that this thread is using. For example, the allocator
-					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
-
-
   void mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc); /* wait for ALL threads handled by alloc to cross */
   void mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
+
+  void mctop_alloc_thread_print();     /* print current threads pin details */
+  uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */
+  int mctop_alloc_thread_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
+  int mctop_alloc_thread_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
+  uint mctop_alloc_thread_incore_id(); /* seq id of the hw context of this thread
+						       in it's core (0=1st hyperthread, 1=2nd?, ..) */
+  uint mctop_alloc_thread_insocket_id(); /* seq id of the hw context of this thread in it's socket */
+  uint mctop_alloc_thread_core_insocket_id(); /* seq id of the core of this thread in it's socket */
+  int mctop_alloc_thread_local_node(); /* local NUMA node of thread */
+  int mctop_alloc_thread_node_id();   /* sequence id of the node that this thread is using. For example, the allocator
+					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
 
   /* Queries *********************************************************************************************************** */
 
   mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);
   uint mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc);
+  uint mctop_alloc_get_num_hw_contexts_node(mctop_alloc_t* alloc, const uint sid);
   const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
   double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
   uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);

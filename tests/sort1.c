@@ -137,7 +137,8 @@ main(int argc, char **argv)
 
   chunk_size = array_len / n_chunks;
 
-  chunks = malloc_assert(n_chunks * chunks_per_thread);
+  chunks = malloc(n_chunks * chunks_per_thread);
+  assert(chunks != NULL);
 
   for (int i = 0; i < n_chunks; i++)
     {

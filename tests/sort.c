@@ -412,7 +412,8 @@ wq_data_t*
 wq_merge(const wq_data_t* w0, const wq_data_t* w1)
 {
   size_t len = w0->len + w1->len;
-  int* anew = malloc_assert(len * sizeof(int));
+  int* anew = malloc(len * sizeof(int));
+  assert(anew != NULL);
 
   uint i0 = 0, i1 = 0, o = 0;
   while (i0 < w0->len && i1 < w1->len)
@@ -459,7 +460,7 @@ test_pin(void* params)
   mctop_wq_t* wq = (mctop_wq_t*) params;
   mctop_alloc_t* alloc = wq->alloc;
   mctop_alloc_pin(alloc);
-  const uint id = mctop_alloc_get_id();
+  const uint id = mctop_alloc_thread_id();
 
   int my_chunk_offs = chunks[id * chunks_per_thread];
   const size_t chunk_size_b = chunk_size * sizeof(int);

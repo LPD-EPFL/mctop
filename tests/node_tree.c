@@ -4,6 +4,11 @@
 
 void* test_pin(void* params);
 
+int* memory;
+int* memory_nodes[16];
+size_t memory_size = 1024 * 1024 * 1024LL;
+size_t memory_len;
+
 int
 main(int argc, char **argv) 
 {
@@ -79,11 +84,18 @@ main(int argc, char **argv)
 
   if (topo)
     {
-      mctop_print(topo);
-
+      //      mctop_print(topo);
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       mctop_alloc_print(alloc);
       mctop_alloc_print_short(alloc);
+
+      mctop_alloc_pin_nth_socket(alloc, 0);
+
+      memory = malloc(memory_size);
+      assert(memory);
+
+      memory_len = memory_size / sizeof(*memory);
+
 
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc);
       mctop_node_tree_print(nt);
@@ -135,12 +147,34 @@ void*
 test_pin(void* params)
 {
   mctop_node_tree_t* nt = (mctop_node_tree_t*) params;
+  mctop_alloc_t* alloc = nt->alloc;
 
   const size_t reps = 1e9;
 
   mctop_alloc_pin(nt->alloc);
-  mctop_alloc_thread_print();
-  mctop_alloc_barrier_wait_all(nt->alloc);
+
+  const uint my_node = mctop_alloc_thread_node_id();
+  const uint my_node_id = mctop_alloc_thread_insocket_id();
+  const size_t node_mem_size = memory_size / nt->n_nodes;
+  const size_t my_mem_size = node_mem_size / mctop_alloc_get_num_hw_contexts_node(alloc, my_node_id);
+  
+  int* my_mem_in = memory + (my_node * (node_mem_size / sizeof(int)) + (my_node_id * (my_mem_size / sizeof(int))));
+  const uint node_leader = (my_node_id == 0);
+  if (node_leader)
+    {
+      memory_nodes[my_node] = malloc(node_mem_size);
+      assert(memory_nodes[my_node]);
+    }
+
+  mctop_alloc_barrier_wait_node(alloc);
+  int* my_mem_out = memory_nodes[my_node] + (my_node_id * (my_mem_size / sizeof(int)));
+
+  memcpy(my_mem_out, my_mem_in, my_mem_size);
+
+
+  mctop_alloc_barrier_wait_node(alloc);
+
+
 
   for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {
@@ -148,10 +182,10 @@ test_pin(void* params)
       if (mctop_node_tree_get_work_description(nt, l, &ntw))
 	{
 	  mctop_node_tree_barrier_wait(nt, l);
-	  if (mctop_alloc_get_hw_context_seq_id_in_socket() == 0)
+	  if (node_leader)
 	    {
 	      printf("Thread %d on seq node %d. Work @ lvl%d! My node is %s\n",
-		     mctop_alloc_get_id(), mctop_alloc_get_node_seq_id(), l,
+		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l,
 		     ntw.node_role == DESTINATION ? "DEST" : "SRC");
 
 	    }
@@ -160,7 +194,7 @@ test_pin(void* params)
       else
 	{
 	  printf("Thread %d on seq node %d. No work @ lvl%d!\n",
-		 mctop_alloc_get_id(), mctop_alloc_get_node_seq_id(), l);
+		 mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
 	}
     }
 
