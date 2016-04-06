@@ -9,8 +9,8 @@
 #include <malloc.h>
 #include <parallel/algorithm>
 #include <numa.h>
-#include <mctop_alloc.h>
-#include <nmmintrin.h>
+#include <mctop.h>
+#include "merge_utils.h"
 
 #define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))
 #define min(x, y) (x<y?x:y)
@@ -22,13 +22,8 @@
 
 void readArray2(SORT_TYPE [], const long);
 void printArray2(SORT_TYPE [], const long, const int);
+void is_sorted(SORT_TYPE [], const long);
 
-SORT_TYPE *a __attribute__((aligned(64)));
-SORT_TYPE *x __attribute__((aligned(64)));
-SORT_TYPE *res __attribute__((aligned(64)));
-
-long *help_array_a __attribute__((aligned(64)));
-long *help_array_b __attribute__((aligned(64)));
 
 long in_thread_partitions;
 
@@ -42,12 +37,8 @@ typedef struct merge_args_t
     SORT_TYPE sizeb;
     SORT_TYPE* dest;
     int i;
-    long *help_array_a;
-    long *help_array_b;
     int node;
     int nthreads;
-    pthread_barrier_t *barrier_start1;
-    pthread_barrier_t *barrier_end;
     mctop_alloc_t *alloc;
 } merge_args_t;
 
@@ -89,7 +80,7 @@ void *merge(void *args) {
   mctop_alloc_pin(myargs->alloc);
   //numa_run_on_node(myargs->node);
 
-  merge_arrays(myargs->a, myargs->b, myargs->dest, myargs->sizea, myargs->sizeb, myargs->i, myargs->nthreads, myargs->help_array_a, myargs->help_array_b, myargs->barrier_start1, myargs->barrier_end);
+  merge_arrays(myargs->a, myargs->b, myargs->dest, myargs->sizea, myargs->sizeb, myargs->i, myargs->nthreads);
 
   return NULL;
 }
@@ -110,16 +101,20 @@ int main(int argc,char *argv[]){
     struct timeval start, stop;
     unsigned long usec;
     mctop_alloc_policy allocation_policy;
-    assert(argc >= 4);
+    assert(argc > 6);
 
     long array_size_mb = atol(argv[1]);
 
     n = array_size_mb * 1024 * (1024 / sizeof(SORT_TYPE));
     n = n & 0xFFFFFFFFFFFFFFF0L;
     
+    n = array_size_mb;
+    
     assert (n%4==0);
+    SORT_TYPE *a __attribute__((aligned(64)));
+    SORT_TYPE *res __attribute__((aligned(64)));
+    
     a = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
-    x = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
     res = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
 
     threads = atoi(argv[2]);
@@ -130,53 +125,61 @@ int main(int argc,char *argv[]){
     else
       srand(42);
 
+    long in_socket_partitions;
     if (argc > 5)
-      in_thread_partitions = atoi(argv[5]);
+      in_socket_partitions = atoi(argv[5]);
     else
-      in_thread_partitions = threads;
+      in_socket_partitions = threads;
 
-
+   long my_partition = atoi(argv[6]);
     allocation_policy = (mctop_alloc_policy) atoi(argv[3]);
     mctop_t * topo = mctop_load(NULL);
     mctop_alloc_t *alloc = mctop_alloc_create(topo, threads, MCTOP_ALLOC_ALL, allocation_policy);
     mctop_alloc_print_short(alloc);
 
     readArray2(a, n);
-    memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(SORT_TYPE));
-    __gnu_parallel::sort(a, a+(n/2));
-    __gnu_parallel::sort(x, x+(n/2));
+    assert((n % in_socket_partitions) == 0);
+    for (long i = 0; i < in_socket_partitions; i++){
+      __gnu_parallel::sort(a + (i * (n / in_socket_partitions)), a + ((i+1) * (n / in_socket_partitions)));
+      printf("partition %ld: %ld - %ld\n", i, (i * (n / in_socket_partitions)), ((i+1) * (n / in_socket_partitions)));
+    }
+    printArray2(a, n, 0);
+
+
+    printf("will merge partitions %ld and %ld, i1 %ld i2 %ld, size1 %ld size2 %ld\n", my_partition, my_partition+1, (my_partition * (n / in_socket_partitions)), ((my_partition+1) * (n / in_socket_partitions)), (n / in_socket_partitions), (n / in_socket_partitions));
+   a = &a[(my_partition * (n / in_socket_partitions))];
+   n = (n / in_socket_partitions) * 2;
+    //printArray2(a, n, 0);
+    assert(n%2 == 0);
+    is_sorted(a, n/2);
+    is_sorted(&a[n/2], n/2);
+    //__gnu_parallel::sort(a, a+(n/2));
+    //__gnu_parallel::sort(a+(n/2), a+n);
+
+
+    pthread_t* the_threads = (pthread_t*)malloc(threads * sizeof(pthread_t));
+
     //printArray2(a, (n/2), 0);
     //printArray2(x, (n/2), 0);
-    pthread_barrier_t *barrier11 = (pthread_barrier_t *)malloc(sizeof(pthread_barrier_t));
-    pthread_barrier_t *barrier2 = (pthread_barrier_t *)malloc(sizeof(pthread_barrier_t));
-    pthread_barrier_init(barrier11, NULL, threads+1);
-    pthread_barrier_init(barrier2, NULL, threads+1);
-    help_array_a = (long*)malloc(threads * sizeof(long));
-    help_array_b = (long*)malloc(threads * sizeof(long));
-    //printArray2(a, n/2, 0);
-    //printArray2(x, n/2, 0);
     gettimeofday(&start, NULL);
     //===============
     for(i=0;i<threads;i++) {
-        pthread_t* the_thread = (pthread_t*)malloc(sizeof(pthread_t));
         merge_args_t *merge_args = (merge_args_t *)malloc(sizeof(merge_args_t));
         merge_args->i = i;
         merge_args->node = i%2;
-        merge_args->barrier_start1 = barrier11;
-        merge_args->barrier_end = barrier2;
         merge_args->nthreads = threads;
         merge_args->a = a;
-        merge_args->b = x;
-        merge_args->help_array_b = help_array_b;
-        merge_args->help_array_a = help_array_a;
+        merge_args->b = &a[n/2];
         merge_args->dest = res;
         merge_args->sizea = n/2;
         merge_args->sizeb = n/2;
         merge_args->alloc = alloc;
-        pthread_create(the_thread, NULL, merge, merge_args);
+        pthread_create(&the_threads[i], NULL, merge, merge_args);
     }
-    pthread_barrier_wait(barrier11);
-    pthread_barrier_wait(barrier2);
+    void **foo;
+    for(i=0;i<threads;i++) 
+      pthread_join(the_threads[i], foo);
+
 
     gettimeofday(&stop, NULL);
 
@@ -225,3 +228,15 @@ void printArray2(SORT_TYPE *y, const long n, const int assert)
     printf("\n");
 }
 
+void is_sorted(SORT_TYPE *y, const long n)
+{
+    long i;
+    SORT_TYPE min = y[0];
+    for(i = 1; i < n; i++){
+          if (y[i] < min) {
+            fprintf(stderr, "Error for i = %ld\n", i); fflush(stderr);
+            assert(0);
+          }
+          min = y[i];
+    }
+}

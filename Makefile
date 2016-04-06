@@ -139,8 +139,14 @@ merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
 merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
 
-merge_sort_parallel_merge: ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp libmctop.a ${INCLUDES}
+merge_sort_parallel_merge: ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp libmctop.a ${INCLUDES} FORCE FORCE
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
+
+merge_sort_parallel_merge_notworking: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp libmctop.a ${INCLUDES} FORCE FORCE
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp -o merge_sort_parallel_merge_notworking -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
+
+merge_sort_merge_level: ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp libmctop.a ${INCLUDES} FORCE FORCE
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
 
 merge_sort_parallel_merge_nosse: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} -ljemalloc -fopenmp -msse4
@@ -164,7 +170,7 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 ################################################################################
 
 clean:
-	rm src/*.o *.a tests/*.o
+	rm -f src/*.o *.a tests/*.o tests/merge_sort/*.o
 
 
 ################################################################################
