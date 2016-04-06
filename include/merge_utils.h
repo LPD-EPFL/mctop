@@ -76,7 +76,7 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
 
 
 
-static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, size_t sizea, size_t sizeb, long myid, long num_threads) {
+static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, long sizea, long sizeb, long myid, long num_threads) {
   long size1, size2, desti;
 
   // Evenly distribute the arrays: Francis, Mathieson. "A Benchmark Parallel Sort for Shared Memory Multiprocessors"
@@ -134,7 +134,7 @@ static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, siz
     size2 = sizeb - my_beta;
   }
   desti = my_alpha + my_beta;
-  printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myid, my_alpha, my_beta, desti, size1, size2, (uintptr_t) &a[my_alpha], (uintptr_t) &b[my_beta]);
+  //printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myid, my_alpha, my_beta, desti, size1, size2, (uintptr_t) &a[my_alpha], (uintptr_t) &b[my_beta]);
   assert(size1 > 0 && size2 > 0);
   merge_arrays_unaligned_sse(&a[my_alpha], &b[my_beta], &dest[desti], size1, size2);
 }
