@@ -16,7 +16,35 @@
 #define min(x, y) (x<y?x:y)
 #define max(x, y) (x<y?y:x)
 
+#define mrand(x) xorshf96(&x[0], &x[1], &x[2])
 
+static inline unsigned long*
+seed_rand()
+{
+  unsigned long* seeds;
+  seeds = (unsigned long*) malloc(64);
+  seeds[0] = 11233311;
+  seeds[1] = 2123123;
+  seeds[2] = 313131222;
+  return seeds;
+}
+
+//Marsaglia's xorshf generator
+static inline unsigned long
+xorshf96(unsigned long* x, unsigned long* y, unsigned long* z)  //period 2^96-1
+{
+  unsigned long t;
+  (*x) ^= (*x) << 16;
+  (*x) ^= (*x) >> 5;
+  (*x) ^= (*x) << 1;
+
+  t = *x;
+  (*x) = *y;
+  (*y) = *z;
+  (*z) = t ^ (*x) ^ (*y);
+
+  return *z;
+}
 
 //pthread_mutex_t global_lock;
 
@@ -31,7 +59,7 @@ long *help_array_b __attribute__((aligned(64)));
 
 long in_socket_partitions;
 long threads_per_partition;
-
+unsigned long* seeds;
 
 //partition merge arguments
 typedef struct merge_args_t
@@ -157,7 +185,7 @@ int main(int argc,char *argv[]){
     unsigned long usec;
     mctop_alloc_policy allocation_policy;
     assert(argc >= 4);
-
+    seeds = seed_rand();
     long array_size_mb = atol(argv[1]);
 
     n = array_size_mb * 1024 * (1024 / sizeof(SORT_TYPE));
@@ -252,8 +280,8 @@ void readArray2(SORT_TYPE a[], const long limit)
 
     // Knuth shuffle
     for (i=limit-1; i > 0; i--){
-        long j = RAND_RANGE(i);
-        SORT_TYPE tmp = a[i];
+        const uint j = mrand(seeds) % limit;
+        const int tmp = a[i];
         a[i] = a[j];
         a[j] = tmp;
      }
