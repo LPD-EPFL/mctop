@@ -15,19 +15,28 @@ extern "C" {
 
 #define MCTOP_SORT_DEBUG            1
 
+  /* partition descriptor */
+typedef struct mctop_sort_pd
+{
+  size_t start_index;
+  size_t n_elems;
+} mctop_sort_pd_t;
 
-
+  /* node data descriptor */
 typedef struct mctop_sort_nd 
 {
   MCTOP_SORT_TYPE* array;
   size_t n_elems;
-  MCTOP_SORT_TYPE* left;
-  MCTOP_SORT_TYPE* right;
+  MCTOP_SORT_TYPE* source;
+  MCTOP_SORT_TYPE* destination;
   size_t n_chunks;
-  const uint8_t padding[64 - 3 * sizeof(MCTOP_SORT_TYPE*) - sizeof(size_t)];
+  mctop_sort_pd_t* partitions;
+  const uint8_t padding[64 - 3 * sizeof(MCTOP_SORT_TYPE*) -
+			sizeof(size_t) - sizeof(mctop_sort_pd_t*)];
 } mctop_sort_nd_t;
 
 
+  /* total data descriptor */
 typedef MCTOP_ALIGNED(64) struct mctop_sort_td
 {
   mctop_node_tree_t* nt;

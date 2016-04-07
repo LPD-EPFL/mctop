@@ -68,6 +68,7 @@ extern "C" {
 #endif
 
     mctop_barrier_t** socket_barriers;
+    mctop_barrier_t** socket_barriers_cores;
     mctop_barrier_t* global_barrier;
   } mctop_alloc_t;
 
@@ -142,6 +143,7 @@ extern "C" {
 
   void mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc); /* wait for ALL threads handled by alloc to cross */
   void mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
+  void mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
 
   void mctop_alloc_thread_print();     /* print current threads pin details */
   uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */

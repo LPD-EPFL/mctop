@@ -145,6 +145,7 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 
   mctop_node_tree_t* nt = mctop_node_tree_alloc(n_lvls);
   nt->alloc = alloc;
+  nt->n_nodes = alloc->n_sockets;
 
   darray_t* socket_ids = darray_create(), * sids_avail = darray_create(), * sids_to_match = darray_create();
 
@@ -276,6 +277,10 @@ mctop_node_tree_get_num_levels(mctop_node_tree_t* nt)
 uint
 mctop_node_tree_get_final_dest_node(mctop_node_tree_t* nt)
 {
+  if (nt->n_nodes == 1)
+    {
+      return 0;
+    }
   return nt->levels[0].pairs[0].nodes[0];
 }
 
