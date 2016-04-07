@@ -180,9 +180,11 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_incore_id() == 0) // only cores!!
     {
       mctop_sort_merge_in_socket(alloc, nd, my_node, nt->barrier_for);
+
+      // the sorted array is in nd->source
       if (mctop_alloc_thread_is_node_leader())
 	{
-	  print_error_sorted(nd->destination, nd->n_elems);
+	  print_error_sorted(nd->source, nd->n_elems);
 	} 
     }
   return NULL;
@@ -202,71 +204,66 @@ mctop_merge_barrier_wait(mctop_alloc_t* alloc, mctop_type_t barrier_for)
     }
 }
 
-void
-mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
-      mctop_sort_pd_t* partitions, long n_partiotions,
-      long threads_per_partition, long nthreads);
+void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
+		      mctop_sort_pd_t* partitions, const uint n_partitions,
+		      const uint threads_per_partition, const uint nthreads);
 
-void
-mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint node, mctop_type_t barrier_for)
+  void
+  mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint node, mctop_type_t barrier_for)
 {
   MCTOP_SORT_TYPE* src = nd->source;
   MCTOP_SORT_TYPE* dest = nd->destination;
 
-  uint partitions = nd->n_chunks;
+  uint n_partitions = nd->n_chunks;
   const uint nthreads = mctop_alloc_get_num_cores_node(alloc, node);
   const uint threads_per_partition = nthreads;
 
   if (mctop_alloc_thread_is_node_leader())
     {
-      MSD_DO(printf("Node %u :: Have %u partitions\n", node, partitions););
+      MSD_DO(printf("Node %u :: Have %u partitions\n", node, n_partitions););
     }
 
-  while (partitions > 1)
+  while (n_partitions > 1)
     {
       mctop_merge_barrier_wait(alloc, barrier_for);
       
       // if (mctop_alloc_thread_is_node_leader())
       // 	{
-      // 	  printf("doing round %u\n", partitions); 
+      // 	  printf("doing round %u\n", n_partitions); 
       // 	  printf(" partition_start  partition_size\n");
-      // 	  for(uint i = 0; i < partitions; i++)
+      // 	  for(uint i = 0; i < n_partitions; i++)
       // 	    {
       // 	      printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
       // 	    }
       // 	}
 
-      mctop_sort_merge(src, dest, nd->partitions, partitions, threads_per_partition, nthreads);
+      mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, nthreads);
       mctop_merge_barrier_wait(alloc, barrier_for);
 
       if (mctop_alloc_thread_is_node_leader())
 	{
-	  for (long i = 0; i < partitions >> 1; i++)
+	  for (uint i = 0; i < n_partitions >> 1; i++)
 	    {
 	      nd->partitions[i].start_index = nd->partitions[i<<1].start_index;
 	      nd->partitions[i].n_elems = nd->partitions[i<<1].n_elems + nd->partitions[(i<<1) + 1].n_elems;
 	    }
 
 	  //	  printf("Node %u :: ending round\n", mctop_alloc_thread_node_id()); 
-	  if (partitions & 1)
+	  if (n_partitions & 1)
 	    {
-	      nd->partitions[partitions >> 1].start_index = nd->partitions[partitions - 1].start_index;
-	      nd->partitions[partitions >> 1].n_elems = nd->partitions[partitions - 1].n_elems;
-	      memcpy((void*) &dest[nd->partitions[partitions - 1].start_index],
-		     (void*) &src[nd->partitions[partitions - 1].start_index],
-		     nd->partitions[partitions - 1].n_elems * sizeof(MCTOP_SORT_TYPE));
+	      nd->partitions[n_partitions >> 1].start_index = nd->partitions[n_partitions - 1].start_index;
+	      nd->partitions[n_partitions >> 1].n_elems = nd->partitions[n_partitions - 1].n_elems;
+	      memcpy((void*) &dest[nd->partitions[n_partitions - 1].start_index],
+		     (void*) &src[nd->partitions[n_partitions - 1].start_index],
+		     nd->partitions[n_partitions - 1].n_elems * sizeof(MCTOP_SORT_TYPE));
 	    }
-	  //printArray2(dest, size, 0);
-	  //printf("ending round\n"); 
 	}
 
-      if (partitions & 1)
+      if (n_partitions & 1)
 	{
-	  partitions++;
+	  n_partitions++;
 	}
-      partitions >>= 1;
-
-      mctop_merge_barrier_wait(alloc, barrier_for);
+      n_partitions >>= 1;
 
       MCTOP_SORT_TYPE* temp = src;
       src = dest;
@@ -275,36 +272,34 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
 
   if (mctop_alloc_thread_is_node_leader())
     {
-      // printf("[threads 0]: src %lu, dest %lu, myargs->src %lu myargs->dest %lu\n", (uintptr_t)src, (uintptr_t)dest, (uintptr_t) myargs->src, (uintptr_t)myargs->dest);
-      if (nd->destination != src)
+      if (nd->source != src)
       	{
-	  nd->destination = src;
+	  nd->source = src;
+	  nd->destination = dest;
 	}
     }
 }
 
 void
 mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
-      mctop_sort_pd_t* partitions, long n_partitions,
-      long threads_per_partition, long nthreads)
+		 mctop_sort_pd_t* partitions, const uint n_partitions,
+		 const uint threads_per_partition, const uint nthreads)
 {
   const uint my_id = mctop_alloc_thread_core_insocket_id();
   
-  long next_merge, pos_in_merge, partition_a_start, partition_a_size, partition_b_start, partition_b_size;
-  
-  next_merge = my_id / threads_per_partition;
-  long next_partition = next_merge << 1;
+  uint next_merge = my_id / threads_per_partition;
+  uint next_partition = next_merge << 1;
   while (1)
     {
       if (next_partition >= n_partitions || ((n_partitions % 2) && (next_partition >= n_partitions-1)))
 	break;
 
-      pos_in_merge = my_id % threads_per_partition;
+      const uint pos_in_merge = my_id % threads_per_partition;
     
-      partition_a_start = partitions[next_partition].start_index;
-      partition_a_size = partitions[next_partition].n_elems;
-      partition_b_start = partitions[next_partition + 1].start_index;
-      partition_b_size = partitions[next_partition + 1].n_elems;
+      const uint partition_a_start = partitions[next_partition].start_index;
+      const uint partition_a_size = partitions[next_partition].n_elems;
+      const uint partition_b_start = partitions[next_partition + 1].start_index;
+      const uint partition_b_size = partitions[next_partition + 1].n_elems;
 
       MCTOP_SORT_TYPE* my_a = &src[partition_a_start];
       MCTOP_SORT_TYPE* my_b = &src[partition_b_start];
