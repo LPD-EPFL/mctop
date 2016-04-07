@@ -730,44 +730,70 @@ mctop_alloc_pin_all(mctop_alloc_t* alloc)
   return ret;
 }
 
+static uint
+mctop_alloc_id_get_nth_hwc_in_socket(mctop_alloc_t* alloc, const uint id, const socket_t* socket)
+{
+  uint n_hwcs_socket = 0;
+  for (int i = 0; i < id; i++)
+    {
+      socket_t* s = mctop_hwcid_get_socket(alloc->topo, alloc->hwcs[i]);
+      if (socket == s)
+	{
+	  n_hwcs_socket++;
+	}
+    }
+  return n_hwcs_socket;
+}
+
+static int
+mctop_alloc_pin_prepare(mctop_alloc_t* alloc, const uint id, const uint fix_numa)
+{
+  alloc->hwcs_used[id] = 1;
+  __mctop_thread_info.is_pinned = 1;
+  __mctop_thread_info.id = id;
+
+  const uint hwcid = alloc->hwcs[id];
+  __mctop_thread_info.hwc_id = hwcid;
+
+  int ret = mctop_set_cpu(hwcid);
+  if (unlikely(fix_numa))
+    {
+      mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
+    }
+
+  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
+  socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
+  size_t n_hwcs_prev_sockets = 0;
+  for (int s = 0; s < alloc->n_sockets; s++)
+    {
+      if (alloc->sockets[s] == socket)
+	{
+	  __mctop_thread_info.nth_socket = s;
+	  break;
+	}
+      n_hwcs_prev_sockets += alloc->n_hwcs_per_socket[s];
+    }
+
+  __mctop_thread_info.nth_hwc_in_core = mctop_hwcid_get_nth_hwc_in_core(alloc->topo, hwcid);
+  __mctop_thread_info.nth_core_socket = mctop_hwcid_get_nth_core_in_socket(alloc->topo, hwcid);
+  __mctop_thread_info.nth_hwc_in_socket = mctop_alloc_id_get_nth_hwc_in_socket(alloc, id, socket);
+  return ret;
+}
 
 /* pin to ONE hw context contained in alloc -- Does not support repin() */
 int
 mctop_alloc_pin(mctop_alloc_t* alloc)
 {
   __mctop_thread_info.alloc = alloc;
-  const uint id = __mctop_thread_info.id = FAI_U32(&alloc->n_hwcs_used);
-  alloc->hwcs_used[id] = 1;
+  const uint id = FAI_U32(&alloc->n_hwcs_used);
 
   if (unlikely(alloc->policy == MCTOP_ALLOC_NONE))
     {
+      __mctop_thread_info.id = id;
       return 1;
     }
 
-  const uint hwcid = alloc->hwcs[id];
-  __mctop_thread_info.is_pinned = 1;
-  __mctop_thread_info.hwc_id = hwcid;
-
-  int ret = mctop_set_cpu(hwcid);
-#warning add for Opteron the mctop_hwcid_fix_numa_node
-  //mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
-
-  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
-  socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
-  for (int s = 0; s < alloc->n_sockets; s++)
-    {
-      if (alloc->sockets[s] == socket)
-	{
-	  __mctop_thread_info.nth_socket = s;
-	}
-    }
-
-  __mctop_thread_info.nth_hwc_in_core = mctop_hwcid_get_nth_hwc_in_core(alloc->topo, hwcid);
-  __mctop_thread_info.nth_core_socket = mctop_hwcid_get_nth_core_in_socket(alloc->topo, hwcid);
-  __mctop_thread_info.nth_hwc_in_socket =
-    (__mctop_thread_info.nth_core_socket * mctop_get_num_hwc_per_core(alloc->topo)) +
-    __mctop_thread_info.nth_hwc_in_core;
-  return ret;
+  return mctop_alloc_pin_prepare(alloc, id, 0);
 }
 
 /* pin to ONE hw context contained in alloc -- Supports repin() 
@@ -798,36 +824,8 @@ mctop_alloc_pin_plus(mctop_alloc_t* alloc)
 	    {
 	      if (CAS_U8(&alloc->hwcs_used[i], 0, 1) == 0)
 		{
-		  uint hwcid = i;
-
 		  FAI_U32(&alloc->n_hwcs_used);
-		  alloc->hwcs_used[hwcid] = 1;
-
-		  __mctop_thread_info.is_pinned = 1;
-		  __mctop_thread_info.id = hwcid;
-
-		  hwcid = alloc->hwcs[hwcid];
-		  __mctop_thread_info.hwc_id = hwcid;
-
-		  int ret = mctop_set_cpu(hwcid);
-		  mctop_hwcid_fix_numa_node(alloc->topo, hwcid);
-
-		  __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
-		  socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
-		  for (int s = 0; s < alloc->n_sockets; s++)
-		    {
-		      if (alloc->sockets[s] == socket)
-			{
-			  __mctop_thread_info.nth_socket = s;
-			}
-		    }
-
-		  __mctop_thread_info.nth_hwc_in_core = mctop_hwcid_get_nth_hwc_in_core(alloc->topo, hwcid);
-		  __mctop_thread_info.nth_core_socket = mctop_hwcid_get_nth_core_in_socket(alloc->topo, hwcid);
-		  __mctop_thread_info.nth_hwc_in_socket =
-		    (__mctop_thread_info.nth_core_socket * mctop_get_num_hwc_per_core(alloc->topo)) +
-		    __mctop_thread_info.nth_hwc_in_core;
-		  return ret;
+		  return mctop_alloc_pin_prepare(alloc, i, 0);
  		}
 	    }
 	}
@@ -856,10 +854,12 @@ mctop_alloc_thread_print()
 {
   if (mctop_alloc_thread_is_pinned())
     {
-      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u | SEQ ids: hwc %2u  core %2u  node %2u\n",
+      printf("[MCTOP ALLOC]     pinned : id %-3d / hwc id %-3u / node %-3u | "
+	     "SEQ ids: in-nd %-2u in-co %-2u co-in-so %-2u node %-2u\n",
 	     mctop_alloc_thread_id(),
 	     mctop_alloc_thread_hw_context_id(),
 	     mctop_alloc_thread_local_node(),
+	     mctop_alloc_thread_insocket_id(),
 	     mctop_alloc_thread_incore_id(),
 	     mctop_alloc_thread_core_insocket_id(),
 	     mctop_alloc_thread_node_id());
@@ -1025,6 +1025,31 @@ mctop_alloc_thread_insocket_id()
   if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.nth_hwc_in_socket;
+    }
+  return 0;
+}
+
+/* mctop_alloc_thread_insocket_id() == 0 */
+uint
+mctop_alloc_thread_is_node_leader()
+{
+  if (likely(mctop_alloc_thread_is_pinned()))
+    {
+      return mctop_alloc_thread_insocket_id() == 0;
+    }
+  return 0;
+}
+
+/* mctop_alloc_thread_insocket_id() == (n_hwcs in socket - 1) */
+uint
+mctop_alloc_thread_is_node_last()
+{
+  if (likely(mctop_alloc_thread_is_pinned()))
+    {
+      mctop_alloc_t* alloc = __mctop_thread_info.alloc;
+      const uint node = mctop_alloc_thread_node_id();
+      int n_hwcs_node = mctop_alloc_get_num_hw_contexts_node(alloc, node);
+      return mctop_alloc_thread_insocket_id() == (n_hwcs_node - 1);
     }
   return 0;
 }
