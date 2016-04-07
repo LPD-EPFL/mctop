@@ -42,6 +42,8 @@
 /mct_load
 /mctop
 /mctop_latency
+/mctop_sort
+/merge_sort_merge_level
 /merge_sort_parallel_merge
 /merge_sort_parallel_merge_nosse
 /merge_sort_parallel_merge_notworking

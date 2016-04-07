@@ -52,7 +52,7 @@ typedef MCTOP_ALIGNED(64) struct mctop_sort_td
 #if MCTOP_SORT_DEBUG == 1
 #  define MSD_DO(x) x
 #else
-#  define MSD_DO(x) x
+#  define MSD_DO(x)
 #endif
 
 

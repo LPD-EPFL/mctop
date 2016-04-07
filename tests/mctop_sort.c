@@ -176,7 +176,7 @@ main(int argc, char **argv)
 	    }
 	  for (size_t i = array_len - 1; i > 0; i--)
 	    {
-	      const uint j = rand() % array_len; //mrand(seeds) % array_len;
+	      const uint j = mrand(seeds) % array_len;
 	      const MCTOP_SORT_TYPE tmp = array[i];
 	      array[i] = array[j];
 	      array[j] = tmp;
@@ -203,7 +203,7 @@ main(int argc, char **argv)
 	      {
 		array[i] = i;
 	      }
-	    int tmp = array[0];
+	    MCTOP_SORT_TYPE tmp = array[0];
 	    array[0] = array[array_len - 1];
 	    array[array_len - 1] = tmp;
 	  }
