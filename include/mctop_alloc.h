@@ -68,6 +68,7 @@ extern "C" {
 #endif
 
     mctop_barrier_t** socket_barriers;
+    mctop_barrier_t** socket_barriers_cores;
     mctop_barrier_t* global_barrier;
   } mctop_alloc_t;
 
@@ -142,6 +143,7 @@ extern "C" {
 
   void mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc); /* wait for ALL threads handled by alloc to cross */
   void mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
+  void mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
 
   void mctop_alloc_thread_print();     /* print current threads pin details */
   uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */
@@ -163,6 +165,7 @@ extern "C" {
   mctop_alloc_policy mctop_alloc_get_policy(mctop_alloc_t* alloc);
   uint mctop_alloc_get_num_hw_contexts(mctop_alloc_t* alloc);
   uint mctop_alloc_get_num_hw_contexts_node(mctop_alloc_t* alloc, const uint sid);
+  uint mctop_alloc_get_num_cores_node(mctop_alloc_t* alloc, const uint sid);
   const char* mctop_alloc_get_policy_desc(mctop_alloc_t* alloc);
   double mctop_alloc_get_min_bandwidth(mctop_alloc_t* alloc);
   uint mctop_alloc_get_max_latency(mctop_alloc_t* alloc);
@@ -216,6 +219,7 @@ extern "C" {
     uint n_nodes;
     mctop_nt_lvl_t* levels;
     mctop_barrier_t* barrier;
+    mctop_type_t barrier_for;
     void** scratchpad;		/* share with the threads of your node */
   } mctop_node_tree_t;
 
@@ -228,6 +232,7 @@ extern "C" {
   typedef struct mctop_node_tree_work
   {
     mctop_node_tree_role node_role; /* DESTINATION or SOURCE_ONLY */
+    uint other_node;
     uint num_hw_contexts;
     uint num_hw_contexts_my_node;
     uint num_hw_contexts_other_node;
@@ -245,6 +250,8 @@ extern "C" {
   void* mctop_node_tree_scratchpad_get(mctop_node_tree_t* nt, const uint node);
 
   uint mctop_node_tree_get_num_levels(mctop_node_tree_t* nt);
+
+  uint mctop_node_tree_get_final_dest_node(mctop_node_tree_t* nt);
 
   /* returns 0 if the node of does not have work at this level */
   uint mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl,

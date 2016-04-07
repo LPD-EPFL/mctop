@@ -893,6 +893,12 @@ mctop_alloc_get_num_hw_contexts_node(mctop_alloc_t* alloc, const uint sid)
   return alloc->n_hwcs_per_socket[sid];
 }
 
+inline uint
+mctop_alloc_get_num_cores_node(mctop_alloc_t* alloc, const uint sid)
+{
+  return alloc->n_cores_per_socket[sid];
+}
+
 const char* 
 mctop_alloc_get_policy_desc(mctop_alloc_t* alloc)
 {
