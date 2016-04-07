@@ -16,7 +16,9 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
     k=0;
 
     // Try to align the two arrays. This should happen fast: Francis, Mathieson. "A Benchmark Parallel Sort for Shared Memory Multiprocessors"
-    while((((((uintptr_t)&(a[i])) & 15) != 0) || ((((uintptr_t)&(b[j])) & 15) != 0)) && ((i<num_a) && (j<num_b)))
+    while((
+((((uintptr_t)&(a[i])) & 15) != 0) || ((((uintptr_t)&(b[j])) & 15) != 0) || ((((uintptr_t)&(dest[k])) & 15) != 0))
+ && ((i<num_a) && (j<num_b)))
     {
         if (a[i] < b[j])
             dest[k++] = a[i++];
@@ -24,6 +26,7 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
         else
             dest[k++] = b[j++];
     }
+    //printf("Had to jump %ld elements\n", k);
 
     if (i == num_a || j == num_b) {
       while (i < num_a)
