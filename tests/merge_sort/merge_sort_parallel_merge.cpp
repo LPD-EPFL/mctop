@@ -73,17 +73,6 @@ long bs(SORT_TYPE* data, SORT_TYPE size, SORT_TYPE value) {
     return end;
 }
 
-#define MCTOP_P_STEP(__steps, __a, __b)		\
-  {						\
-    __b = mctop_getticks();			\
-    mctop_ticks __d = __b - __a;		\
-    printf("Step %zu : %-10zu cycles = %-10zu us\n",	\
-	   __steps++, __d, __d / 2100);			\
-    __a = __b;						\
-  }
-
-
-
 void *merge(void *args) {
   merge_args_t *myargs = (merge_args_t *)args;
 
@@ -116,9 +105,8 @@ int main(int argc,char *argv[]){
     long array_size_mb = atol(argv[1]);
 
     n = array_size_mb * 1024 * (1024 / sizeof(SORT_TYPE));
-    n = n & 0xFFFFFFFFFFFFFFF0L;
-    
-    assert (n%4==0);
+    //n = n & 0xFFFFFFFFFFFFFFF0L;
+    //assert (n%4==0);
     a = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
     x = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
     res = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);

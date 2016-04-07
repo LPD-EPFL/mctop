@@ -132,7 +132,7 @@ void merge(SORT_TYPE *src, SORT_TYPE *dest, long *partition_starts, long *partit
     partition_b_start = partition_starts[next_partition+1];
     partition_b_size = partition_sizes[next_partition+1];
 
-    printf("[thread %d] getting to work on merge %ld, partition_1 %ld partition_2 %ld, size_a %ld, size_b %ld, dest %ld pos_in_merge %ld\n", mctop_alloc_thread_core_insocket_id(), next_merge, partition_a_start, partition_b_start, partition_a_size, partition_b_size, partition_a_start, pos_in_merge); fflush(stdout);
+    //printf("[thread %d] getting to work on merge %ld, partition_1 %ld partition_2 %ld, size_a %ld, size_b %ld, dest %ld pos_in_merge %ld\n", mctop_alloc_thread_core_insocket_id(), next_merge, partition_a_start, partition_b_start, partition_a_size, partition_b_size, partition_a_start, pos_in_merge); fflush(stdout);
     SORT_TYPE *my_a = &src[partition_a_start];
     SORT_TYPE *my_b = &src[partition_b_start];
     SORT_TYPE *my_dest = &dest[partition_a_start];
@@ -169,14 +169,14 @@ void *merge(void *args) {
         myargs->partition_starts[i] = myargs->partition_starts[i*2];
         myargs->partition_sizes[i] = myargs->partition_sizes[i*2] + myargs->partition_sizes[i*2+1];
       }
-      printf("ending round\n"); 
+      //printf("ending round\n"); 
       if (partitions % 2) {
         myargs->partition_starts[partitions / 2] = myargs->partition_starts[partitions-1];
         myargs->partition_sizes[partitions / 2] = myargs->partition_sizes[partitions-1];
         memcpy((void*) &dest[myargs->partition_starts[partitions-1]], (void *) &src[myargs->partition_starts[partitions-1]], myargs->partition_sizes[partitions-1]*sizeof(SORT_TYPE));
       }
       //printArray2(dest, size, 0);
-      printf("ending round\n"); 
+      //printf("ending round\n"); 
     }
     if (partitions % 2)
       partitions++;
@@ -210,7 +210,7 @@ int main(int argc,char *argv[]){
     //n = n & 0xFFFFFFFFFFFFFFF0L;
     //n = array_size_mb;
     
-    assert (n%4==0);
+    //assert (n%4==0);
     a = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
     res = (SORT_TYPE*) numa_alloc_onnode(n*sizeof(SORT_TYPE), 0);
 
@@ -245,12 +245,12 @@ int main(int argc,char *argv[]){
       __gnu_parallel::sort(a + (i * (n / in_socket_partitions)), a + ((i+1) * (n / in_socket_partitions)));
       partition_starts[i] = (i * (n / in_socket_partitions));
       partition_sizes[i] = (n / in_socket_partitions);
-      printf("partition %ld: %ld - %ld\n", i, (i * (n / in_socket_partitions)), ((i+1) * (n / in_socket_partitions)));
+      //printf("partition %ld: %ld - %ld\n", i, (i * (n / in_socket_partitions)), ((i+1) * (n / in_socket_partitions)));
     }
     __gnu_parallel::sort(a + ((in_socket_partitions-1) * (n / in_socket_partitions)), a + n);
     partition_starts[in_socket_partitions-1] = ((in_socket_partitions-1) * (n / in_socket_partitions));
     partition_sizes[in_socket_partitions-1] = n - ((in_socket_partitions-1) * (n / in_socket_partitions));
-    printf("partition %ld: %ld - %ld\n", in_socket_partitions-1, ((in_socket_partitions-1) * (n / in_socket_partitions)), n);
+    //printf("partition %ld: %ld - %ld\n", in_socket_partitions-1, ((in_socket_partitions-1) * (n / in_socket_partitions)), n);
    
     
     //printArray2(a, n, 0);
