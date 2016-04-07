@@ -65,31 +65,6 @@ timespec_diff(struct timespec start, struct timespec end)
   return temp;
 }
 
-#ifdef __x86_64__
-int
-get_numa_node(void* mem, const uint n_nodes)
-{
-  int numa_node = -1;
-  get_mempolicy(&numa_node, NULL, 0, (void*)mem, MPOL_F_NODE | MPOL_F_ADDR);
-  return numa_node;
-}
-#elif __sparc
-static uint cnode = 0;
-int
-get_numa_node(void* mem, const uint n_nodes)
-{
-  return cnode++ % n_nodes;
-}
-#endif
-
-typedef struct wq_data
-{
-  uint interleaved;
-  uint sorted;
-  size_t len;
-  int* array;
-} wq_data_t;
-
 
 int
 main(int argc, char **argv) 
@@ -182,6 +157,9 @@ main(int argc, char **argv)
       mctop_alloc_print_short(alloc);
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
 
+      const uint fnode = mctop_node_tree_get_final_dest_node(nt);
+      mctop_alloc_pin_nth_socket(alloc, fnode);
+
       unsigned long* seeds = seed_rand();
 
       const size_t array_siz = array_len * sizeof(MCTOP_SORT_TYPE);
@@ -270,80 +248,3 @@ main(int argc, char **argv)
 }
 
 
-int
-cmpfunc(const void* a, const void* b)
-{
-  return (*(MCTOP_SORT_TYPE*)a - *(MCTOP_SORT_TYPE*)b);
-}
-
-
-volatile int remain_consumed = 0;
-
-void*
-test_pin(void* params)
-{
-  /* mctop_alloc_t* alloc = (mctop_alloc_t*) params; */
-  /* mctop_alloc_pin(alloc); */
-
-  /* const uint id = mctop_alloc_thread_id(); */
-  /* const uint n_threads =mctop_alloc_get_num_hw_contexts(alloc); */
-
-  /* const size_t chunk_size_b = chunk_size * sizeof(int); */
-  /* const size_t remain = n_chunks %  n_threads; */
-
-  /* /\* const size_t extra = 0; *\/ */
-  /* /\* const size_t remain_per_sock = remain / mctop_alloc_get_num_sockets(alloc); *\/ */
-
-
-  /* const size_t extra = mctop_alloc_thread_incore_id(); */
-  /* const size_t n_chunks_mine = n_chunks / mctop_alloc_get_num_hw_contexts(alloc); */
-  
-  /* //  int* b = malloc(chunk_size_b * n_chunks_mine); */
-
-  /* for (int c = 0; c < n_chunks_mine; c++) */
-  /*   { */
-  /*     int* a = array + (((c * n_threads) + id) * chunk_size); */
-  /*     int* b = array_out + (((c * n_threads) + id) * chunk_size); */
-  /*     memcpy(b, a, chunk_size_b); */
-  /*     mqsort(b, chunk_size); */
-  /*     /\* qsort(bt, chunk_size, sizeof(int), cmpfunc); *\/ */
-
-  /*     /\* qsort(bt, chunk_size, sizeof(int), cmpfunc); *\/ */
-  /*     /\* int_merge_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* mmergesort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_selection_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_binary_insertion_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_heap_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_shell_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_tim_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_merge_sort_in_place(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_grail_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_sqrt_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_rec_stable_sort(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* int_grail_sort_dyn_buffer(b + (c * chunk_size), chunk_size); *\/ */
-  /*     /\* free(b); *\/ */
-  /*     /\* qsort(a, chunk_size, sizeof(int), cmpfunc); *\/ */
-  /*   } */
-  
-  /* if (extra) */
-  /*   { */
-  /*     do */
-  /* 	{ */
-  /* 	  int nc = __sync_fetch_and_add(&remain_consumed, 1); */
-  /* 	  if (nc < remain) */
-  /* 	    { */
-  /* 	      printf("%u -> ht, wooork - %d!\n", id, nc); */
-  /* 	      int* a = array + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size); */
-  /* 	      int* b = array_out + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size); */
-  /* 	      memcpy(b, a, chunk_size_b); */
-  /* 	      mqsort(b, chunk_size); */
-  /* 	    } */
-  /* 	  else */
-  /* 	    { */
-  /* 	      break; */
-  /* 	    } */
-  /* 	} */
-  /*     while (1); */
-  /*   } */
-  return NULL;
-}

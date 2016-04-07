@@ -203,6 +203,7 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 	}
     }
 
+  nt->barrier_for = barrier_for;
   mctop_node_tree_add_barriers(nt, barrier_for);
   nt->scratchpad = calloc_assert(nt->n_nodes, sizeof(void*));
 
@@ -257,6 +258,7 @@ mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mcto
 	  other_node = pair->nodes[0];
 	}
     
+      ntw->other_node = other_node;
       ntw->num_hw_contexts_my_node = nt->alloc->n_hwcs_per_socket[node];
       ntw->num_hw_contexts_other_node = nt->alloc->n_hwcs_per_socket[other_node];
       ntw->num_hw_contexts = ntw->num_hw_contexts_my_node + ntw->num_hw_contexts_other_node;
@@ -269,6 +271,12 @@ inline uint
 mctop_node_tree_get_num_levels(mctop_node_tree_t* nt)
 {
   return nt->n_levels;
+}
+
+uint
+mctop_node_tree_get_final_dest_node(mctop_node_tree_t* nt)
+{
+  return nt->levels[0].pairs[0].nodes[0];
 }
 
 static mctop_barrier_t*
@@ -310,3 +318,4 @@ mctop_node_tree_scratchpad_get(mctop_node_tree_t* nt, const uint node)
 {
   return nt->scratchpad[node];
 }
+

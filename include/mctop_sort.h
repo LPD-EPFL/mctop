@@ -7,7 +7,49 @@
 extern "C" {
 #endif
 
-#define MCTOP_SORT_TYPE uint
+#define MCTOP_SORT_TYPE             uint
+#define MCTOP_SORT_MIN_LEN_PARALLEL (2 * 1024 * 1024LL / sizeof(MCTOP_SORT_TYPE))
+#define MCTOP_SSE_K                 4
+#define MCTOP_SORT_COPY_FIRST       1
+#define MCTOP_NUM_CHUNKS_PER_THREAD 1
+
+#define MCTOP_SORT_DEBUG            1
+
+
+
+typedef struct mctop_sort_nd 
+{
+  MCTOP_SORT_TYPE* array;
+  size_t n_elems;
+  MCTOP_SORT_TYPE* left;
+  MCTOP_SORT_TYPE* right;
+  size_t n_chunks;
+  const uint8_t padding[64 - 3 * sizeof(MCTOP_SORT_TYPE*) - sizeof(size_t)];
+} mctop_sort_nd_t;
+
+
+typedef MCTOP_ALIGNED(64) struct mctop_sort_td
+{
+  mctop_node_tree_t* nt;
+  MCTOP_SORT_TYPE* array;
+  size_t n_elems;
+  uint8_t padding[64 - sizeof(mctop_node_tree_t*) - sizeof(MCTOP_SORT_TYPE*) - sizeof(size_t)];
+  mctop_sort_nd_t node_data[0];
+} mctop_sort_td_t;
+
+
+
+
+#if MCTOP_SORT_DEBUG == 1
+#  define MSD_DO(x) x
+#else
+#  define MSD_DO(x) x
+#endif
+
+
+
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
 
   void mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt);
 

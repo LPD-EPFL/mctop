@@ -172,7 +172,7 @@ $(MSTPATH)/%.o:: $(MSTPATH)/%.cc
 	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
 $(TSTPATH)/%.o:: $(TSTPATH)/%.c 
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -I./sort_algos/sort -o $@ -c $<
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
 
 ################################################################################
