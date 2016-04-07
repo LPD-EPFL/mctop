@@ -174,7 +174,7 @@ test_pin(void* params)
   int* my_mem_out = memory_nodes[my_node] + (my_node_id * (my_mem_size / sizeof(int)));
   memcpy(my_mem_out, my_mem_in, my_mem_size);
   mctop_alloc_barrier_wait_node(alloc);
-  MCTOP_P_STEP(s, a, b, mctop_alloc_thread_is_node_leader());
+  MCTOP_P_STEP("init", s, a, b, mctop_alloc_thread_is_node_leader());
 
   for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {

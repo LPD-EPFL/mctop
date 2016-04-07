@@ -562,6 +562,7 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
       mctop_alloc_details_calc(alloc, &alloc->n_cores, alloc->n_hwcs_per_socket, alloc->n_cores_per_socket);
 
       alloc->socket_barriers = malloc_assert(topo->n_sockets * sizeof(mctop_barrier_t*));
+      alloc->socket_barriers_cores = malloc_assert(topo->n_sockets * sizeof(mctop_barrier_t*));
       alloc->node_to_nth_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       for (int i = 0; i < alloc->n_sockets; i++)
 	{
@@ -569,6 +570,9 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 	  alloc->socket_barriers[i] = numa_alloc_onnode(sizeof(mctop_barrier_t),
 							alloc->sockets[i]->local_node);
 	  mctop_barrier_init(alloc->socket_barriers[i], alloc->n_hwcs_per_socket[i]);
+	  alloc->socket_barriers_cores[i] = numa_alloc_onnode(sizeof(mctop_barrier_t),
+							      alloc->sockets[i]->local_node);
+	  mctop_barrier_init(alloc->socket_barriers_cores[i], alloc->n_cores_per_socket[i]);
 	}
     }
  
@@ -674,6 +678,14 @@ mctop_alloc_free(mctop_alloc_t* alloc)
 	  numa_free(alloc->socket_barriers[i], sizeof(mctop_barrier_t));
 	}
       free(alloc->socket_barriers);
+    }
+  if (alloc->socket_barriers_cores != NULL)
+    {
+      for (int i = 0; i < alloc->n_sockets; i++)
+	{
+	  numa_free(alloc->socket_barriers_cores[i], sizeof(mctop_barrier_t));
+	}
+      free(alloc->socket_barriers_cores);
     }
   free(alloc);
 }
@@ -1121,5 +1133,15 @@ mctop_alloc_barrier_wait_node(mctop_alloc_t* alloc)
     {
       const uint on = mctop_alloc_thread_node_id();
       mctop_barrier_wait(alloc->socket_barriers[on]);
+    }
+}
+
+void
+mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc)
+{
+  if (mctop_alloc_thread_is_pinned())
+    {
+      const uint on = mctop_alloc_thread_node_id();
+      mctop_barrier_wait(alloc->socket_barriers_cores[on]);
     }
 }

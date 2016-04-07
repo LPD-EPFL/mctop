@@ -85,7 +85,7 @@ main(int argc, char **argv)
       mctop_alloc_print(alloc);
       mctop_alloc_print_short(alloc);
 
-      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc);
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
       mctop_node_tree_print(nt);
 
       mctop_node_tree_free(nt);
