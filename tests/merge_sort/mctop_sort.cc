@@ -100,20 +100,25 @@ size_get_num_div_by_a_b(const size_t in, const uint a, const uint b)
 void mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint node, mctop_type_t barrier_for);
 
 static void
-print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems)
+print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems, const uint print_always)
 {
-  uint sorted = 1;
-  for (size_t i = 1; i < n_elems; i++)
-    {
-      if (array[i - 1] > array[i])
-	{
-	  printf(" >>> error: array[%zu] = %u > array[%zu] = %u\n",
-		 i - 1, array[i - 1], i, array[i]);
-	  sorted = 0;
-	  break;
-	}
-    }
-  printf("## Array %p is sorted: %u\n", array, sorted);
+  MSD_DO(
+	 uint sorted = 1;
+	 for (size_t i = 1; i < n_elems; i++)
+	   {
+	     if (array[i - 1] > array[i])
+	       {
+		 printf(" >>> error: array[%zu] = %u > array[%zu] = %u\n",
+			i - 1, array[i - 1], i, array[i]);
+		 sorted = 0;
+		 break;
+	       }
+	   }
+	 if (print_always || !sorted)
+	   {
+	     printf("## Array %p {size %-10zu} is sorted: %u\n", array, n_elems, sorted);
+	   }
+	 );
 }
 
 void*
@@ -184,7 +189,7 @@ mctop_sort_thr(void* params)
       // the sorted array is in nd->source
       if (mctop_alloc_thread_is_node_leader())
 	{
-	  print_error_sorted(nd->source, nd->n_elems);
+	  print_error_sorted(nd->source, nd->n_elems, 1);
 	} 
     }
   return NULL;
@@ -227,15 +232,16 @@ void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
     {
       mctop_merge_barrier_wait(alloc, barrier_for);
       
-      // if (mctop_alloc_thread_is_node_leader())
-      // 	{
-      // 	  printf("doing round %u\n", n_partitions); 
-      // 	  printf(" partition_start  partition_size\n");
-      // 	  for(uint i = 0; i < n_partitions; i++)
-      // 	    {
-      // 	      printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
-      // 	    }
-      // 	}
+      if (mctop_alloc_thread_is_node_leader())
+      	{
+      	  MSD_DO(printf("#### Merge round %u\n", n_partitions););
+      	  // printf(" partition_start  partition_size\n");
+      	  for(uint i = 0; i < n_partitions; i++)
+      	    {
+      	      // printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
+	      print_error_sorted(src + nd->partitions[i].start_index, nd->partitions[i].n_elems, 0);
+      	    }
+      	}
 
       mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, nthreads);
       mctop_merge_barrier_wait(alloc, barrier_for);

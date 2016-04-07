@@ -27,7 +27,7 @@ seed_rand()
   seeds = (unsigned long*) malloc(64);
   seeds[0] = 1;
   seeds[1] = 2;
-  seeds[2] = 5;
+  seeds[2] = 522;
   return seeds;
 }
 
@@ -186,7 +186,7 @@ main(int argc, char **argv)
 	  printf("  // Random 32bit \n");
 	  for (size_t i = 0; i < array_len; i++)
 	    {
-	      array[i] = mrand(seeds) % INT_MAX;
+	      array[i] = mrand(seeds) % (2000000000);
 	    }
 	  break;
 	case 2:
