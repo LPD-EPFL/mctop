@@ -184,6 +184,7 @@ mctop_sort_thr(void* params)
       if (mctop_alloc_thread_is_node_leader())
 	{
 	  print_error_sorted(nd->source, nd->n_elems, 1);
+          nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
 	} 
     }
 
@@ -194,22 +195,31 @@ mctop_sort_thr(void* params)
       mctop_node_tree_work_t ntw;
       if (mctop_node_tree_get_work_description(nt, l, &ntw))
         {
-          printf("will work on level %d, send to node %u: my source = %p - my destination = %p\n",
-                 l, ntw.other_node, td->node_data[my_node].source,
-		 ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination);
-          
-          //do the merging
-
+          mctop_node_tree_barrier_wait(nt, l);
+          long my_merge_id = ntw.node_role == DESTINATION ? mctop_alloc_thread_core_insocket_id() : mctop_alloc_thread_core_insocket_id() +   mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+          long threads_in_merge = mctop_alloc_get_num_cores_node(alloc, my_node) + mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+          SORT_TYPE *my_a = td->node_data[my_node].source;
+          SORT_TYPE *my_b = td->node_data[ntw.other_node].source;
+          SORT_TYPE *my_dest = ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination;
+          printf("my merge id %ld will work on level %d, send to node %u: my source = %p - my destination = %p\n", my_merge_id,
+                 l, ntw.other_node, td->node_data[my_node].source, ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination);
+          merge_arrays(my_a, my_b, my_dest, td->node_data[my_node].n_elems, td->node_data[ntw.other_node].n_elems, my_merge_id, threads_in_merge);
           mctop_node_tree_barrier_wait(nt, l);
             
-          if (mctop_alloc_thread_is_node_leader() && ntw.node_role == DESTINATION)
-	    {
-	      printf("Thread %d on seq node %d. switching pointers at lvl%d!\n",
-		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
-	      SORT_TYPE *tmp = td->node_data[my_node].source;
-	      td->node_data[my_node].source = td->node_data[my_node].destination;
-	      td->node_data[my_node].source = tmp;
-	    }
+          if (mctop_alloc_thread_is_node_leader() && ntw.node_role == DESTINATION){
+            if (l > 1) {
+              printf("Thread %d on seq node %d. switching pointers at lvl%d!\n",
+                     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
+              SORT_TYPE *tmp = td->node_data[my_node].source;
+              td->node_data[my_node].source = td->node_data[my_node].destination;
+              td->node_data[my_node].destination = tmp;
+            }
+            else {
+              SORT_TYPE *tmp = td->node_data[my_node].source;
+              td->node_data[my_node].source = td->node_data[my_node].destination;
+              td->node_data[my_node].destination = td->array;
+            }
+          }
           mctop_node_tree_barrier_wait(nt, l);
         }
       else
