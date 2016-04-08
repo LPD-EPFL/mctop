@@ -7,7 +7,7 @@
 
 #define MQSORT_ITERATIVE 1 	/* 0 for recursive */
 
-#define SORT_TYPE int
+#define SORT_TYPE uint
 
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
