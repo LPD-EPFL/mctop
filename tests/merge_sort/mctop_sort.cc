@@ -133,7 +133,7 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
-      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
+      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
       assert(nd->source != NULL);
       nd->destination = nd->source + nd->n_elems;
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
@@ -188,11 +188,38 @@ mctop_sort_thr(void* params)
     }
 
 
-
-  if (mctop_alloc_thread_is_node_leader())
+  // do the cross-socket merging
+  for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {
-      mctop_alloc_malloc_free(nd->source, tot_size);
-      mctop_alloc_malloc_free(nd->destination, tot_size);
+      mctop_node_tree_work_t ntw;
+      if (mctop_node_tree_get_work_description(nt, l, &ntw))
+        {
+          printf("will work on level %d, send to node %u: my source = %p - my destination = %p\n",
+                 l, ntw.other_node, td->node_data[my_node].source,
+		 ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination);
+          
+          //do the merging
+
+          mctop_node_tree_barrier_wait(nt, l);
+            
+          if (mctop_alloc_thread_is_node_leader() && ntw.node_role == DESTINATION)
+	    {
+	      printf("Thread %d on seq node %d. switching pointers at lvl%d!\n",
+		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
+	      SORT_TYPE *tmp = td->node_data[my_node].source;
+	      td->node_data[my_node].source = td->node_data[my_node].destination;
+	      td->node_data[my_node].source = tmp;
+	    }
+          mctop_node_tree_barrier_wait(nt, l);
+        }
+      else
+        {
+          if (mctop_alloc_thread_is_node_leader())
+            {
+	      printf("Thread %d on seq node %d. No work for node @ lvl%d!\n",
+		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
+            }
+        }
     }
   return NULL;
 }
