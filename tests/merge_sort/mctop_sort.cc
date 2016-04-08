@@ -8,6 +8,7 @@ void* mctop_sort_thr(void* params);
 void
 mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt)
 {
+#warning comment out
   // if (unlikely(n_elems <= MCTOP_SORT_MIN_LEN_PARALLEL) ||
   //     mctop_alloc_get_num_hw_contexts(nt->alloc) == 1)
   //   {
@@ -72,14 +73,41 @@ size_get_num_div_by_a_b(const size_t in, const uint a, const uint b)
   size_t s = in;
   uint min = a < b ? a : b;
   uint m = a * b;
-  while (1)
+  if (likely(a > 1 && b > 1))
     {
-      const uint nm = m / min;
-      if (!((nm % a) == 0 && ((nm % b) == 0)))
+      while (1)
 	{
-	  break;
+	  const uint nm = m / min;
+	  if (!((nm % a) == 0 && ((nm % b) == 0) && nm <= min))
+	    {
+	      break;
+	    }
+	  m = nm;
 	}
-	m = nm;
+    }
+  else if (a > 1)
+    {
+      while (1)
+	{
+	  const uint nm = m / min;
+	  if (!((nm % a) == 0 && nm <= min))
+	    {
+	      break;
+	    }
+	  m = nm;
+	}
+    }
+  else if (b > 1)				// b > 1
+    {
+      while (1)
+	{
+	  const uint nm = m / min;
+	  if (!((nm % b) == 0 && nm <= min))
+	    {
+	      break;
+	    }
+	  m = nm;
+	}
     }
 
   while (s % m)
@@ -115,6 +143,8 @@ print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems, const uint prin
 	 );
 }
 
+void mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node);
+
 void*
 mctop_sort_thr(void* params)
 {
@@ -135,8 +165,8 @@ mctop_sort_thr(void* params)
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
       nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
-      assert(nd->source != NULL);
-      nd->destination = nd->source + nd->n_elems;
+      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+      assert(nd->source != NULL && nd->destination != NULL);
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
       nd->partitions = (mctop_sort_pd_t*) malloc(nd->n_chunks * sizeof(mctop_sort_pd_t));
     }
@@ -177,6 +207,7 @@ mctop_sort_thr(void* params)
       std::sort(low, high);
     }
 
+  mctop_alloc_barrier_wait_node(alloc);
   if (mctop_alloc_thread_incore_id() == 0) // only cores!!
     {
       mctop_sort_merge_in_socket(alloc, nd, my_node, nt->barrier_for);
@@ -186,52 +217,20 @@ mctop_sort_thr(void* params)
 	{
 	  print_error_sorted(nd->source, nd->n_elems, 1);
           nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
-	} 
-    }
+	}
 
-
-  // do the cross-socket merging
-  for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
-    {
-      mctop_node_tree_work_t ntw;
-      if (mctop_node_tree_get_work_description(nt, l, &ntw))
-        {
-          mctop_node_tree_barrier_wait(nt, l);
-          long my_merge_id = ntw.node_role == DESTINATION ? mctop_alloc_thread_core_insocket_id() : mctop_alloc_thread_core_insocket_id() +   mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
-          long threads_in_merge = mctop_alloc_get_num_cores_node(alloc, my_node) + mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
-          SORT_TYPE *my_a = td->node_data[my_node].source;
-          SORT_TYPE *my_b = td->node_data[ntw.other_node].source;
-          SORT_TYPE *my_dest = ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination;
-          printf("my merge id %ld will work on level %d, send to node %u: my source = %p - my destination = %p\n", my_merge_id,
-                 l, ntw.other_node, td->node_data[my_node].source, ntw.node_role == DESTINATION ? td->node_data[my_node].destination : td->node_data[ntw.other_node].destination);
-          merge_arrays(my_a, my_b, my_dest, td->node_data[my_node].n_elems, td->node_data[ntw.other_node].n_elems, my_merge_id, threads_in_merge);
-          mctop_node_tree_barrier_wait(nt, l);
-            
-          if (mctop_alloc_thread_is_node_leader() && ntw.node_role == DESTINATION){
-            if (l > 1) {
-              printf("Thread %d on seq node %d. switching pointers at lvl%d!\n",
-                     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
-              SORT_TYPE *tmp = td->node_data[my_node].source;
-              td->node_data[my_node].source = td->node_data[my_node].destination;
-              td->node_data[my_node].destination = tmp;
-            }
-            else {
-              SORT_TYPE *tmp = td->node_data[my_node].source;
-              td->node_data[my_node].source = td->node_data[my_node].destination;
-              td->node_data[my_node].destination = td->array;
-            }
-          }
-          mctop_node_tree_barrier_wait(nt, l);
-        }
+      if (nt->n_nodes > 1)
+	{
+	  mctop_sort_merge_cross_socket(td, my_node);
+	}
       else
-        {
-          if (mctop_alloc_thread_is_node_leader())
-            {
-	      printf("Thread %d on seq node %d. No work for node @ lvl%d!\n",
-		     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l);
-            }
-        }
+	{
+#warning need to land to the correct array!
+	}
+
     }
+
+
   return NULL;
 }
 
@@ -257,23 +256,7 @@ void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 static inline uint
 n_threads_per_part_calc(const uint n_partitions, const uint n_threads)
 {
-  // if (n_partitions >= 32)
-  //   {
-  //     return 2;
-  //   }
-  // else
-  if (n_partitions >= 16)
-    {
-      return 2;
-    }
-  else if (n_partitions > n_threads)
-    {
-      return n_threads >> 1;
-    }
-  else
-    {
-      return n_threads;
-    }
+  return n_threads;
 }
 
 
@@ -304,7 +287,7 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
       	  // printf(" partition_start  partition_size\n");
       	  for(uint i = 0; i < n_partitions; i++)
       	    {
-	      //      	      printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
+	      // printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
 	      print_error_sorted(src + nd->partitions[i].start_index, nd->partitions[i].n_elems, 0);
       	    }
       	}
@@ -379,6 +362,76 @@ mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 
       merge_arrays(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
       next_partition += (nthreads / threads_per_partition) << 1;
+    }
+}
+
+void
+mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
+{
+  mctop_node_tree_t* nt = td->nt;
+  mctop_alloc_t* alloc = nt->alloc;
+  mctop_sort_nd_t* my_nd = &td->node_data[my_node];
+
+  for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
+    {
+      mctop_node_tree_work_t ntw;
+      if (mctop_node_tree_get_work_description(nt, l, &ntw))
+        {
+          mctop_node_tree_barrier_wait(nt, l);
+	  uint my_merge_id = mctop_alloc_thread_core_insocket_id();
+          const uint threads_in_merge = mctop_alloc_get_num_cores_node(alloc, my_node) +
+	    mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+
+	  uint a, b;
+	  if (ntw.node_role == DESTINATION)
+	    {
+	      a = my_node;
+	      b = ntw.other_node;
+	    }
+	  else 			// SOURCE_ONLY
+	    {
+	      a = ntw.other_node;
+	      b = my_node;
+	      my_merge_id += mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+	    }
+
+          MCTOP_SORT_TYPE* my_a = td->node_data[a].source;
+	  const size_t n_elems_a = td->node_data[a].n_elems;
+	  MCTOP_SORT_TYPE* my_b = td->node_data[b].source;
+	  const size_t n_elems_b = td->node_data[b].n_elems;
+	  MCTOP_SORT_TYPE* my_dest = td->node_data[a].destination;
+	  if (l == 0)
+	    {
+	      my_dest = td->array;
+	    }
+
+          MSD_DO(printf("[Node %u] L%u: MId %-2u: DST %u: a=%p [#%zu], b=%p[#%zu], d=%p -- #thr %u\n", my_node, l, my_merge_id,
+			a, my_a, n_elems_a, my_b, n_elems_b, my_dest, threads_in_merge););
+
+          mctop_node_tree_barrier_wait(nt, l);
+	  
+          merge_arrays(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
+          mctop_node_tree_barrier_wait(nt, l);
+            
+          if (mctop_alloc_thread_is_node_leader())
+	    {
+              MSD_DO(printf("Node %d:: Switching pointers @ lvl %d!\n", my_node, l););
+	      my_nd->n_elems = n_elems_a + n_elems_b;
+              MCTOP_SORT_TYPE* tmp = my_nd->source;
+              my_nd->source = my_nd->destination;
+              my_nd->destination = tmp;
+            }
+	}
+      else
+	{
+	  if (mctop_alloc_thread_is_node_leader())
+	    {
+	      MSD_DO( printf("Node %d. No work for node @ lvl %d!\n", my_node, l););
+	      return;
+	    }
+	}
+
+      mctop_node_tree_barrier_wait(nt, l);
     }
 }
 
