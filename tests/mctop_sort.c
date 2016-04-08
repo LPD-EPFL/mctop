@@ -7,11 +7,8 @@
 #endif
 
 #include <mctop_rand.h>
-
 #include <mctop_sort.h>
 
-#include <mqsort.h>
-#include <mmergesort.h>
 
 void* test_pin(void* params);
 
