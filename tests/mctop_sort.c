@@ -6,47 +6,14 @@
 #  include <numaif.h>
 #endif
 
+#include <mctop_rand.h>
+
 #include <mctop_sort.h>
 
 #include <mqsort.h>
 #include <mmergesort.h>
 
-/* #define SORT_NAME int */
-/* #define SORT_TYPE int */
-/* #define SORT_CMP(x, y) ((x) - (y)) */
-/* #include "sort.h" */
-
 void* test_pin(void* params);
-
-#define mrand(x) xorshf96(&x[0], &x[1], &x[2])
-
-static inline unsigned long* 
-seed_rand() 
-{
-  unsigned long* seeds;
-  seeds = (unsigned long*) malloc(64);
-  seeds[0] = 1;
-  seeds[1] = 2;
-  seeds[2] = 522;
-  return seeds;
-}
-
-//Marsaglia's xorshf generator
-static inline unsigned long
-xorshf96(unsigned long* x, unsigned long* y, unsigned long* z)  //period 2^96-1
-{
-  unsigned long t;
-  (*x) ^= (*x) << 16;
-  (*x) ^= (*x) >> 5;
-  (*x) ^= (*x) << 1;
-
-  t = *x;
-  (*x) = *y;
-  (*y) = *z;
-  (*z) = t ^ (*x) ^ (*y);
-
-  return *z;
-}
 
 struct timespec
 timespec_diff(struct timespec start, struct timespec end)
@@ -160,7 +127,7 @@ main(int argc, char **argv)
       const uint fnode = mctop_node_tree_get_final_dest_node(nt);
       mctop_alloc_pin_nth_socket(alloc, fnode);
 
-      unsigned long* seeds = seed_rand();
+      unsigned long* seeds = seed_rand_fixed();
 
       const size_t array_siz = array_len * sizeof(MCTOP_SORT_TYPE);
       array = (MCTOP_SORT_TYPE*) malloc(array_siz);
@@ -176,7 +143,7 @@ main(int argc, char **argv)
 	    }
 	  for (size_t i = array_len - 1; i > 0; i--)
 	    {
-	      const uint j = mrand(seeds) % array_len;
+	      const uint j = mctop_rand(seeds) % array_len;
 	      const MCTOP_SORT_TYPE tmp = array[i];
 	      array[i] = array[j];
 	      array[j] = tmp;
@@ -186,7 +153,7 @@ main(int argc, char **argv)
 	  printf("  // Random 32bit \n");
 	  for (size_t i = 0; i < array_len; i++)
 	    {
-	      array[i] = mrand(seeds) % (2000000000);
+	      array[i] = mctop_rand(seeds) % (2000000000);
 	    }
 	  break;
 	case 2:
