@@ -13,7 +13,7 @@ extern "C" {
 #define MCTOP_SORT_COPY_FIRST       1
 #define MCTOP_NUM_CHUNKS_PER_THREAD 1
 
-#define MCTOP_SORT_DEBUG            1
+#define MCTOP_SORT_DEBUG            0
 
   /* partition descriptor */
 typedef struct mctop_sort_pd

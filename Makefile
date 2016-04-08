@@ -125,7 +125,7 @@ work_queue_sort1: ${TSTPATH}/work_queue_sort1.o libmctop.a ${INCLUDES}
 sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
 
-mctop_sort: ${TSTPATH}/mctop_sort.o ${MSTPATH}/mctop_sort.o libmctop.a ${INCLUDES}
+mctop_sort: ${TSTPATH}/mctop_sort.o ${MSTPATH}/mctop_sort.o libmctop.a  ${INCLUDES} 
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS} ${MALLOC}
 
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
@@ -171,7 +171,7 @@ merge_sort_seq_merge: ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp libmctop.a 
 $(SRCPATH)/%.o:: $(SRCPATH)/%.c 
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
-$(MSTPATH)/%.o:: $(MSTPATH)/%.cc
+$(MSTPATH)/%.o:: $(MSTPATH)/%.cc FORCE
 	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
 
 $(TSTPATH)/%.o:: $(TSTPATH)/%.c 

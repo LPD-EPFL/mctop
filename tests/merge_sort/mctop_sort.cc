@@ -8,12 +8,12 @@ void* mctop_sort_thr(void* params);
 void
 mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt)
 {
-  if (unlikely(n_elems <= MCTOP_SORT_MIN_LEN_PARALLEL) ||
-      mctop_alloc_get_num_hw_contexts(nt->alloc) == 1)
-    {
-      std::sort(array, array + n_elems);
-      return;
-    }
+  // if (unlikely(n_elems <= MCTOP_SORT_MIN_LEN_PARALLEL) ||
+  //     mctop_alloc_get_num_hw_contexts(nt->alloc) == 1)
+  //   {
+  //     std::sort(array, array + n_elems);
+  //     return;
+  //   }
 
   mctop_alloc_t* alloc = nt->alloc;
 
@@ -64,12 +64,6 @@ mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt)
 
   free(td);
 }
-
-struct two_arrays
-{
-  MCTOP_SORT_TYPE* left;
-  MCTOP_SORT_TYPE* right;
-};
 
 
 static inline size_t
@@ -125,6 +119,7 @@ void*
 mctop_sort_thr(void* params)
 {
   mctop_sort_td_t* td = (mctop_sort_td_t*) params;
+  const size_t tot_size = td->n_elems * sizeof(MCTOP_SORT_TYPE);
   mctop_node_tree_t* nt = td->nt;
   mctop_alloc_t* alloc = nt->alloc;
 
@@ -133,13 +128,12 @@ mctop_sort_thr(void* params)
 
   const uint my_node = mctop_alloc_thread_node_id();
   mctop_sort_nd_t* nd = &td->node_data[my_node];
-  const size_t node_size = nd->n_elems * sizeof(MCTOP_SORT_TYPE);
   const uint my_node_n_hwcs = mctop_alloc_get_num_hw_contexts_node(alloc, my_node);
 
   if (mctop_alloc_thread_is_node_leader())
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
-      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * node_size);
+      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
       assert(nd->source != NULL);
       nd->destination = nd->source + nd->n_elems;
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
@@ -147,7 +141,7 @@ mctop_sort_thr(void* params)
     }
   mctop_alloc_barrier_wait_node(alloc);
 
-  MCTOP_SORT_TYPE* array_a = nd->source, * array_b = nd->destination;
+  MCTOP_SORT_TYPE* array_a = nd->source;
 
   size_t my_n_elems = nd->n_elems / my_node_n_hwcs;
   const uint my_node_n_hwcs_merge = (nt->barrier_for == CORE) ?
@@ -176,9 +170,9 @@ mctop_sort_thr(void* params)
       nd->partitions[partition_index].n_elems = my_n_elems_c;
       
       // copy and sort in array_a = nd->source;
-      memcpy(dest + offs, copy + offs, my_n_elems_c * sizeof(MCTOP_SORT_TYPE));
       MCTOP_SORT_TYPE* low = dest + offs;
-      MCTOP_SORT_TYPE* high = dest + my_n_elems_c;
+      memcpy(low, copy + offs, my_n_elems_c * sizeof(MCTOP_SORT_TYPE));
+      MCTOP_SORT_TYPE* high = low + my_n_elems_c;
       std::sort(low, high);
     }
 
@@ -191,6 +185,14 @@ mctop_sort_thr(void* params)
 	{
 	  print_error_sorted(nd->source, nd->n_elems, 1);
 	} 
+    }
+
+
+
+  if (mctop_alloc_thread_is_node_leader())
+    {
+      mctop_alloc_malloc_free(nd->source, tot_size);
+      mctop_alloc_malloc_free(nd->destination, tot_size);
     }
   return NULL;
 }
@@ -213,15 +215,39 @@ void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 		      mctop_sort_pd_t* partitions, const uint n_partitions,
 		      const uint threads_per_partition, const uint nthreads);
 
-  void
-  mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint node, mctop_type_t barrier_for)
+
+static inline uint
+n_threads_per_part_calc(const uint n_partitions, const uint n_threads)
+{
+  // if (n_partitions >= 32)
+  //   {
+  //     return 2;
+  //   }
+  // else
+  if (n_partitions >= 16)
+    {
+      return 2;
+    }
+  else if (n_partitions > n_threads)
+    {
+      return n_threads >> 1;
+    }
+  else
+    {
+      return n_threads;
+    }
+}
+
+
+void
+mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint node, mctop_type_t barrier_for)
 {
   MCTOP_SORT_TYPE* src = nd->source;
   MCTOP_SORT_TYPE* dest = nd->destination;
 
   uint n_partitions = nd->n_chunks;
   const uint nthreads = mctop_alloc_get_num_cores_node(alloc, node);
-  const uint threads_per_partition = nthreads;
+  uint threads_per_partition = nthreads;
 
   if (mctop_alloc_thread_is_node_leader())
     {
@@ -230,15 +256,17 @@ void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 
   while (n_partitions > 1)
     {
+      threads_per_partition = n_threads_per_part_calc(n_partitions, nthreads);
+
       mctop_merge_barrier_wait(alloc, barrier_for);
       
       if (mctop_alloc_thread_is_node_leader())
       	{
-      	  MSD_DO(printf("#### Merge round %u\n", n_partitions););
+      	  // MSD_DO(printf("#### Merge round %u\n", n_partitions););
       	  // printf(" partition_start  partition_size\n");
       	  for(uint i = 0; i < n_partitions; i++)
       	    {
-      	      // printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
+	      //      	      printf(" %8ld  %8ld\n", nd->partitions[i].start_index, nd->partitions[i].n_elems);
 	      print_error_sorted(src + nd->partitions[i].start_index, nd->partitions[i].n_elems, 0);
       	    }
       	}
