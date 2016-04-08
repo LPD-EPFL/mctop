@@ -122,6 +122,7 @@ mctop_sort_thr(void* params)
   const size_t tot_size = td->n_elems * sizeof(MCTOP_SORT_TYPE);
   mctop_node_tree_t* nt = td->nt;
   mctop_alloc_t* alloc = nt->alloc;
+  const size_t node_size = tot_size / alloc->n_sockets;
 
   mctop_alloc_pin(alloc);
   //  MSD_DO(mctop_alloc_thread_print();)
