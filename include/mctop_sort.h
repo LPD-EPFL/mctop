@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #define MCTOP_SORT_TYPE             uint
+#define MCTOP_SORT_TYPE_FORMAT      "%u"
 #define MCTOP_SORT_MIN_LEN_PARALLEL (2 * 1024 * 1024LL / sizeof(MCTOP_SORT_TYPE))
 #define MCTOP_SSE_K                 4
 #define MCTOP_SORT_COPY_FIRST       1

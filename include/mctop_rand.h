@@ -1,6 +1,8 @@
 #ifndef __H_MCTOP_RAND__
 #define __H_MCTOP_RAND__
 
+#include <mctop.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

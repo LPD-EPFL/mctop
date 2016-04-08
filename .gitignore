@@ -44,12 +44,16 @@
 /mctop_latency
 /mctop_sort
 /merge_sort_merge_level
+/merge_sort_merge_level_up
 /merge_sort_parallel_merge
+/merge_sort_parallel_merge_imbalanced
 /merge_sort_parallel_merge_nosse
 /merge_sort_parallel_merge_notworking
 /merge_sort_seq_merge
 /merge_sort_std
 /merge_sort_std_parallel
+/merge_sort_tbb_parallel
+/merge_sort_cilkplus_parallel
 /node_tree
 /numa_alloc
 /pile

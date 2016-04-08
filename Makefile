@@ -143,6 +143,12 @@ merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
 merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp
 
+merge_sort_tbb_parallel: ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp libmctop.a ${INCLUDES}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp -o merge_sort_tbb_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -ltbb
+
+merge_sort_cilkplus_parallel: ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp libmctop.a ${INCLUDES}
+	g++-5 $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp -o merge_sort_cilkplus_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -lcilkrts
+
 merge_sort_parallel_merge: ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp libmctop.a ${INCLUDES} FORCE FORCE
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} -ljemalloc -fopenmp
 

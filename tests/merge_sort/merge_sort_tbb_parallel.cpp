@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <malloc.h>
-#include <algorithm>
+#include "tbb/parallel_sort.h"
 #include "mctop_rand.h"
 #include "mctop_sort.h"
 
@@ -20,7 +20,7 @@ void readArray2(MCTOP_SORT_TYPE [], const long);
 void printArray2(MCTOP_SORT_TYPE [], const long, const int);
 
 MCTOP_SORT_TYPE *a __attribute__((aligned(64)));
-unsigned long* seeds;
+unsigned long *seeds;
 
 int main(int argc,char *argv[]){
     long n, threads;
@@ -30,11 +30,8 @@ int main(int argc,char *argv[]){
 
     long array_size_mb = atol(argv[1]);
     seeds = seed_rand_fixed();
-
-    n = array_size_mb * 1024LL * (1024LL / sizeof(uint));
-    //n = n & 0xFFFFFFFFFFFFFFF0L;
+    n = array_size_mb * 1024LL * (1024LL / sizeof(MCTOP_SORT_TYPE));
     
-    //assert (n%4==0);
     a = (MCTOP_SORT_TYPE*) malloc(n*sizeof(MCTOP_SORT_TYPE));
 
     threads = atoi(argv[2]);
@@ -44,7 +41,7 @@ int main(int argc,char *argv[]){
 
     gettimeofday(&start, NULL);
     //===============
-    std::sort(a, a+n);
+    tbb::parallel_sort(a, a + n);
     //==============
     gettimeofday(&stop, NULL);
 

@@ -8,40 +8,34 @@
 #include <sys/time.h>
 #include <malloc.h>
 #include <parallel/algorithm>
+#include "mctop_rand.h"
+#include "mctop_sort.h"
 
-#define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))
 #define min(x, y) (x<y?x:y)
 #define max(x, y) (x<y?y:x)
 
 //pthread_mutex_t global_lock;
 
-void readArray2(uint [], const long);
-void printArray2(uint [], const long, const int);
+void readArray2(MCTOP_SORT_TYPE [], const long);
+void printArray2(MCTOP_SORT_TYPE [], const long, const int);
 
-uint *a __attribute__((aligned(64)));
-
+MCTOP_SORT_TYPE *a __attribute__((aligned(64)));
+unsigned long *seeds;
 
 int main(int argc,char *argv[]){
     long n, threads;
     struct timeval start, stop;
     unsigned long usec;
-    assert(argc >= 4);
+    assert(argc >= 3);
 
     long array_size_mb = atol(argv[1]);
-
-    n = array_size_mb * 1024 * 1024LL / sizeof(uint);
-    n = n & 0xFFFFFFFFFFFFFFF0L;
+    seeds = seed_rand_fixed();
+    n = array_size_mb * 1024LL * (1024LL / sizeof(MCTOP_SORT_TYPE));
     
-    assert (n%4==0);
-    a = (uint*) malloc(n*sizeof(uint));
+    a = (MCTOP_SORT_TYPE*) malloc(n*sizeof(MCTOP_SORT_TYPE));
 
     threads = atoi(argv[2]);
     assert(threads>0);
-
-    if (argc > 4)
-      srand(atoi(argv[4]));
-    else
-      srand(42);
 
     readArray2(a, n);
 
@@ -61,7 +55,7 @@ int main(int argc,char *argv[]){
 }
 
 
-void readArray2(uint a[], const long limit)
+void readArray2(MCTOP_SORT_TYPE a[], const long limit)
 {
     long i;
     printf("Populating the array...");fflush(stdout);
@@ -71,8 +65,8 @@ void readArray2(uint a[], const long limit)
 
     // Knuth shuffle
     for (i=limit-1; i > 0; i--){
-        long j = RAND_RANGE(i);
-        uint tmp = a[i];
+        long j = mctop_rand(seeds) % limit;
+        MCTOP_SORT_TYPE tmp = a[i];
         a[i] = a[j];
         a[j] = tmp;
      }
@@ -80,13 +74,13 @@ void readArray2(uint a[], const long limit)
 }
 
 
-void printArray2(uint *y, const long n, const int assert)
+void printArray2(MCTOP_SORT_TYPE *y, const long n, const int assert)
 {
     long i;
     for(i = 0; i < n; i++){
         if (assert)
-          assert(y[i] == (uint)i);
+          assert(y[i] == (MCTOP_SORT_TYPE)i);
         else
-          printf("x[%ld] = %u \n",i,y[i]);
+          printf("x[%ld] = " MCTOP_SORT_TYPE_FORMAT " \n",i,y[i]);
     }
 }
