@@ -77,6 +77,27 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
 }
 
 
+static inline void merge_arrays_nosse(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, long sizea, long sizeb, long myid, long num_threads) {
+    long i,j;
+    i=0;
+    j=0;
+    long k=0;
+
+    while ((i<sizea) && (j<sizeb))
+    {
+        if (a[i] < b[j])
+            dest[k++] = a[i++];
+
+        else
+            dest[k++] = b[j++];
+    }
+
+    while (i < sizea)
+        dest[k++] = a[i++];
+
+    while (j < sizeb)
+        dest[k++] = b[j++];
+}
 
 
 static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, long sizea, long sizeb, long myid, long num_threads) {
