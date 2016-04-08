@@ -10,8 +10,9 @@
 
 void* test_pin(void* params);
 
-int* array, * array_out, * chunks, chunk_size;
-uint chunks_per_thread = 1;
+int* array, * array_out, * chunks;
+size_t chunk_size = 1024 * 1024;
+size_t n_chunks;
 
 #define mrand(x) xorshf96(&x[0], &x[1], &x[2])
 
@@ -140,7 +141,7 @@ main(int argc, char **argv)
 	  test_policy = (mctop_alloc_policy) atoi(optarg);
 	  break;
 	case 'g':
-	  chunks_per_thread = atoi(optarg);
+	  chunk_size = atoi(optarg) *  1024LU;
 	  break;
 	case 's':
 	  {
@@ -179,8 +180,6 @@ main(int argc, char **argv)
       /* mctop_alloc_print(alloc); */
       mctop_alloc_print_short(alloc);
 
-      mctop_wq_t* wq = mctop_wq_create(alloc);
-
       unsigned long* seeds = seed_rand();
 
       const size_t array_siz = array_len * sizeof(int);
@@ -189,7 +188,7 @@ main(int argc, char **argv)
       array_out = (int*) malloc(array_siz);
       assert(array_out != NULL);
 
-      const uint n_chunks = chunks_per_thread * alloc->n_hwcs;
+      n_chunks = array_siz / chunk_size;
 
       chunks = (int*) malloc(n_chunks * sizeof(int));
       chunk_size = array_len / n_chunks;
@@ -253,7 +252,7 @@ main(int argc, char **argv)
 
       free(seeds);
 
-      printf("# Data = %llu MB -- #Chunks = %d -- Per chunk = %lu MB\n",
+      printf("# Data = %llu MB -- #Chunks = %zu -- Per chunk = %lu MB\n",
 	     array_siz / (1024 * 1024LL), n_chunks, (chunk_size * sizeof(int)) / (1024 * 1024));
 
       if (test_run_pin)
@@ -272,7 +271,7 @@ main(int argc, char **argv)
 
 	  for(uint t = 0; t < n_hwcs; t++)
 	    {
-	      int rc = pthread_create(&threads[t], &attr, test_pin, wq);
+	      int rc = pthread_create(&threads[t], &attr, test_pin, alloc);
 	      if (rc)
 		{
 		  printf("ERROR; return code from pthread_create() is %d\n", rc);
@@ -297,20 +296,22 @@ main(int argc, char **argv)
 	  double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
 	  printf("## Sorted %llu MB of ints in %f seconds\n", array_siz / (1024 * 1024LL), dur_s);
 
-	  for (uint i = 0; i < array_len - 1; i++)
+	  const size_t chunk_size_elems = chunk_size / sizeof(int);
+	  for (uint c = 0; c < n_chunks; c++)
 	    {
-	      /* assert(array_out[i] < array_out[i + 1]); */
-	      if (array_out[i]  > array_out[i + 1])
+	      int* check = array_out + (c * chunk_size_elems);
+	      for (uint i = 0; i < chunk_size_elems - 1; i++)
 		{
-		  printf("array_out[%d] = %-5d > array_out[%d] = %-5d\n",
-			 i, array_out[i], i + 1, array_out[i + 1]);
-		  break;
+		  if (check[i] > check[i + 1])
+		    {
+		      printf("check[%d] = %-5d > check[%d] = %-5d\n",
+			     i, check[i], i + 1, check[i + 1]);
+		      break;
+		    }
 		}
 	    }
-
 	}
 
-      mctop_wq_free(wq);
       mctop_alloc_free(alloc);
 
       mctop_free(topo);
@@ -327,113 +328,28 @@ cmpfunc(const void* a, const void* b)
   return (*(int*)a - *(int*)b);
 }
 
-static inline void
-bsort(int* arr, const uint len)
-{
-  uint n_swaps;
-  do
-    {
-      n_swaps = 0;
-      for (uint j = 1; j < len; j++)
-	{
-	  if (arr[j - 1] > arr[j])
-	    {
-	      int tmp = arr[j - 1];
-	      arr[j - 1] = arr[j];
-	      arr[j] = tmp;
-	      n_swaps = 1;
-	    }
-	}
-    }
-  while (n_swaps);
-}
-
-static inline uint
-wq_sort(wq_data_t* wpd)
-{
-  if (wpd->sorted == 1)
-    {
-      return 0;
-    }
-
-  wpd->sorted = 1;
-  qsort(wpd->array, wpd->len, sizeof(int), cmpfunc);
-  /* bsort(wpd->array, wpd->len); */
-  return 1;
-}
-
-// wq_data_t*
-// wq_merge(const wq_data_t* w0, const wq_data_t* w1)
-// {
-//   size_t len = w0->len + w1->len;
-//   int* anew = (int*) malloc_assert(len * sizeof(int));
-
-//   uint i0 = 0, i1 = 0, o = 0;
-//   while (i0 < w0->len && i1 < w1->len)
-//     {
-//       if (w0->array[i0] < w1->array[i1])
-// 	{
-// 	  anew[o++] = w0->array[i0++];
-// 	}
-//       else
-// 	{
-// 	  anew[o++] = w1->array[i1++];
-// 	}
-//     }
-
-//   while (i0 < w0->len)
-//     {
-//       anew[o++] = w0->array[i0++];
-//     }
-//   while (i1 < w1->len)
-//     {
-//       anew[o++] = w1->array[i1++];
-//     }
-
-//   if (w0->interleaved == 0)
-//     {
-//       free(w0->array);
-//     }
-//   if (w1->interleaved == 0)
-//     {
-//       free(w1->array);
-//     }
-
-//   free((void*) w0);
-//   free((void*) w1);
-
-//   return wq_data_create(0, 1, len, anew);
-// }
-
-int mctop_alloc_thread_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
-
 void*
 test_pin(void* params)
 {
-  mctop_wq_t* wq = (mctop_wq_t*) params;
-  mctop_alloc_t* alloc = wq->alloc;
+  mctop_alloc_t* alloc = (mctop_alloc_t*) params;
   mctop_alloc_pin(alloc);
+
   const uint id = mctop_alloc_thread_id();
+  const uint n_threads =mctop_alloc_get_num_hw_contexts(alloc);
 
-  int my_chunk_offs = chunks[id * chunks_per_thread];
   const size_t chunk_size_b = chunk_size * sizeof(int);
+  const size_t remain = n_chunks %  n_threads;
+  const size_t remain_per_sock = remain / mctop_alloc_get_num_sockets(alloc);
+  const size_t extra = (id < remain_per_sock);
 
-  /* if (id < 3) */
-  /*   { */
-  /*     printf("%-2d --> %d = %lu MB\n", */
-  /* 	     id, my_chunk_offs, chunk_size_b * chunks_per_thread / (1024*1024)); */
-  /*   } */
-
-  int* a = array + my_chunk_offs;
-  int* b = (int*) malloc(chunk_size_b * chunks_per_thread);
-  memcpy(b, a, chunk_size_b * chunks_per_thread);
-
-  for (uint c = 0; c < chunks_per_thread; c++)
+  const size_t n_chunks_mine = n_chunks / mctop_alloc_get_num_hw_contexts(alloc) + extra;
+  
+  for (uint c = 0; c < n_chunks_mine; c++)
     {
-      // qsort(b + (c * chunk_size), chunk_size, sizeof(int), cmpfunc);
-      int* start = b + (c * chunk_size);
-      int* stop = start + chunk_size;
-      std::sort(start, stop);
+      int* a = array + (((c * n_threads) + id) * chunk_size);
+      int* bt = array_out + (((c * n_threads) + id) * chunk_size);
+      memcpy(bt, a, chunk_size_b);
+      std::sort(bt, bt + chunk_size);
       // std::sort_heap(start, stop);
       /* free(b); */
       /* qsort(a, chunk_size, sizeof(int), cmpfunc); */
