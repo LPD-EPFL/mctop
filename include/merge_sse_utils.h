@@ -61,6 +61,6 @@ static inline void sse_merge_aligned_32bit(void *a, void *b, void *dest, size_t 
       next=last;
   }
   *(dest128+next_val)=next;
-}
+} 
 
 #endif
