@@ -2,8 +2,6 @@
 #define __H_MMERGESORT__
 /* adapted from https://github.com/swenson/sort */
 
-#define SORT_TYPE int
-
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
