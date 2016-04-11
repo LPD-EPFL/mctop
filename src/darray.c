@@ -171,6 +171,22 @@ darray_exists(darray_t* da, uintptr_t elem)
   return 0;
 }
 
+inline int
+darray_exists_pos(darray_t* da, uintptr_t elem, uint* pos)
+{
+  for (int i = 0; i < da->n_elems; i++)
+    {
+      if (unlikely(elem == da->array[i]))
+	{
+	  *pos = i;
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+
+
 inline size_t
 darray_get_num_elems(darray_t* da)
 {

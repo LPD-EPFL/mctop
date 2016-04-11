@@ -41,8 +41,8 @@ void darray_push(darray_t* da, uintptr_t elem); /* add as a first elem */
 uintptr_t darray_get(darray_t* da, const size_t idx);
 int darray_elem_is_at(darray_t* da, uintptr_t elem, const size_t idx);
 
-
 int darray_exists(darray_t* da, uintptr_t elem);
+int darray_exists_pos(darray_t* da, uintptr_t elem, uint* pos);
 size_t darray_get_num_elems(darray_t* da);
 uintptr_t darray_get_elem_n(darray_t* da, uintptr_t n);
 
