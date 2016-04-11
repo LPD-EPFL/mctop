@@ -457,7 +457,6 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 			    my_node, ntw.other_node, l, my_merge_id, a, my_a, n_elems_a, my_b, n_elems_b, my_dest, threads_in_merge);
 		   });
 
-          mctop_node_tree_barrier_wait(nt, l);
 	  
 #if MCTOP_SORT_USE_SSE == 1
           merge_arrays(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
@@ -465,11 +464,16 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
           merge_arrays_no_sse(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
 #endif
 
-          mctop_node_tree_barrier_wait(nt, l);
+	  mctop_node_tree_barrier_wait(nt, l);
             
           if (mctop_alloc_thread_is_node_leader())
 	    {
-              MSD_DO(printf("Node %d:: Switching pointers @ lvl %d!\n", my_node, l););
+	      MSD_DO(
+		     if (my_merge_id == 0)
+		       {
+			 print_error_sorted(my_dest, (n_elems_a + n_elems_b), 1);
+		       }
+		     );
 	      my_nd->n_elems = n_elems_a + n_elems_b;
               MCTOP_SORT_TYPE* tmp = my_nd->source;
               my_nd->source = my_nd->destination;
@@ -485,7 +489,7 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 	  return;
 	}
 
-      mctop_node_tree_barrier_wait(nt, l);
+      // mctop_node_tree_barrier_wait(nt, l);
     }
 }
 
