@@ -12,6 +12,8 @@
 #include <mctop_alloc.h>
 #include <nmmintrin.h>
 
+#include <mctop_rand.h>
+
 #define RAND_RANGE(N) ((double)rand() / ((double)RAND_MAX + 1) * (N))
 #define min(x, y) (x<y?x:y)
 #define max(x, y) (x<y?y:x)
@@ -200,22 +202,15 @@ void merge_do(uint* a, uint* b, uint* dest, uint num_a, uint num_b) {
         dest[k++] = b[j++];
 }
 
-#define MCTOP_P_STEP(__steps, __a, __b)		\
-  {						\
-    __b = mctop_getticks();			\
-    mctop_ticks __d = __b - __a;		\
-    printf("Step %zu : %-10zu cycles = %-10zu us\n",	\
-	   __steps++, __d, __d / 2100);			\
-    __a = __b;						\
-  }
 
 
 void *merge(void *args) {
   merge_args_t *myargs = (merge_args_t *)args;
 
-  mctop_ticks __a = mctop_getticks(), __b, __steps = 0;
+
+  MCTOP_F_STEP(__steps, __a, __b);
   mctop_alloc_pin(myargs->alloc);
-  MCTOP_P_STEP(__steps, __a, __b);
+  MCTOP_P_STEP("", __steps, __a, __b, mctop_alloc_thread_is_node_leader());
 
   //numa_run_on_node(myargs->node);
   long size1, size2, desti;
@@ -245,7 +240,7 @@ void *merge(void *args) {
   myargs->indicesa[myargs->i] = a;
   myargs->indicesb[myargs->i] = b;
 
-  MCTOP_P_STEP(__steps, __a, __b);
+  MCTOP_P_STEP("", __steps, __a, __b, mctop_alloc_thread_is_node_leader());
   
   pthread_barrier_wait(myargs->barrier_start1);
 
@@ -261,11 +256,11 @@ void *merge(void *args) {
   
   //printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myargs->i, a, b, desti, size1, size2, (uintptr_t) &myargs->a[a], (uintptr_t) &myargs->b[b]);
 
-  MCTOP_P_STEP(__steps, __a, __b);
+  MCTOP_P_STEP("", __steps, __a, __b, mctop_alloc_thread_is_node_leader());
 
   merge_serial(&myargs->a[a], &myargs->b[b], &myargs->dest[desti], size1, size2);
 
-  MCTOP_P_STEP(__steps, __a, __b);
+  MCTOP_P_STEP("", __steps, __a, __b, mctop_alloc_thread_is_node_leader());
 
   pthread_barrier_wait(myargs->barrier_end);
   return NULL;
@@ -396,20 +391,23 @@ int main(int argc,char *argv[]){
 
 void readArray2(uint a[], const long limit)
 {
-    long i;
-    printf("Populating the array...");fflush(stdout);
-    for (i=0; i<limit; i++){
-        a[i]=i;
-    }
+  long i;
+  printf("Populating the array...");fflush(stdout);
+  for (i=0; i<limit; i++){
+    a[i]=i;
+  }
 
-    // Knuth shuffle
-    for (i=limit-1; i > 0; i--){
-        long j = RAND_RANGE(i);
-        uint tmp = a[i];
-        a[i] = a[j];
-        a[j] = tmp;
-     }
-    printf("Done\n");fflush(stdout);
+  unsigned long* seeds = seed_rand_fixed();
+
+  // Knuth shuffle
+  for (i=limit-1; i > 0; i--){
+    long j = mctop_rand(seeds) % limit;
+    uint tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+  }
+  printf("Done\n");fflush(stdout);
+  free(seeds);
 }
 
 
