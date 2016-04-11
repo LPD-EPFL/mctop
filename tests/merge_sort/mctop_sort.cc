@@ -446,8 +446,12 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 	      my_dest = td->array;
 	    }
 
-          MSD_DO(printf("[Node %u] L%u: MId %-2u: DST %u: a=%p [#%zu], b=%p[#%zu], d=%p -- #thr %u\n", my_node, l, my_merge_id,
-			a, my_a, n_elems_a, my_b, n_elems_b, my_dest, threads_in_merge););
+          MSD_DO(
+		 if (mctop_alloc_thread_is_node_leader())
+		   {
+		     printf("[Nd %u Other %u] L%u: MId %-2u: DST %u: a=%p [#%zu], b=%p[#%zu], d=%p -- #thr %u\n", 
+			    my_node, ntw.other_node, l, my_merge_id, a, my_a, n_elems_a, my_b, n_elems_b, my_dest, threads_in_merge);
+		   });
 
           mctop_node_tree_barrier_wait(nt, l);
 	  
@@ -473,8 +477,8 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 	  if (mctop_alloc_thread_is_node_leader())
 	    {
 	      MSD_DO( printf("Node %d. No work for node @ lvl %d!\n", my_node, l););
-	      return;
 	    }
+	  return;
 	}
 
       mctop_node_tree_barrier_wait(nt, l);
