@@ -47,6 +47,7 @@ size_t darray_get_num_elems(darray_t* da);
 uintptr_t darray_get_elem_n(darray_t* da, uintptr_t n);
 
 int darray_remove(darray_t* da, uintptr_t elem);
+uint darray_remove_all(darray_t* da, darray_t* from);
 int darray_pop(darray_t* da, uintptr_t* elem); /* return the first element */
 
 void darray_sort(darray_t* da);

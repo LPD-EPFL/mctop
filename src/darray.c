@@ -115,6 +115,19 @@ darray_remove(darray_t* da, uintptr_t elem)
   return 0;
 }
 
+uint
+darray_remove_all(darray_t* da, darray_t* from)
+{
+  size_t n_removed = 0;
+  DARRAY_FOR_EACH(from, i)
+    {
+      uintptr_t elem = DARRAY_GET_N(from, i);
+      n_removed += darray_remove(da, elem);
+    }
+
+  return n_removed;
+}
+
 int
 darray_pop(darray_t* da, uintptr_t* elem)
 {
