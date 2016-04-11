@@ -43,6 +43,7 @@ main(int argc, char **argv)
   int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
   mctop_alloc_policy test_policy = MCTOP_ALLOC_SEQUENTIAL;
   uint test_random_type = 0;
+  uint test_verbose = 0;
 
   struct option long_options[] = 
     {
@@ -57,7 +58,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:v", long_options, &i);
 
       if(c == -1)
 	break;
@@ -92,6 +93,9 @@ main(int argc, char **argv)
 	case 'r':
 	  test_random_type = atoi(optarg);
 	  break;
+	case 'v':
+	  test_verbose = 1;
+	  break;
 	case 'h':
 	  mctop_alloc_help();
 	  exit(0);
@@ -124,6 +128,10 @@ main(int argc, char **argv)
 #else
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
 #endif
+      if (test_verbose)
+	{
+	  mctop_node_tree_print(nt);
+	}
 
       const uint fnode = mctop_node_tree_get_final_dest_node(nt);
       mctop_alloc_pin_nth_socket(alloc, fnode);
