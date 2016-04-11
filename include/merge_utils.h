@@ -179,7 +179,7 @@ static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, lon
   merge_arrays_unaligned_sse(&a[my_alpha], &b[my_beta], &dest[desti], size1, size2);
 }
 
-static void
+static __attribute__((unused)) void
 merge_arrays_no_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE* dest,
 		    const size_t sizea, const size_t sizeb, const uint myid, const uint n_threads)
 {

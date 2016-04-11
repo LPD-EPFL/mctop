@@ -225,26 +225,33 @@ mctop_sort_thr(void* params)
                                 // to wait on the first merge barriers
   mctop_alloc_barrier_wait_node(alloc);
 #endif
+
+
   if (likely(mctop_sort_thread_merge_participate())) // with SSE, only cores participate
     {
       mctop_sort_merge_in_socket(alloc, nd, my_node, nt->barrier_for);
-
       // the sorted array is in nd->source
-      if (mctop_alloc_thread_is_node_leader())
-	{
-	  print_error_sorted(nd->source, nd->n_elems, 1);
-          nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
-	}
 
       if (nt->n_nodes > 1)
 	{
+	  if (mctop_alloc_thread_is_node_leader())
+	    {
+	      print_error_sorted(nd->source, nd->n_elems, 1);
+	      nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
+	    }
 	  mctop_sort_merge_cross_socket(td, my_node);
 	}
-      else
-	{
-#warning need to land to the correct array!
-	}
     }
+
+  if (nt->n_nodes == 1)
+    {
+      mctop_alloc_barrier_wait_node(alloc);
+      memcpy(td->array + my_offset_socket,
+	     nd->source + my_offset_socket,
+	     my_n_elems * sizeof(MCTOP_SORT_TYPE));
+    }
+
+
 
   return NULL;
 }
