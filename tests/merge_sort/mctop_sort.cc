@@ -201,7 +201,9 @@ mctop_sort_thr(void* params)
       my_n_elems = nd->n_elems - ((my_node_n_hwcs - 1) * my_n_elems);
     }
 
-  //  MSD_DO(printf("Thread %-3u :: Handle %zu elems\n", mctop_alloc_thread_id(), my_n_elems););
+  // ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // sequential sorting of chunks
+  // ////////////////////////////////////////////////////////////////////////////////////////////////////
 
   MCTOP_SORT_TYPE* copy = nd->array + my_offset_socket;
   MCTOP_SORT_TYPE* dest = array_a + my_offset_socket;
@@ -227,8 +229,15 @@ mctop_sort_thr(void* params)
 #endif
 
 
+  // ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // merging 
+  // ////////////////////////////////////////////////////////////////////////////////////////////////////
+
   if (likely(mctop_sort_thread_merge_participate())) // with SSE, only cores participate
     {
+  // ///////////////////////////////////////////////////////////////////////
+  // in-socket merging
+  // ///////////////////////////////////////////////////////////////////////
       mctop_sort_merge_in_socket(alloc, nd, my_node);
       // the sorted array is in nd->source
 
@@ -236,9 +245,13 @@ mctop_sort_thr(void* params)
 	{
 	  if (mctop_alloc_thread_is_node_leader())
 	    {
+	      free(nd->partitions);
 	      print_error_sorted(nd->source, nd->n_elems, 1);
 	      nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
 	    }
+  // ///////////////////////////////////////////////////////////////////////
+  // cross-socket merging
+  // ///////////////////////////////////////////////////////////////////////
 	  mctop_sort_merge_cross_socket(td, my_node);
 	}
     }
@@ -251,7 +264,13 @@ mctop_sort_thr(void* params)
 	     my_n_elems * sizeof(MCTOP_SORT_TYPE));
     }
 
-
+  mctop_alloc_barrier_wait_all(alloc);
+  
+  if (mctop_alloc_thread_is_node_leader())
+    {
+      mctop_alloc_malloc_free(nd->source, tot_size);
+      mctop_alloc_malloc_free(nd->destination, tot_size);
+    }
 
   return NULL;
 }
@@ -406,6 +425,7 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
   mctop_alloc_t* alloc = nt->alloc;
   mctop_sort_nd_t* my_nd = &td->node_data[my_node];
 
+  MCTOP_F_STEP(__steps, __a, __b);
   for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {
       mctop_node_tree_work_t ntw;
@@ -468,6 +488,10 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
             
           if (mctop_alloc_thread_is_node_leader())
 	    {
+	      if (my_merge_id == 0)
+		{
+		  MCTOP_P_STEP("merge", __steps, __a, __b, 1);
+		}
 	      MSD_DO(
 		     if (my_merge_id == 0)
 		       {

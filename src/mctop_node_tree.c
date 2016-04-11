@@ -69,30 +69,34 @@ mctop_node_tree_add_barriers(mctop_node_tree_t* nt, mctop_type_t barrier_for)
   nt->barrier = malloc_assert(sizeof(mctop_barrier_t));
   mctop_barrier_init(nt->barrier, nt->alloc->n_hwcs);
 
-  darray_t* nodes = darray_create();
-  for (int l = 0; l < nt->n_levels; l++)
-    {
-      mctop_nt_get_nodes_lvl(nt, l, nodes);
-      size_t n_wait_lvl = 0;
-      DARRAY_FOR_EACH(nodes, n)
+      darray_t* nodes = darray_create();
+      for (int l = 0; l < nt->n_levels; l++)
 	{
-	  uint node = DARRAY_GET_N(nodes, n);
-	  if (barrier_for == HW_CONTEXT)
+	  mctop_nt_get_nodes_lvl(nt, l, nodes);
+	  size_t n_wait_lvl = 0;
+	  DARRAY_FOR_EACH(nodes, n)
 	    {
-	      n_wait_lvl += nt->alloc->n_hwcs_per_socket[node];
+	      uint node = DARRAY_GET_N(nodes, n);
+	      if (barrier_for == HW_CONTEXT)
+		{
+		  n_wait_lvl += nt->alloc->n_hwcs_per_socket[node];
+		}
+	      else if (barrier_for == CORE)
+		{
+		  n_wait_lvl += nt->alloc->n_cores_per_socket[node];
+		}
 	    }
-	  else if (barrier_for == CORE)
-	    {
-	      n_wait_lvl += nt->alloc->n_cores_per_socket[node];
-	    }
-	}
       
-      nt->levels[l].barrier = malloc_assert(sizeof(mctop_barrier_t));
-      mctop_barrier_init(nt->levels[l].barrier, n_wait_lvl);
-      /* printf(" LVL %d : %zu threads\n", l, n_wait_lvl); */
-    }
+	  nt->levels[l].barrier = malloc_assert(sizeof(mctop_barrier_t));
+	  if (barrier_for == EVERYONE)
+	    {
+	      n_wait_lvl = nt->alloc->n_hwcs;
+	    }
+	  mctop_barrier_init(nt->levels[l].barrier, n_wait_lvl);
+	  /* printf(" LVL %d : %zu threads\n", l, n_wait_lvl); */
+	}
 
-  darray_free(nodes);
+      darray_free(nodes);
 }
 
 mctop_nt_pair_t*
@@ -137,12 +141,11 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
    1: have the nodes of each lvl appear at the left side of the pairs on each lvl*/
 #define MCTOP_NODE_TREE_TYPE     1
 
-
   /* create a node tree for hierarchical algorithms */
 mctop_node_tree_t*
 mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 {
-  assert(barrier_for == CORE || barrier_for == HW_CONTEXT);
+  assert(barrier_for == CORE || barrier_for == HW_CONTEXT || barrier_for == EVERYONE);
   const uint n_sockets = alloc->n_sockets;
   if ((n_sockets) & (n_sockets - 1))
     {
