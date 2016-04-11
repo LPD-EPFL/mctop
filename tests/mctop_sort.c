@@ -119,7 +119,11 @@ main(int argc, char **argv)
       mctop_alloc_t* alloc = mctop_alloc_create(topo, test_num_threads, test_num_hwcs_per_socket, test_policy);
       /* mctop_alloc_print(alloc); */
       mctop_alloc_print_short(alloc);
+#if MCTOP_SORT_USE_SSE == 1
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
+#else
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
+#endif
 
       const uint fnode = mctop_node_tree_get_final_dest_node(nt);
       mctop_alloc_pin_nth_socket(alloc, fnode);

@@ -4,8 +4,25 @@
 #include "merge_sse_utils.h"
 #define SORT_TYPE uint
 
-#define min(x, y) (x<y?x:y)
-#define max(x, y) (x<y?y:x)
+static inline int64_t
+min(int64_t x, int64_t y)
+{
+  if (x > y)
+    {
+      return y;
+    }
+  return x;
+}
+
+static inline int64_t
+max(int64_t x, int64_t y)
+{
+  if (x < y)
+    {
+      return y;
+    }
+  return x;
+}
 
 static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE* dest, size_t num_a, size_t num_b) {
     //first take care of portions flowing over the 16-byte boundaries
@@ -162,6 +179,74 @@ static inline void merge_arrays(SORT_TYPE *a, SORT_TYPE *b, SORT_TYPE *dest, lon
   merge_arrays_unaligned_sse(&a[my_alpha], &b[my_beta], &dest[desti], size1, size2);
 }
 
+static void
+merge_arrays_no_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE* dest,
+		    const size_t sizea, const size_t sizeb, const uint myid, const uint n_threads)
+{
+  long size1, size2;
+  // Evenly distribute the arrays: Francis, Mathieson. "A Benchmark Parallel Sort for Shared Memory Multiprocessors"
+  long my_alpha = 0, alpha_prime = 0, my_beta = 0, beta_prime = 0;
+  long next_alpha, next_beta;
+  if (myid > 0)
+    {
+      const size_t gamma = ((myid) * (sizea + sizeb) / n_threads);
+      const size_t alpha_min = max(0, (gamma-(sizeb - 1 - 0 + 1)));
+      const size_t alpha_max = min((long)sizea - 1 + 1, gamma);
+      size_t alpha_prime_min = alpha_min;
+      size_t alpha_prime_max = alpha_max;
+      const size_t length = gamma;
+      while ((alpha_prime_min + 1) < alpha_prime_max)
+	{
+	  alpha_prime = (alpha_prime_min + alpha_prime_max) >> 1;
+	  beta_prime = length - alpha_prime;
+	  if (a[alpha_prime] <= b[beta_prime])
+	    alpha_prime_min = alpha_prime;
+	  else
+	    alpha_prime_max = alpha_prime;
+	}
+      if (a[alpha_prime_min] <= b[length-alpha_prime_max])
+	my_alpha = alpha_prime_max;
+      else
+	my_alpha = alpha_prime_min;
+      my_beta = length - my_alpha;
+    }
 
+  if (myid < (n_threads - 1))
+    {
+      const size_t gamma = ((myid + 1) * (sizea + sizeb) / n_threads);
+      const size_t alpha_min = max(0, (gamma-(sizeb - 1 - 0 + 1)));
+      const size_t alpha_max = min((long)sizea - 1 + 1, gamma);
+      size_t alpha_prime_min = alpha_min;
+      size_t alpha_prime_max = alpha_max;
+      const size_t length = gamma;
+      while ((alpha_prime_min + 1) != alpha_prime_max)
+	{
+	  alpha_prime = (alpha_prime_min + alpha_prime_max) >> 1;
+	  beta_prime = length - alpha_prime;
+	  if (a[alpha_prime] < b[beta_prime])
+	    alpha_prime_min = alpha_prime;
+	  else
+	    alpha_prime_max = alpha_prime;
+	}
+      if (a[alpha_prime_min] <= b[length-alpha_prime_max])
+	next_alpha = alpha_prime_max;
+      else
+	next_alpha = alpha_prime_min;
+      next_beta = length - next_alpha;
+    
+      size1 = next_alpha - my_alpha;
+      size2 = next_beta - my_beta;
+    }
+  else
+    {
+      size1 = sizea - my_alpha;
+      size2 = sizeb - my_beta;
+    }
+  const size_t desti = my_alpha + my_beta;
+  
+  /* printf("[thread %ld / %d] res1 %ld res2 %ld desti = %ld size1 = %ld size2 = %ld &a[res1] = %ld &b[res2] = %ld\n", pthread_self(), myid, my_alpha, my_beta, desti, size1, size2, (uintptr_t) &a[my_alpha], (uintptr_t) &b[my_beta]); */
+  //assert(size1 > 0 && size2 > 0);
+  merge_arrays_unaligned_nosse(&a[my_alpha], &b[my_beta], &dest[desti], size1, size2);
+}
 
 #endif

@@ -8,13 +8,12 @@ void* mctop_sort_thr(void* params);
 void
 mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt)
 {
-#warning comment out
-  // if (unlikely(n_elems <= MCTOP_SORT_MIN_LEN_PARALLEL) ||
-  //     mctop_alloc_get_num_hw_contexts(nt->alloc) == 1)
-  //   {
-  //     std::sort(array, array + n_elems);
-  //     return;
-  //   }
+  if (unlikely(n_elems <= MCTOP_SORT_MIN_LEN_PARALLEL) ||
+      mctop_alloc_get_num_hw_contexts(nt->alloc) == 1)
+    {
+      std::sort(array, array + n_elems);
+      return;
+    }
 
   mctop_alloc_t* alloc = nt->alloc;
 
@@ -145,6 +144,21 @@ print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems, const uint prin
 
 void mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node);
 
+static inline uint
+mctop_sort_thread_merge_participate()
+{
+#if MCTOP_SORT_USE_SSE == 1
+  if (mctop_alloc_thread_incore_id() == 0) // only cores!!
+    {
+      return 1;
+    }
+  return 0;
+#else
+  return 1;
+#endif
+}
+
+
 void*
 mctop_sort_thr(void* params)
 {
@@ -207,8 +221,11 @@ mctop_sort_thr(void* params)
       std::sort(low, high);
     }
 
+#if MCTOP_SORT_USE_SSE == 1	// need extra barrier, cause the SMT threads will not need
+                                // to wait on the first merge barriers
   mctop_alloc_barrier_wait_node(alloc);
-  if (mctop_alloc_thread_incore_id() == 0) // only cores!!
+#endif
+  if (likely(mctop_sort_thread_merge_participate())) // with SSE, only cores participate
     {
       mctop_sort_merge_in_socket(alloc, nd, my_node, nt->barrier_for);
 
@@ -227,9 +244,7 @@ mctop_sort_thr(void* params)
 	{
 #warning need to land to the correct array!
 	}
-
     }
-
 
   return NULL;
 }
@@ -267,8 +282,13 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
   MCTOP_SORT_TYPE* dest = nd->destination;
 
   uint n_partitions = nd->n_chunks;
-  const uint nthreads = mctop_alloc_get_num_cores_node(alloc, node);
-  uint threads_per_partition = nthreads;
+#if MCTOP_SORT_USE_SSE == 1
+  const uint n_threads = mctop_alloc_get_num_cores_node(alloc, node);
+#else
+  const uint n_threads = mctop_alloc_get_num_hw_contexts_node(alloc, node);
+#endif
+
+  uint threads_per_partition = n_threads;
 
   if (mctop_alloc_thread_is_node_leader())
     {
@@ -277,7 +297,7 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
 
   while (n_partitions > 1)
     {
-      threads_per_partition = n_threads_per_part_calc(n_partitions, nthreads);
+      threads_per_partition = n_threads_per_part_calc(n_partitions, n_threads);
 
       mctop_merge_barrier_wait(alloc, barrier_for);
       
@@ -292,7 +312,7 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
       	    }
       	}
 
-      mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, nthreads);
+      mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, n_threads);
       mctop_merge_barrier_wait(alloc, barrier_for);
 
       if (mctop_alloc_thread_is_node_leader())
@@ -338,16 +358,22 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
 void
 mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 		 mctop_sort_pd_t* partitions, const uint n_partitions,
-		 const uint threads_per_partition, const uint nthreads)
+		 const uint threads_per_partition, const uint n_threads)
 {
+#if MCTOP_SORT_USE_SSE == 1
   const uint my_id = mctop_alloc_thread_core_insocket_id();
+#else
+  const uint my_id = mctop_alloc_thread_insocket_id();
+#endif
   
   uint next_merge = my_id / threads_per_partition;
   uint next_partition = next_merge << 1;
   while (1)
     {
-      if (next_partition >= n_partitions || ((n_partitions % 2) && (next_partition >= n_partitions-1)))
-	break;
+      if (next_partition >= n_partitions || ((n_partitions & 1) && (next_partition >= (n_partitions - 1))))
+	{
+	  break;
+	}
 
       const uint pos_in_merge = my_id % threads_per_partition;
     
@@ -360,8 +386,12 @@ mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
       MCTOP_SORT_TYPE* my_b = &src[partition_b_start];
       MCTOP_SORT_TYPE* my_dest = &dest[partition_a_start];
 
+#if MCTOP_SORT_USE_SSE == 1
       merge_arrays(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
-      next_partition += (nthreads / threads_per_partition) << 1;
+#else
+      merge_arrays_no_sse(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
+#endif
+      next_partition += (n_threads / threads_per_partition) << 1;
     }
 }
 
@@ -378,9 +408,16 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
       if (mctop_node_tree_get_work_description(nt, l, &ntw))
         {
           mctop_node_tree_barrier_wait(nt, l);
+
+#if MCTOP_SORT_USE_SSE == 1
 	  uint my_merge_id = mctop_alloc_thread_core_insocket_id();
           const uint threads_in_merge = mctop_alloc_get_num_cores_node(alloc, my_node) +
 	    mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+#else
+	  uint my_merge_id = mctop_alloc_thread_insocket_id();
+          const uint threads_in_merge = mctop_alloc_get_num_hw_contexts_node(alloc, my_node) +
+	    mctop_alloc_get_num_hw_contexts_node(alloc, ntw.other_node);
+#endif
 
 	  uint a, b;
 	  if (ntw.node_role == DESTINATION)
@@ -392,7 +429,11 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 	    {
 	      a = ntw.other_node;
 	      b = my_node;
+#if MCTOP_SORT_USE_SSE == 1
 	      my_merge_id += mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
+#else
+	      my_merge_id += mctop_alloc_get_num_hw_contexts_node(alloc, ntw.other_node);
+#endif
 	    }
 
           MCTOP_SORT_TYPE* my_a = td->node_data[a].source;
@@ -410,7 +451,12 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 
           mctop_node_tree_barrier_wait(nt, l);
 	  
+#if MCTOP_SORT_USE_SSE == 1
           merge_arrays(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
+#else
+          merge_arrays_no_sse(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
+#endif
+
           mctop_node_tree_barrier_wait(nt, l);
             
           if (mctop_alloc_thread_is_node_leader())
