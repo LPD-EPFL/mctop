@@ -131,6 +131,13 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
     }
 }
 
+
+
+/* 0: optimize for bandwidth (i.e., the last pair, appears at lvl 0 and lvl 2 as well.
+   1: have the nodes of each lvl appear at the left side of the pairs on each lvl*/
+#define MCTOP_NODE_TREE_TYPE     1
+
+
   /* create a node tree for hierarchical algorithms */
 mctop_node_tree_t*
 mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
@@ -170,28 +177,37 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 	  for (int n = 0; n < (n_part / 2); n++)
 	    {
 	      const uint sid = mctop_nt_get_nth_socket(nt, lvl - 1, n);
-	      //	      darray_add(sids_to_match, s[lvl - 1][n]->id);
 	      darray_add(sids_to_match, sid);
 	    }
 	}
+
+#if MCTOP_NODE_TREE_TYPE == 1
+      darray_remove_all(sids_avail, sids_to_match);
+#endif
 
       for (int i = 0; i < n_part; i += 2)
 	{
 	  uintptr_t sid;
 	  darray_pop(sids_to_match, &sid); 
 
+#if MCTOP_NODE_TREE_TYPE == 0
 	  if (!darray_remove(sids_avail, sid))
 	    {
-	      darray_pop(sids_avail, &sid); 
+	      darray_pop(sids_avail, &sid);
 	    }
+#endif
 
 	  socket_t* left = mctop_id_get_hwc_gs(alloc->topo, sid);
 
 	  for (int j = 0; j < left->n_siblings; j++)
 	    {
 	      socket_t* right = mctop_sibling_get_other_socket(left->siblings_in[j], left);
-	      if (!darray_elem_is_at(sids_to_match, right->id, 0) &&
-		  darray_remove(sids_avail, right->id))
+#if MCTOP_NODE_TREE_TYPE == 0
+	      if (!darray_elem_is_at(sids_to_match, right->id, 0) && 
+	      	  darray_remove(sids_avail, right->id))
+#elif MCTOP_NODE_TREE_TYPE == 1
+	      if (darray_remove(sids_avail, right->id))
+#endif
 		{
 		  mctop_nt_pair_t* pair = mctop_nt_get_pair(nt, lvl, (i + 1)/2);
 		  pair->nodes[0] = mctop_alloc_socket_seq_id(alloc, left->id);
