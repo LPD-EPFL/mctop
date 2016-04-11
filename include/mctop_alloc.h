@@ -59,6 +59,7 @@ extern "C" {
     uint max_latency;
     double min_bandwidth;
     uint* hwcs;
+    uint* core_sids;		/* seq core ids that correspond to hwcs */
     volatile uint n_hwcs_used;
     volatile uint8_t* hwcs_used;
 #ifdef __x86_64__
@@ -84,6 +85,7 @@ extern "C" {
     uint nth_hwc_in_core;
     uint nth_hwc_in_socket;
     uint nth_core_socket;
+    uint nth_core;
   } mctop_thread_info_t;
 
   __attribute__((unused)) static const char* mctop_alloc_policy_desc[MCTOP_ALLOC_NUM] = 
@@ -149,6 +151,7 @@ extern "C" {
   uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */
   int mctop_alloc_thread_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
   int mctop_alloc_thread_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
+  int mctop_alloc_thread_core_id(); /* sequential core id -- depends on the allocator*/
   uint mctop_alloc_thread_incore_id(); /* seq id of the hw context of this thread
 						       in it's core (0=1st hyperthread, 1=2nd?, ..) */
   uint mctop_alloc_thread_insocket_id(); /* seq id of the hw context of this thread in it's socket */
@@ -197,6 +200,8 @@ extern "C" {
   /* Node merge tree */
   /* ******************************************************************************** */
 
+#define EVERYONE CROSS_SOCKET
+
   typedef struct mctop_nt_pair
   {
     uint nodes[2];   /* 0 is the **receiving** node */
@@ -226,7 +231,8 @@ extern "C" {
   typedef enum
     {
       DESTINATION,		/* merged data go on this node */
-      SOURCE_ONLY		/* this nodes just gives data  */
+      SOURCE_ONLY,		/* this nodes just gives data  */
+      HELPING,			/* help a pair of nodes to merge */
     } mctop_node_tree_role;
     
   typedef struct mctop_node_tree_work
