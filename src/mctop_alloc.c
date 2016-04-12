@@ -856,7 +856,7 @@ mctop_alloc_pin_plus(mctop_alloc_t* alloc)
 	    {
 	      if (CAS_U8(&alloc->hwcs_used[i], 0, 1) == 0)
 		{
-		  FAI_U32(&alloc->n_hwcs_used);
+		  UNUSED uint a = FAI_U32(&alloc->n_hwcs_used);
 		  return mctop_alloc_pin_prepare(alloc, i, 0);
  		}
 	    }
