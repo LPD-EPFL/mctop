@@ -203,7 +203,6 @@ mctop_sort_thr(void* params)
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
       nd->partitions = (mctop_sort_pd_t*) malloc(nd->n_chunks * sizeof(mctop_sort_pd_t));
     }
-  MCTOP_P_STEP("preparation-1", __steps, __a, __b, !mctop_alloc_thread_id());
   mctop_alloc_barrier_wait_node(alloc);
 
   MCTOP_SORT_TYPE* array_a = nd->source;
@@ -228,7 +227,7 @@ mctop_sort_thr(void* params)
   MCTOP_SORT_TYPE* copy = nd->array + my_offset_socket;
   MCTOP_SORT_TYPE* dest = array_a + my_offset_socket;
 
-  MCTOP_P_STEP("preparation-2", __steps, __a, __b, !mctop_alloc_thread_id());
+  MCTOP_P_STEP("preparation", __steps, __a, __b, !mctop_alloc_thread_id());
   const uint my_n_elems_c = my_n_elems / MCTOP_NUM_CHUNKS_PER_THREAD;
   for (uint j = 0; j < MCTOP_NUM_CHUNKS_PER_THREAD; j++)
     {
@@ -517,7 +516,6 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
   // mctop_alloc_t* alloc = nt->alloc;
   mctop_sort_nd_t* my_nd = &td->node_data[my_node];
 
-  MCTOP_F_STEP(__steps, __a, __b);
   for (int l = mctop_node_tree_get_num_levels(nt) - 1; l >= 0; l--)
     {
       mctop_node_tree_work_t ntw;
@@ -562,10 +560,6 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
             
           if (mctop_alloc_thread_is_node_leader())
 	    {
-	      if (my_merge_id == 0)
-		{
-		  MCTOP_P_STEP("merge", __steps, __a, __b, 1);
-		}
 	      MSD_DO(
 		     if (my_merge_id == 0)
 		       {
