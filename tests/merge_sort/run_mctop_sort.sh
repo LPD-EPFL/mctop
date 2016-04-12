@@ -3,8 +3,7 @@
 
 VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_sse mctop_sort_sse_hyperthreads_1 mctop_sort_sse_hyperthreads_2 mctop_sort_sse_hyperthreads_3 mctop_sort_sse_hyperthreads_4 mctop_sort_no_sse_all_sockets"
 
-SIZES="512 1024 2048 4096 8192"
-SIZES="16 32"
+SIZES="1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192"
 ALLOCATORS="3 4 7 9"
 
 
