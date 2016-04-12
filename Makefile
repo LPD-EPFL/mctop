@@ -35,6 +35,15 @@ ifeq ($(TSX),1)
 CFLAGS += -D__TSX__ -mrtm
 endif
 
+ifneq ($(SSE),)
+  CFLAGS+=-DMCTOP_SORT_USE_SSE=${SSE}
+endif
+
+ifneq ($(SSE_HYPERTHREAD_RATIO),)
+  CFLAGS+=-DMCTOP_SORT_SSE_HYPERTHREAD_RATIO=${SSE_HYPERTHREAD_RATIO}
+endif
+
+
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
 CPP = /opt/csw/bin/g++

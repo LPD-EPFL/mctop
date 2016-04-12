@@ -17,9 +17,13 @@ extern "C" {
 #define MCTOP_SORT_SSE_SMT                2
 #define MCTOP_SORT_NO_SSE_SMT_ALL_ND      3
 
+#if !defined(MCTOP_SORT_SSE_HYPERTHREAD_RATIO)
 #define MCTOP_SORT_SSE_HYPERTHREAD_RATIO  3
+#endif
 
+#if !defined(MCTOP_SORT_USE_SSE)
 #define MCTOP_SORT_USE_SSE                2
+#endif
 #define MCTOP_SSE_K                       4
 #define MCTOP_SORT_COPY_FIRST             1
 #define MCTOP_NUM_CHUNKS_PER_THREAD       1
