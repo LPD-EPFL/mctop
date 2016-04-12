@@ -344,8 +344,8 @@ extern "C" {
       {									\
 	__b = mctop_getticks();						\
 	mctop_ticks __d = __b - __a;					\
-	printf("Step %2zu (%-20s): %-10zu cycles ~= %-10zu us\n",	\
-	       __steps++, str, __d, __d / 2100);			\
+	printf("Step %2zu (%-20s): %-10zu cycles ~= %10f ms\n",		\
+	       __steps++, str, __d, __d / 2100000.0);			\
 	__a = __b;							\
 	__b = mctop_getticks();						\
       }									\
