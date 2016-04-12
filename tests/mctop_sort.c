@@ -30,6 +30,26 @@ timespec_diff(struct timespec start, struct timespec end)
 }
 
 
+static void
+print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems, const uint print_always)
+{
+	 uint sorted = 1;
+	 for (size_t i = 1; i < n_elems; i++)
+	   {
+	     if (array[i - 1] > array[i])
+	       {
+		 printf(" >>> error: array[%zu] = %u > array[%zu] = %u\n",
+			i - 1, array[i - 1], i, array[i]);
+		 sorted = 0;
+		 break;
+	       }
+	   }
+	 if (print_always || !sorted)
+	   {
+	     printf("## Array %p {size %-10zu} is sorted: %u\n", array, n_elems, sorted);
+	   }
+}
+
 int
 main(int argc, char **argv) 
 {
@@ -125,6 +145,8 @@ main(int argc, char **argv)
       mctop_alloc_print_short(alloc);
 #if MCTOP_SORT_USE_SSE == 1
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
+#elif MCTOP_SORT_USE_SSE == 2
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
 #else
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
 #endif
@@ -203,17 +225,9 @@ main(int argc, char **argv)
       clock_gettime(CLOCK_REALTIME, &stop);
       struct timespec dur = timespec_diff(start, stop);
       double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
-      printf("## Sorted %llu MB of ints in %f seconds\n", array_siz / (1024 * 1024LL), dur_s);
+      printf("%s: ## Sorted %llu MB of ints in %f seconds\n", argv[0], array_siz / (1024 * 1024LL), dur_s);
 
-      for (uint c = 0; c < array_len - 1; c++)
-	{
-	  if (array[c] > array[c + 1])
-	    {
-	      printf("array[%d] = %-5d > array[%d] = %-5d\n",
-		     c, array[i], c + 1, array[c + 1]);
-	      break;
-	    }
-	}
+      print_error_sorted(array, array_len, 0);
       mctop_alloc_free(alloc);
       mctop_node_tree_free(nt);
 
