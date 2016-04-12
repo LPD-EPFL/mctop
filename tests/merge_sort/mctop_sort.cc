@@ -33,7 +33,6 @@ mctop_sort(MCTOP_SORT_TYPE* array, const size_t n_elems, mctop_node_tree_t* nt)
   td->nt = nt;
   td->array = array;
   td->n_elems = n_elems;
-
   const size_t n_elems_nd = n_elems / n_sockets;
   for (uint i = 0; i < n_sockets; i++)
     {
@@ -317,10 +316,15 @@ mctop_merge_barrier_wait(mctop_alloc_t* alloc)
 #endif
 }
 
+#if MCTOP_SORT_USE_SSE == 2
+void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
+		      mctop_sort_pd_t* partitions, const uint n_partitions,
+		      const uint threads_per_partition, const uint nthreads, const uint n_cores_socket);
+#else
 void mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 		      mctop_sort_pd_t* partitions, const uint n_partitions,
 		      const uint threads_per_partition, const uint nthreads);
-
+#endif
 
 static inline uint
 n_threads_per_part_calc(const uint n_partitions, const uint n_threads)
@@ -367,8 +371,12 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
 	      print_error_sorted(src + nd->partitions[i].start_index, nd->partitions[i].n_elems, 0);
       	    }
       	}
-
+#if MCTOP_SORT_USE_SSE == 2
+      uint n_cores_socket = mctop_alloc_get_num_cores_node(alloc, mctop_alloc_thread_local_node());
+      mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, n_threads, n_cores_socket);
+#else
       mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, n_threads);
+#endif
       mctop_merge_barrier_wait(alloc);
 
       if (mctop_alloc_thread_is_node_leader())
@@ -411,6 +419,56 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
     }
 }
 
+
+#if MCTOP_SORT_USE_SSE == 2
+void
+mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
+		 mctop_sort_pd_t* partitions, const uint n_partitions,
+		 const uint threads_per_partition, const uint n_threads, const uint n_cores_socket)
+{
+  uint next_merge = (mctop_alloc_thread_incore_id() == 0) ? 0 : MCTOP_SORT_SSE_HYPERTHREAD_RATIO;
+  // if (mctop_alloc_thread_core_insocket_id() == 0)
+    // printf("merge round %u: n_thread %u threads_per_partition %u\n", n_partitions, n_threads, threads_per_partition); 
+  uint next_partition = next_merge << 1;
+  while (1)
+    {
+      if (next_partition >= n_partitions || ((n_partitions & 1) && (next_partition >= (n_partitions - 1))))
+	{
+	  break;
+	}
+
+      const uint pos_in_merge = mctop_alloc_thread_core_insocket_id();
+    
+      // printf("core %u (%u) working on merge %u, partition %u, pos_in_merge %u\n", mctop_alloc_thread_core_insocket_id(), mctop_alloc_thread_incore_id(), next_merge, next_partition, pos_in_merge);
+      const uint partition_a_start = partitions[next_partition].start_index;
+      const uint partition_a_size = partitions[next_partition].n_elems;
+      const uint partition_b_start = partitions[next_partition + 1].start_index;
+      const uint partition_b_size = partitions[next_partition + 1].n_elems;
+
+      MCTOP_SORT_TYPE* my_a = &src[partition_a_start];
+      MCTOP_SORT_TYPE* my_b = &src[partition_b_start];
+      MCTOP_SORT_TYPE* my_dest = &dest[partition_a_start];
+
+      if (mctop_alloc_thread_incore_id() == 0) {
+        merge_arrays(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
+      }
+      else {
+        merge_arrays_no_sse(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
+      }
+      
+      if (mctop_alloc_thread_incore_id() == 0) {
+          next_merge++;
+          if (next_merge % MCTOP_SORT_SSE_HYPERTHREAD_RATIO == 0)
+            next_merge++;
+      }
+      else {
+        next_merge += MCTOP_SORT_SSE_HYPERTHREAD_RATIO;
+      }
+      
+      next_partition = next_merge << 1;
+    }
+}
+#else
 void
 mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 		 mctop_sort_pd_t* partitions, const uint n_partitions,
@@ -444,19 +502,13 @@ mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 
 #if MCTOP_SORT_USE_SSE == 1
       merge_arrays(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
-#elif MCTOP_SORT_USE_SSE == 2
-      if (mctop_alloc_thread_incore_id() == 0) {
-        merge_arrays(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
-      }
-      else {
-        merge_arrays_no_sse(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
-      }
 #else
       merge_arrays_no_sse(my_a, my_b, my_dest, partition_a_size, partition_b_size, pos_in_merge, threads_per_partition);
 #endif
       next_partition += (n_threads / threads_per_partition) << 1;
     }
 }
+#endif
 
 void
 mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
