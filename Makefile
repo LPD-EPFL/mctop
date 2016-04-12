@@ -10,8 +10,8 @@ CFLAGS = -O0 -ggdb -g
 CPPFLAGS = -O0 -ggdb -g 
 endif
 
-CFLAGS += -Wall -std=c99 -msse4
-CPPFLAGS += -Wall -msse4
+CFLAGS += -Wall -std=c99
+CPPFLAGS += -Wall
 
 INCLUDE = include
 SRCPATH = src
@@ -37,17 +37,23 @@ endif
 
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
+CPP = /opt/csw/bin/g++
 CFLAGS += -m64 -mcpu=v9 -mtune=v9
 endif
 
 ifeq ($(UNAME), ol-collab1)
-CC = /usr/sfw/bin/gcc
-CFLAGS += -m64 -mcpu=v9 -mtune=v9
+CC = /export/home/vtrigona/gcc-4.9.0_install/bin/gcc
+CPP = /export/home/vtrigona/gcc-4.9.0_install/bin/g++
+CFLAGS += -m64 -mcpu=v9 -mtune=v9 
+CPPFLAGS += -m64 -mcpu=v9 -mtune=v9
+LDFLAGS += -L/export/home/vtrigona/gcc-4.9.0_install/lib/sparcv9 -R/export/home/vtrigona/gcc-4.9.0_install/lib/sparcv9
 endif
 
 OS_NAME = $(shell uname -s)
 
 ifeq ($(OS_NAME), Linux)
+CFLAGS += -msse4
+CPPFLAGS += -msse4
 LDFLAGS += -lnuma
 MALLOC += -ljemalloc
 endif
@@ -128,7 +134,7 @@ sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
 
 mctop_sort: ${TSTPATH}/mctop_sort.o ${MSTPATH}/mctop_sort.o libmctop.a  ${INCLUDES} 
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS} ${MALLOC}
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS} ${MALLOC}
 
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC}
@@ -140,40 +146,40 @@ numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
 
 merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} -ljemalloc
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} ${MALLOC}
 
-merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp ${INCLUDES}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel  -fopenmp ${LDFLAGS} ${MALLOC}
 
 merge_sort_tbb_parallel: ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp -o merge_sort_tbb_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -ltbb
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp -o merge_sort_tbb_parallel -lmctop ${LDFLAGS} ${MALLOC} -fopenmp -ltbb
 
 merge_sort_cilkplus_parallel: ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp libmctop.a ${INCLUDES}
-	g++-5 $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp -o merge_sort_cilkplus_parallel -lmctop ${LDFLAGS} -ljemalloc -fopenmp -lcilkrts
+	g++-5 $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp -o merge_sort_cilkplus_parallel -lmctop ${LDFLAGS} ${MALLOC} -fopenmp -lcilkrts
 
 merge_sort_parallel_merge: ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_parallel_merge_imbalanced: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp -o merge_sort_parallel_merge_imbalanced -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp -o merge_sort_parallel_merge_imbalanced -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_parallel_merge_notworking: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp -o merge_sort_parallel_merge_notworking -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp -o merge_sort_parallel_merge_notworking -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_merge_level: ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_merge_level_up: ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp -o merge_sort_merge_level_up -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp -o merge_sort_merge_level_up -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_parallel_merge_nosse: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 cross_node_merging: ${TSTPATH}/merge_sort/cross_node_merging.c libmctop.a ${INCLUDES} FORCE FORCE
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/cross_node_merging.c -o cross_node_merging -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/cross_node_merging.c -o cross_node_merging -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 merge_sort_seq_merge: ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp -o merge_sort_seq_merge -lmctop ${LDFLAGS} -ljemalloc -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp -o merge_sort_seq_merge -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
 
 ################################################################################
 ## .o compilation generic rules ################################################
