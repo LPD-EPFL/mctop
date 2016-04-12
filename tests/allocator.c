@@ -141,7 +141,7 @@ test_pin(void* params)
 
   mctop_alloc_pin_plus(alloc);
 
-  for (int r = 0; r < 4; r++)
+  for (int r = 0; r < 1; r++)
     {
       mctop_alloc_thread_print();
 

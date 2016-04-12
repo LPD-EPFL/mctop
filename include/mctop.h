@@ -333,6 +333,7 @@ extern "C" {
   }
 #endif
 
+#define MCTOP_PROF_STEP 0
 #if MCTOP_PROF_STEP == 1
 #define MCTOP_F_STEP(__steps, __a, __b)		\
   mctop_ticks __steps = 0, __b, __a = mctop_getticks();	    
