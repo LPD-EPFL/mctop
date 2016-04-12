@@ -204,9 +204,13 @@ extern "C" {
 
   typedef struct mctop_nt_pair
   {
+    uint n_hwcs;
     uint nodes[2];   /* 0 is the **receiving** node */
     uint socket_ids[2];
-    /* more */
+    uint node_id_offsets[2];
+    uint n_help_nodes;
+    uint* help_nodes;
+    uint* help_node_id_offsets;
   } mctop_nt_pair_t;
 
   typedef struct mctop_nt_lvl
@@ -239,9 +243,12 @@ extern "C" {
   {
     mctop_node_tree_role node_role; /* DESTINATION or SOURCE_ONLY */
     uint other_node;
+    uint destination;		/* my destination node */
+    uint source;		/* my source node */
+    uint id_offset;		/* my id offset to use in the computations */
     uint num_hw_contexts;
-    uint num_hw_contexts_my_node;
-    uint num_hw_contexts_other_node;
+    /* uint num_hw_contexts_my_node; */
+    /* uint num_hw_contexts_other_node; */
   } mctop_node_tree_work_t;
 
   /*  barrier_for = HW_CONTEXT : initialize barriers for the # of hw contexts of the node

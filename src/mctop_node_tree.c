@@ -29,7 +29,7 @@ mctop_node_tree_alloc(const uint n_lvls)
       n_nodes <<= 1;
       nt->levels[l].n_pairs = n_pairs;
       nt->levels[l].n_nodes = n_nodes;
-      nt->levels[l].pairs = malloc_assert(n_pairs * sizeof(mctop_nt_pair_t));
+      nt->levels[l].pairs = calloc_assert(n_pairs, sizeof(mctop_nt_pair_t));
     }
 
   return nt;
@@ -38,8 +38,15 @@ mctop_node_tree_alloc(const uint n_lvls)
 void
 mctop_node_tree_free(mctop_node_tree_t* nt)
 {
-  for (int l = 0; l < nt->n_levels; l++)
+  for (uint l = 0; l < nt->n_levels; l++)
     {
+      mctop_nt_lvl_t* level = &nt->levels[l];
+      for (uint p = 0; p < level->n_pairs; p++)
+	{
+	  mctop_nt_pair_t* pair = &level->pairs[p];
+	  free(pair->help_nodes);
+	  free(pair->help_node_id_offsets);
+	}
       free(nt->levels[l].pairs);
       mctop_barrier_destroy(nt->levels[l].barrier);
     }
@@ -63,7 +70,7 @@ mctop_nt_get_nodes_lvl(mctop_node_tree_t* nt, const uint lvl, darray_t* nodes)
 }
 
 
-void
+static void
 mctop_node_tree_add_barriers(mctop_node_tree_t* nt, mctop_type_t barrier_for)
 {
   nt->barrier = malloc_assert(sizeof(mctop_barrier_t));
@@ -99,10 +106,59 @@ mctop_node_tree_add_barriers(mctop_node_tree_t* nt, mctop_type_t barrier_for)
       darray_free(nodes);
 }
 
-mctop_nt_pair_t*
+
+static size_t
+mctop_nt_get_n_participants(mctop_node_tree_t* nt, const uint sid, mctop_type_t barrier_for)
+{
+  size_t n;
+  switch (barrier_for)
+    {
+    case CORE:
+      n = nt->alloc->n_cores_per_socket[sid];
+      break;
+    default:
+      n = nt->alloc->n_hwcs_per_socket[sid];
+      break;
+    }
+  return n;
+}
+
+
+static void
+mctop_node_tree_add_id_offsets(mctop_node_tree_t* nt, mctop_type_t barrier_for)
+{
+  for (uint l = 0; l < nt->n_levels; l++)
+    {
+      mctop_nt_lvl_t* level = &nt->levels[l];
+      for (uint p = 0; p < level->n_pairs; p++)
+	{
+	  uint n_hwcs = 0;
+	  mctop_nt_pair_t* pair = &level->pairs[p];
+	  pair->node_id_offsets[0] = 0;
+	  n_hwcs += mctop_nt_get_n_participants(nt, pair->nodes[0], barrier_for);
+	  pair->node_id_offsets[1] = n_hwcs;
+	  pair->help_node_id_offsets = malloc_assert(pair->n_help_nodes * sizeof(uint));
+	  n_hwcs += mctop_nt_get_n_participants(nt, pair->nodes[1], barrier_for);
+	  for (uint h = 0; h < pair->n_help_nodes; h++)
+	    {
+	      pair->help_node_id_offsets[h] = n_hwcs;
+	      n_hwcs += mctop_nt_get_n_participants(nt, pair->help_nodes[h], barrier_for);
+	    }
+	  pair->n_hwcs = n_hwcs;
+	}
+    }
+}
+
+static mctop_nt_pair_t*
 mctop_nt_get_pair(mctop_node_tree_t* nt, const uint lvl, const uint sid)
 {
   return &nt->levels[lvl].pairs[sid];
+}
+
+static mctop_nt_lvl_t*
+mctop_nt_get_level(mctop_node_tree_t* nt, const uint lvl)
+{
+  return &nt->levels[lvl];
 }
 
 static uint 
@@ -120,13 +176,20 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
       printf("Lvl %d:\t", l); 
       for (int p = 0; p < level->n_pairs; p++)
 	{
-	  socket_t* s0 = mctop_alloc_get_nth_socket(nt->alloc, level->pairs[p].nodes[0]);
-	  socket_t* s1 = mctop_alloc_get_nth_socket(nt->alloc, level->pairs[p].nodes[1]);
+	  mctop_nt_pair_t* pair = &level->pairs[p];
+	  socket_t* s0 = mctop_alloc_get_nth_socket(nt->alloc, pair->nodes[0]);
+	  socket_t* s1 = mctop_alloc_get_nth_socket(nt->alloc, pair->nodes[1]);
 	  double bw = mctop_socket_get_bw_to(s0, s1);
 	  uint lat = mctop_ids_get_latency(nt->alloc->topo, s0->id, s1->id);
 	    
-	  printf("%u[%u] <--[%-3u cy / %-4.1f GB/s]-- %u[%u]\n", s0->id, level->pairs[p].nodes[0],
-		 lat, bw, s1->id, level->pairs[p].nodes[1]);
+	  printf("%u[%u] <--[%-3u cy / %-4.1f GB/s]-- %u[%u]   <--  ", s0->id, pair->nodes[0],
+		 lat, bw, s1->id, pair->nodes[1]);
+	  
+	  for (uint h = 0; h < pair->n_help_nodes; h++)
+	    {
+	      printf("%-2u < ", pair->help_nodes[h]);
+	    }
+	  printf("\n");
 	  if (p < (level->n_pairs - 1))
 	    {
 	      printf("\t");
@@ -209,22 +272,55 @@ mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 	      if (!darray_elem_is_at(sids_to_match, right->id, 0) && 
 	      	  darray_remove(sids_avail, right->id))
 #elif MCTOP_NODE_TREE_TYPE == 1
-	      if (darray_remove(sids_avail, right->id))
+		if (darray_remove(sids_avail, right->id))
 #endif
+		  {
+		    mctop_nt_pair_t* pair = mctop_nt_get_pair(nt, lvl, (i + 1)/2);
+		    pair->nodes[0] = mctop_alloc_socket_seq_id(alloc, left->id);
+		    pair->socket_ids[0] = left->id;
+		    pair->nodes[1] = mctop_alloc_socket_seq_id(alloc, right->id);
+		    pair->socket_ids[1] = right->id;
+		    break;
+		  }
+	    }
+	}
+      uint n_avail = darray_get_num_elems(sids_avail);
+      mctop_nt_lvl_t* level = mctop_nt_get_level(nt, lvl);
+      const uint n_avail_per_pair = n_avail / level->n_pairs;
+      for (uint p = 0; p < level->n_pairs; p++)
+	{
+	  mctop_nt_pair_t* pair = mctop_nt_get_pair(nt, lvl, p);
+	  pair->n_help_nodes = n_avail_per_pair;
+	  pair->help_nodes = malloc_assert(n_avail_per_pair * sizeof(uint));
+	}
+
+      uint* counters = calloc_assert(level->n_pairs, sizeof(uint));
+
+      while (darray_get_num_elems(sids_avail) > 0)
+	{
+	  for (uint p = 0; p < level->n_pairs && n_avail > 0; p++)
+	    {
+	      mctop_nt_pair_t* pair = mctop_nt_get_pair(nt, lvl, p);
+	      socket_t* socket = mctop_alloc_get_nth_socket(alloc, pair->nodes[0]);
+	      for (uint s = 0; s < socket->n_siblings; s++)
 		{
-		  mctop_nt_pair_t* pair = mctop_nt_get_pair(nt, lvl, (i + 1)/2);
-		  pair->nodes[0] = mctop_alloc_socket_seq_id(alloc, left->id);
-		  pair->socket_ids[0] = left->id;
-		  pair->nodes[1] = mctop_alloc_socket_seq_id(alloc, right->id);
-		  pair->socket_ids[1] = right->id;
-		  break;
+		  sibling_t* sibl = socket->siblings_in[s];
+		  socket_t* other = mctop_sibling_get_other_socket(sibl, socket);
+		  if (darray_remove(sids_avail, other->id))
+		    {
+		      pair->help_nodes[counters[p]++] = mctop_alloc_socket_seq_id(alloc, other->id);
+		      break;
+		    }
 		}
 	    }
 	}
+      free(counters);
     }
 
   nt->barrier_for = barrier_for;
   mctop_node_tree_add_barriers(nt, barrier_for);
+  mctop_node_tree_add_id_offsets(nt, barrier_for);
+
   nt->scratchpad = calloc_assert(nt->n_nodes, sizeof(void*));
 
   darray_free(sids_to_match);
@@ -254,11 +350,49 @@ mctop_nt_get_pair_for_node(mctop_node_tree_t* nt, const uint lvl, const uint nod
   return NULL;
 }
 
+static mctop_nt_pair_t*
+mctop_nt_get_pair_for_node_all(mctop_node_tree_t* nt, const uint lvl, const uint node, uint* spot)
+{
+  if (lvl >= nt->n_levels)
+    {
+      return NULL;
+    }
+
+  mctop_nt_lvl_t* level = &nt->levels[lvl];
+  for (int p = 0; p < level->n_pairs; p++)
+    {
+      mctop_nt_pair_t* pair = &level->pairs[p];
+      if (pair->nodes[0] == node || pair->nodes[1] == node)
+	{
+	  return pair;
+	}
+      for (uint h = 0; h < pair->n_help_nodes; h++)
+	{
+	  if (pair->help_nodes[h] == node)
+	    {
+	      *spot = h;
+	      return pair;
+	    }
+	}
+    }
+  return NULL;
+}
+
 uint
 mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mctop_node_tree_work_t* ntw)
 {
   const uint node = mctop_alloc_thread_node_id();
-  mctop_nt_pair_t* pair = mctop_nt_get_pair_for_node(nt, lvl, node);
+  uint spot = 0;
+  mctop_nt_pair_t* pair;
+  if (nt->barrier_for == EVERYONE)
+    {
+      pair = mctop_nt_get_pair_for_node_all(nt, lvl, node, &spot);
+    }
+  else
+    {
+      pair = mctop_nt_get_pair_for_node(nt, lvl, node);
+    }
+
   if (pair == NULL)		/* no work for me! */
     {
       return 0;
@@ -271,17 +405,27 @@ mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mcto
 	{
 	  ntw->node_role = DESTINATION;
 	  other_node = pair->nodes[1];
+	  ntw->id_offset = pair->node_id_offsets[0];
 	}
-      else
+      else if (pair->nodes[1] == node)
 	{
 	  ntw->node_role = SOURCE_ONLY;
 	  other_node = pair->nodes[0];
+	  ntw->id_offset = pair->node_id_offsets[1];
+	}
+      else
+	{
+	  ntw->node_role = HELPING;
+	  other_node = pair->nodes[0];
+	  ntw->id_offset = pair->help_node_id_offsets[spot];
 	}
     
       ntw->other_node = other_node;
-      ntw->num_hw_contexts_my_node = nt->alloc->n_hwcs_per_socket[node];
-      ntw->num_hw_contexts_other_node = nt->alloc->n_hwcs_per_socket[other_node];
-      ntw->num_hw_contexts = ntw->num_hw_contexts_my_node + ntw->num_hw_contexts_other_node;
+      ntw->destination = pair->nodes[0];
+      ntw->source = pair->nodes[1];
+      /* ntw->num_hw_contexts_my_node = nt->alloc->n_hwcs_per_socket[node]; */
+      /* ntw->num_hw_contexts_other_node = nt->alloc->n_hwcs_per_socket[other_node]; */
+      ntw->num_hw_contexts = pair->n_hwcs; //ntw->num_hw_contexts_my_node + ntw->num_hw_contexts_other_node;
     }
   return 1;
 }
