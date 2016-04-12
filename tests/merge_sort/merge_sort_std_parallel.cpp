@@ -72,7 +72,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:r:s:g:i:", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:p:r:s:g:i:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -103,6 +103,8 @@ main(int argc, char **argv)
 	case '?':
 	  printf("Use -h or --help for help\n");
 	  exit(0);
+        case 'p':
+          break;
 	default:
 	  exit(1);
 	}

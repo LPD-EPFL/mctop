@@ -50,6 +50,13 @@ print_error_sorted(MCTOP_SORT_TYPE* array, const size_t n_elems, const uint prin
 	   }
 }
 
+int is_power_of_two (uint x)
+{
+   while (((x % 2) == 0) && x > 1) /* While x is even and > 1 */
+        x /= 2;
+    return (x == 1);
+}
+
 int
 main(int argc, char **argv) 
 {
@@ -165,6 +172,11 @@ main(int argc, char **argv)
       const size_t array_siz = array_len * sizeof(MCTOP_SORT_TYPE);
       array = (MCTOP_SORT_TYPE*) malloc(array_siz);
       assert(array != NULL);
+
+      if (!is_power_of_two(mctop_alloc_get_num_sockets(alloc))) {
+        printf("%s: ## Sorted %llu MB of ints in %f seconds\n", argv[0], array_siz / (1024 * 1024LL), 0.0);
+        return 0;
+      }
 
       switch (test_random_type)
 	{
