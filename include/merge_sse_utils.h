@@ -1,6 +1,8 @@
 #ifndef __H_MERGE_SSE_UTILS__
 #define __H_MERGE_SSE_UTILS__
 
+#ifdef __x86_64__
+
 #include <nmmintrin.h>
 
 //4-wide bitonic merge network
@@ -62,5 +64,7 @@ static inline void sse_merge_aligned_32bit(void *a, void *b, void *dest, size_t 
   }
   *(dest128+next_val)=next;
 } 
+
+#endif	/* #ifdef __x86_64__ */
 
 #endif
