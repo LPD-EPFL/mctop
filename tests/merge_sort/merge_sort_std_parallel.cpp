@@ -98,7 +98,6 @@ main(int argc, char **argv)
 	  test_random_type = atoi(optarg);
 	  break;
 	case 'h':
-	  mctop_alloc_help();
 	  exit(0);
 	case '?':
 	  printf("Use -h or --help for help\n");

@@ -24,7 +24,29 @@ max(int64_t x, int64_t y)
   return x;
 }
 
+static inline void merge_arrays_unaligned_nosse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE *dest, long sizea, long sizeb) {
+  long i,j;
+  i=0;
+  j=0;
+  long k=0;
+
+  while ((i<sizea) && (j<sizeb))
+    {
+      if (a[i] < b[j])
+	dest[k++] = a[i++];
+      else
+	dest[k++] = b[j++];
+    }
+
+  while (i < sizea)
+    dest[k++] = a[i++];
+  while (j < sizeb)
+    dest[k++] = b[j++];
+}
+
+
 static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE* dest, size_t num_a, size_t num_b) {
+#ifdef __x86_64__
     //first take care of portions flowing over the 16-byte boundaries
     size_t i,j,k;
 
@@ -91,27 +113,9 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
       }
       k++;
     }
-}
-
-
-static inline void merge_arrays_unaligned_nosse(SORT_TYPE* a, SORT_TYPE* b, SORT_TYPE *dest, long sizea, long sizeb) {
-  long i,j;
-  i=0;
-  j=0;
-  long k=0;
-
-  while ((i<sizea) && (j<sizeb))
-    {
-      if (a[i] < b[j])
-	dest[k++] = a[i++];
-      else
-	dest[k++] = b[j++];
-    }
-
-  while (i < sizea)
-    dest[k++] = a[i++];
-  while (j < sizeb)
-    dest[k++] = b[j++];
+#else  /* #ifdef __x86_64__ */
+    merge_arrays_unaligned_nosse(a, b, dest, num_a, num_b);
+#endif /* #ifdef __x86_64__ */
 }
 
 

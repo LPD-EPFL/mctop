@@ -13,17 +13,17 @@ extern int mctop_set_cpu(int cpu);
 lgrp_cookie_t lgrp_cookie;
 volatile uint lgrp_cookie_init = 0;
 
-static int numa_to_core[64] = 
-  {
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-  };
+/* static int numa_to_core[64] =  */
+/*   { */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*     -1, -1, -1, -1, -1, -1, -1, -1, */
+/*   }; */
 
 uint
 numa_num_task_nodes()
@@ -72,7 +72,6 @@ numa_run_on_node(uint node)
   lgrp_id_t root = lgrp_root(lgrp_cookie);
   lgrp_id_t lgrp_array[SPARC_LGRP_MAX_NODES];
   int ret = lgrp_children(lgrp_cookie, root, lgrp_array, SPARC_LGRP_MAX_NODES);
-  int cret = ret;
   ret = ret && lgrp_affinity_set(P_LWPID, P_MYID, lgrp_array[node], LGRP_AFF_STRONG);
   return ret;
 }
