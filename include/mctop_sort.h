@@ -10,11 +10,20 @@ extern "C" {
 #define MCTOP_SORT_TYPE                   uint
 #define MCTOP_SORT_TYPE_FORMAT            "%u"
 #define MCTOP_SORT_MIN_LEN_PARALLEL       (2 * 1024 * 1024LL / sizeof(MCTOP_SORT_TYPE))
+
+  /* mctop sort versions */
+#define MCTOP_SORT_NO_SSE_SMT             0
+#define MCTOP_SORT_SSE_NO_SMT             1
+#define MCTOP_SORT_SSE_SMT                2
+#define MCTOP_SORT_NO_SSE_SMT_ALL_ND      3
+
+#define MCTOP_SORT_SSE_HYPERTHREAD_RATIO  3
+
 #define MCTOP_SORT_USE_SSE                2
 #define MCTOP_SSE_K                       4
 #define MCTOP_SORT_COPY_FIRST             1
 #define MCTOP_NUM_CHUNKS_PER_THREAD       1
-#define MCTOP_SORT_SSE_HYPERTHREAD_RATIO  3
+
 #define MCTOP_SORT_DEBUG                  0
 
   /* partition descriptor */

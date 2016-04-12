@@ -152,29 +152,21 @@ mctop_sort_thread_insocket_merge_participate()
       return 1;
     }
   return 0;
-#elif MCTOP_SORT_USE_SSE == 2
-  return 1;
-#else
+#else  // for every other type all hyperthreads participate
   return 1;
 #endif
 }
   
-  static inline uint
+static inline uint
 mctop_sort_thread_crosssocket_merge_participate()
 {
-#if MCTOP_SORT_USE_SSE == 1
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
   if (mctop_alloc_thread_incore_id() == 0) // only cores!!
     {
       return 1;
     }
   return 0;
-#elif MCTOP_SORT_USE_SSE == 2
-  if (mctop_alloc_thread_incore_id() == 0) // only cores!!
-    {
-      return 1;
-    }
-  return 0;
-#else
+#else  // everyone!
   return 1;
 #endif
 }
@@ -199,8 +191,9 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
-      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
-      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
+      //      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+      nd->destination = nd->source + td->n_elems;
       assert(nd->source != NULL && nd->destination != NULL);
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
       nd->partitions = (mctop_sort_pd_t*) malloc(nd->n_chunks * sizeof(mctop_sort_pd_t));
@@ -244,15 +237,12 @@ mctop_sort_thr(void* params)
       std::sort(low, high);
     }
 
-#if MCTOP_SORT_USE_SSE == 1	// need extra barrier, cause the SMT threads will not need
-                                // to wait on the first merge barriers
-  mctop_alloc_barrier_wait_node(alloc);
-#elif MCTOP_SORT_USE_SSE == 2	// need extra barrier, cause the SMT threads will not need
-                                // to wait on the first merge barriers
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
+  // need extra barrier, cause the SMT threads will not need
+  // to wait on the first merge barriers
   mctop_alloc_barrier_wait_node(alloc);
 #else
 #endif
-
 
   // ////////////////////////////////////////////////////////////////////////////////////////////////////
   // merging 
@@ -260,18 +250,14 @@ mctop_sort_thr(void* params)
 
   if (likely(mctop_sort_thread_insocket_merge_participate())) // with SSE, only cores participate
     {
-  // ///////////////////////////////////////////////////////////////////////
-  // in-socket merging
-  // ///////////////////////////////////////////////////////////////////////
+      // ///////////////////////////////////////////////////////////////////////
+      // in-socket merging
+      // ///////////////////////////////////////////////////////////////////////
       mctop_sort_merge_in_socket(alloc, nd, my_node);
-      if (mctop_alloc_thread_is_node_leader())
-      {
-        //print_error_sorted(nd->source, nd->n_elems, 1);
-      }
     }
 
   if (likely(mctop_sort_thread_crosssocket_merge_participate()))
-  {
+    {
       // the sorted array is in nd->source
       if (nt->n_nodes > 1)
 	{
@@ -281,9 +267,9 @@ mctop_sort_thr(void* params)
 	      print_error_sorted(nd->source, nd->n_elems, 1);
 	      nd->n_elems = node_size / sizeof(MCTOP_SORT_TYPE);
 	    }
-  // ///////////////////////////////////////////////////////////////////////
-  // cross-socket merging
-  // ///////////////////////////////////////////////////////////////////////
+	  // ///////////////////////////////////////////////////////////////////////
+	  // cross-socket merging
+	  // ///////////////////////////////////////////////////////////////////////
 	  mctop_sort_merge_cross_socket(td, my_node);
 	}
     }
@@ -301,7 +287,7 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       mctop_alloc_malloc_free(nd->source, tot_size);
-      mctop_alloc_malloc_free(nd->destination, tot_size);
+           // mctop_alloc_malloc_free(nd->destination, tot_size);
     }
 
   return NULL;
@@ -353,7 +339,6 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
 #endif
 
   uint threads_per_partition = n_threads;
-  uint n_cores_socket = mctop_alloc_get_num_cores_node(alloc, mctop_alloc_thread_local_node());
 
   if (mctop_alloc_thread_is_node_leader())
     {
@@ -377,6 +362,7 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
       	    }
       	}
 #if MCTOP_SORT_USE_SSE == 2
+      uint n_cores_socket = mctop_alloc_get_num_cores_node(alloc, mctop_alloc_thread_local_node());
       mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, n_threads, n_cores_socket);
 #else
       mctop_sort_merge(src, dest, nd->partitions, n_partitions, threads_per_partition, n_threads);
@@ -529,9 +515,7 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
         {
           mctop_node_tree_barrier_wait(nt, l);
 
-#if MCTOP_SORT_USE_SSE == 1
-	  uint my_merge_id = mctop_alloc_thread_core_insocket_id();
-#elif MCTOP_SORT_USE_SSE == 2
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
 	  uint my_merge_id = mctop_alloc_thread_core_insocket_id();
 #else
 	  uint my_merge_id = mctop_alloc_thread_insocket_id();
@@ -552,15 +536,13 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
           MSD_DO(
 		 if (mctop_alloc_thread_is_node_leader())
 		   {
-		     printf("[Nd %u Other %u] L%u: MId %-2u: DST %u: a=%p [#%zu], b=%p[#%zu], d=%p -- #thr %u\n", 
-			    my_node, ntw.other_node, l, my_merge_id, ntw.destination, my_a, n_elems_a,
+		     printf("[Nd %u Others %u+%u] L%u: MId %-2u: DST %u: a=%p [#%zu], b=%p[#%zu], d=%p -- #thr %u\n", 
+			    my_node, ntw.destination, ntw.source, l, my_merge_id, ntw.destination, my_a, n_elems_a,
 			    my_b, n_elems_b, my_dest, threads_in_merge);
 		   });
 
 	  
-#if MCTOP_SORT_USE_SSE == 1
-          merge_arrays(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
-#elif MCTOP_SORT_USE_SSE == 2
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
           merge_arrays(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);
 #else
           merge_arrays_no_sse(my_a, my_b, my_dest, n_elems_a, n_elems_b, my_merge_id, threads_in_merge);

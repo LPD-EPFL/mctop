@@ -106,7 +106,7 @@ main(int argc, char **argv)
 	  break;
 	case 's':
 	  {
-	    uint array_mb = atol(optarg) * 1024 * 1024LU;
+	    size_t array_mb = atol(optarg) * 1024 * 1024LU;
 	    array_len = array_mb / sizeof(int);
 	  }
 	  break;
@@ -147,8 +147,10 @@ main(int argc, char **argv)
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
 #elif MCTOP_SORT_USE_SSE == 2
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, CORE);
-#else
+#elif MCTOP_SORT_USE_SSE == 0
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
+#elif MCTOP_SORT_USE_SSE == 3
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE);
 #endif
       if (test_verbose)
 	{
