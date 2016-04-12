@@ -104,6 +104,8 @@ tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_so
 mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
 	merge_sort_parallel_merge_nosse merge_sort_seq_merge
 
+sorting: mctop_sort merge_sort_std_parallel
+
 run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/run_on_node0.o -o run_on_node0 -lmctop ${LDFLAGS}
 
