@@ -50,12 +50,12 @@ mctop_node_tree_free(mctop_node_tree_t* nt)
       free(nt->levels[l].pairs);
       mctop_barrier_destroy(nt->levels[l].barrier);
     }
-  free(nt->levels);
-  mctop_barrier_destroy(nt->barrier);
-  free(nt->barrier);
-  free(nt->scratchpad);
-  free(nt);
-}
+    free(nt->levels);
+    mctop_barrier_destroy(nt->barrier);
+    free(nt->barrier);
+    free(nt->scratchpad);
+    free(nt);
+    }
 
 static void
 mctop_nt_get_nodes_lvl(mctop_node_tree_t* nt, const uint lvl, darray_t* nodes)
@@ -139,12 +139,21 @@ mctop_node_tree_add_id_offsets(mctop_node_tree_t* nt, mctop_type_t barrier_for)
 	  pair->node_id_offsets[1] = n_hwcs;
 	  pair->help_node_id_offsets = malloc_assert(pair->n_help_nodes * sizeof(uint));
 	  n_hwcs += mctop_nt_get_n_participants(nt, pair->nodes[1], barrier_for);
+	  const uint n_hwcs_main = n_hwcs;
 	  for (uint h = 0; h < pair->n_help_nodes; h++)
 	    {
 	      pair->help_node_id_offsets[h] = n_hwcs;
 	      n_hwcs += mctop_nt_get_n_participants(nt, pair->help_nodes[h], barrier_for);
 	    }
-	  pair->n_hwcs = n_hwcs;
+
+	  if (barrier_for == EVERYONE)
+	    {
+	      pair->n_hwcs = n_hwcs;
+	    }
+	  else
+	    {
+	      pair->n_hwcs = n_hwcs_main;
+	    }
 	}
     }
 }
