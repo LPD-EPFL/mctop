@@ -5,7 +5,7 @@
 
 void ll_random_create(volatile uint64_t* mem, const size_t size);
 ticks ll_random_traverse(volatile uint64_t* list, const size_t reps);
-ticks array_get_min(size_t* a, const size_t len);
+ticks array_get_min(size_t* a, const int len);
 
 static ticks
 ll_random_latency(const size_t size_bytes)
@@ -129,7 +129,7 @@ mctop_cache_size_estimate()
       //      cdf_t* cdf = cdf_calc(lat, n);
       /* cdf_print(cdf); */
       cdf_cluster_t* cc = cdf_cluster(cdf, sensitivity, 0);
-      //      cdf_cluster_print(cc);
+      cdf_cluster_print(cc);
 
       size_t tlat = cc->clusters[0].val_max;
 
@@ -158,7 +158,7 @@ mctop_cache_size_estimate()
 //#warning Maybe add the mem. eop numbers in the topology!
 
 ticks
-array_get_min(ticks* a, const size_t len)
+array_get_min(ticks* a, const int len)
 {
   ticks min = a[0];
   for (size_t i = 1; i < len; i++)
