@@ -21,7 +21,7 @@ then
   THREADS="12 24 36 48 60 72 84 96"
 elif [[ $NAME  == "ol-collab1" ]]
 then
-  VERSIONS="merge_sort_std_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
+  VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
   THREADS=$(seq 32 32 256)
 fi
 
