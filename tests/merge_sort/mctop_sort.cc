@@ -1,7 +1,7 @@
 #include <mctop_sort.h>
 #include <merge_utils.h>
 #include <algorithm>    // std::sort
-#include <nmmintrin.h>
+#include <string.h>
 
 void* mctop_sort_thr(void* params);
 
@@ -176,6 +176,7 @@ mctop_sort_thread_crosssocket_merge_participate()
 void*
 mctop_sort_thr(void* params)
 {
+  MCTOP_F_STEP(__steps, __a, __b);
   mctop_sort_td_t* td = (mctop_sort_td_t*) params;
   const size_t tot_size = td->n_elems * sizeof(MCTOP_SORT_TYPE);
   mctop_node_tree_t* nt = td->nt;
@@ -192,13 +193,18 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
+#if __sparc__
+      nd->source = (MCTOP_SORT_TYPE*) malloc(2 * tot_size);
+#else
       nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
+#endif
       //      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
       nd->destination = nd->source + td->n_elems;
       assert(nd->source != NULL && nd->destination != NULL);
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
       nd->partitions = (mctop_sort_pd_t*) malloc(nd->n_chunks * sizeof(mctop_sort_pd_t));
     }
+  MCTOP_P_STEP("preparation-1", __steps, __a, __b, !mctop_alloc_thread_id());
   mctop_alloc_barrier_wait_node(alloc);
 
   MCTOP_SORT_TYPE* array_a = nd->source;
@@ -223,6 +229,7 @@ mctop_sort_thr(void* params)
   MCTOP_SORT_TYPE* copy = nd->array + my_offset_socket;
   MCTOP_SORT_TYPE* dest = array_a + my_offset_socket;
 
+  MCTOP_P_STEP("preparation-2", __steps, __a, __b, !mctop_alloc_thread_id());
   const uint my_n_elems_c = my_n_elems / MCTOP_NUM_CHUNKS_PER_THREAD;
   for (uint j = 0; j < MCTOP_NUM_CHUNKS_PER_THREAD; j++)
     {
@@ -235,14 +242,15 @@ mctop_sort_thr(void* params)
       MCTOP_SORT_TYPE* low = dest + offs;
       memcpy(low, copy + offs, my_n_elems_c * sizeof(MCTOP_SORT_TYPE));
       MCTOP_SORT_TYPE* high = low + my_n_elems_c;
+      MCTOP_P_STEP("memcpy", __steps, __a, __b, !mctop_alloc_thread_id());
       std::sort(low, high);
+      MCTOP_P_STEP("seq sort", __steps, __a, __b, !mctop_alloc_thread_id());
     }
 
 #if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
   // need extra barrier, cause the SMT threads will not need
   // to wait on the first merge barriers
   mctop_alloc_barrier_wait_node(alloc);
-#else
 #endif
 
   // ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,6 +263,7 @@ mctop_sort_thr(void* params)
       // in-socket merging
       // ///////////////////////////////////////////////////////////////////////
       mctop_sort_merge_in_socket(alloc, nd, my_node);
+      MCTOP_P_STEP("in-socket merge", __steps, __a, __b, !mctop_alloc_thread_id());
     }
 
   if (likely(mctop_sort_thread_crosssocket_merge_participate()))
@@ -284,6 +293,7 @@ mctop_sort_thr(void* params)
     }
 
   mctop_alloc_barrier_wait_all(alloc);
+  MCTOP_P_STEP("cross-socket merge", __steps, __a, __b, !mctop_alloc_thread_id());
   
   if (mctop_alloc_thread_is_node_leader())
     {
