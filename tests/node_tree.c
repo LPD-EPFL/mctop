@@ -101,7 +101,7 @@ main(int argc, char **argv)
 	}
 
 
-      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE);
       mctop_node_tree_print(nt);
 
       if (test_run_pin)
@@ -139,8 +139,6 @@ main(int argc, char **argv)
 	}
       mctop_alloc_free(alloc);
       mctop_node_tree_free(nt);
-
-
 
       mctop_free(topo);
     }
@@ -184,16 +182,14 @@ test_pin(void* params)
 	  mctop_node_tree_barrier_wait(nt, l);
 	  if (node_leader)
 	    {
-	      /* printf("Thread %d on seq node %d. Work @ lvl%d! My node is %s\n", */
-	      /* 	     mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l, */
-	      /* 	     ntw.node_role == DESTINATION ? "DEST" : "SRC"); */
-
+	      printf("LVL%u -- Node %-2u - Role %u for %-2u <- %-2u -- offset id %u\n", l,
+		     mctop_alloc_thread_node_id(), ntw.node_role, ntw.destination, ntw.source,
+		     ntw.id_offset);
 	    }
 	}
       else
 	{
-	  /* printf("Thread %d on seq node %d. No work @ lvl%d!\n", */
-	  /* 	 mctop_alloc_thread_id(), mctop_alloc_thread_node_id(), l); */
+	  break;
 	}
     }
 

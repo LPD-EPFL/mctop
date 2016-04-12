@@ -422,7 +422,7 @@ void
 mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 {
   mctop_node_tree_t* nt = td->nt;
-  mctop_alloc_t* alloc = nt->alloc;
+  // mctop_alloc_t* alloc = nt->alloc;
   mctop_sort_nd_t* my_nd = &td->node_data[my_node];
 
   MCTOP_F_STEP(__steps, __a, __b);
@@ -435,36 +435,18 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 
 #if MCTOP_SORT_USE_SSE == 1
 	  uint my_merge_id = mctop_alloc_thread_core_insocket_id();
-          const uint threads_in_merge = mctop_alloc_get_num_cores_node(alloc, my_node) +
-	    mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
 #else
 	  uint my_merge_id = mctop_alloc_thread_insocket_id();
-          const uint threads_in_merge = mctop_alloc_get_num_hw_contexts_node(alloc, my_node) +
-	    mctop_alloc_get_num_hw_contexts_node(alloc, ntw.other_node);
 #endif
+          const uint threads_in_merge = ntw.num_hw_contexts;
+	  my_merge_id += ntw.id_offset;
 
-	  uint a, b;
-	  if (ntw.node_role == DESTINATION)
-	    {
-	      a = my_node;
-	      b = ntw.other_node;
-	    }
-	  else 			// SOURCE_ONLY
-	    {
-	      a = ntw.other_node;
-	      b = my_node;
-#if MCTOP_SORT_USE_SSE == 1
-	      my_merge_id += mctop_alloc_get_num_cores_node(alloc, ntw.other_node);
-#else
-	      my_merge_id += mctop_alloc_get_num_hw_contexts_node(alloc, ntw.other_node);
-#endif
-	    }
 
-          MCTOP_SORT_TYPE* my_a = td->node_data[a].source;
-	  const size_t n_elems_a = td->node_data[a].n_elems;
-	  MCTOP_SORT_TYPE* my_b = td->node_data[b].source;
-	  const size_t n_elems_b = td->node_data[b].n_elems;
-	  MCTOP_SORT_TYPE* my_dest = td->node_data[a].destination;
+          MCTOP_SORT_TYPE* my_a = td->node_data[ntw.destination].source;
+	  const size_t n_elems_a = td->node_data[ntw.destination].n_elems;
+	  MCTOP_SORT_TYPE* my_b = td->node_data[ntw.source].source;
+	  const size_t n_elems_b = td->node_data[ntw.source].n_elems;
+	  MCTOP_SORT_TYPE* my_dest = td->node_data[ntw.destination].destination;
 	  if (l == 0)
 	    {
 	      my_dest = td->array;
