@@ -192,8 +192,9 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
-      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
-      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+      nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
+      //      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+      nd->destination = nd->source + td->n_elems;
       assert(nd->source != NULL && nd->destination != NULL);
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
       nd->partitions = (mctop_sort_pd_t*) malloc(nd->n_chunks * sizeof(mctop_sort_pd_t));
@@ -287,7 +288,7 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
       mctop_alloc_malloc_free(nd->source, tot_size);
-      mctop_alloc_malloc_free(nd->destination, tot_size);
+           // mctop_alloc_malloc_free(nd->destination, tot_size);
     }
 
   return NULL;
