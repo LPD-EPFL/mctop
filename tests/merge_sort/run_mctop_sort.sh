@@ -7,25 +7,25 @@ SIZES="1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192"
 ALLOCATORS="3 4 7 9"
 
 
-NAME=$(uname -n)
+UNAME=$(uname -n)
 
-if [[ $NAME == "lpdxeon2680" ]]
+if [[ $UNAME == "lpdxeon2680" ]]
 then
   THREADS="10 20 30 40" 
-elif [[ $NAME == "lpd48core" ]]
+elif [[ $UNAME == "lpd48core" ]]
 then
   THREADS="6 12 24 48"
   VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
-elif [[ $NAME == "lpdquad" ]]
+elif [[ $UNAME == "lpdquad" ]]
 then
   THREADS="12 24 36 48 60 72 84 96"
-elif [[ $NAME  == "diassrv8" ]]
+elif [[ $UNAME  == "diassrv8" ]]
 then
     VERSIONS="merge_sort_std_parallel mctop_sort_no_sse mctop_sort_sse mctop_sort_sse_hyperthreads_1 mctop_sort_sse_hyperthreads_2 mctop_sort_sse_hyperthreads_3 mctop_sort_sse_hyperthreads_4 mctop_sort_no_sse_all_sockets"
   THREADS=$(seq 20 20 160)
-elif [[ $NAME  == "ol-collab1" ]]
+elif [[ $UNAME  == "ol-collab1" ]]
 then
-  VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
+  VERSIONS="merge_sort_std_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
   THREADS=$(seq 32 32 256)
 fi
 
@@ -54,12 +54,20 @@ do
       printf "%29s:" ${version}
       for thread in $THREADS
       do
-        res=$(./${version} -n${thread} -s${size} -p${allocator} 2>&1 | grep Sorted | awk '{printf"%.3f", $9;}')
+          text=$(./${version} -n${thread} -s${size} -p${allocator} 2>&1);
+	  res=$(echo "$text" | awk '/Sorted/ {printf"%.3f", $9;}');
+	  error=$(echo "$text" | awk '/is sorted/ {printf"%d", $9;}');
         if [[ $res ]]
         then
           printf " %8s" ${res}
         else
           printf " %8s" "n/a"
+        fi
+        if [[ $error ]]
+        then
+          printf "*"
+        else
+          printf " "
         fi
       done
       printf "\n"
