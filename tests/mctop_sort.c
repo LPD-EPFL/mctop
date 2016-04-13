@@ -182,50 +182,25 @@ main(int argc, char **argv)
 	{
 	case 0:
 	  printf("  // Knuth shuffle \n");
-	  for (size_t i = 0; i < array_len; i++)
-	    {
-	      array[i] = i;
-	    }
-	  for (size_t i = array_len - 1; i > 0; i--)
-	    {
-	      const uint j = mctop_rand(seeds) % array_len;
-	      const MCTOP_SORT_TYPE tmp = array[i];
-	      array[i] = array[j];
-	      array[j] = tmp;
-	    }
+          mctop_get_knuth_array_uint(array, array_len, seeds);
 	  break;
 	case 1:
 	  printf("  // Random 32bit \n");
-	  for (size_t i = 0; i < array_len; i++)
-	    {
-	      array[i] = mctop_rand(seeds) % (2000000000);
-	    }
+          mctop_get_random_array_uint(array, array_len, seeds);
 	  break;
 	case 2:
 	  printf("  // Already sorted \n");
-	  for (size_t i = 0; i < array_len; i++)
-	    {
-	      array[i] = i;
-	    }
+          mctop_get_sorted_array_uint(array, array_len);
 	  break;
 	case 3:
 	  {
 	    printf("  // Already sorted - but array[0] <-> array[N-1] \n");
-	    for (size_t i = 0; i < array_len; i++)
-	      {
-		array[i] = i;
-	      }
-	    MCTOP_SORT_TYPE tmp = array[0];
-	    array[0] = array[array_len - 1];
-	    array[array_len - 1] = tmp;
+            mctop_get_sorted_endswitched_array_uint(array, array_len);
 	  }
 	  break;
 	case 4:
 	  printf("  // Reverse sorted \n");
-	  for (size_t i = 0; i < array_len; i++)
-	    {
-	      array[array_len - 1 - i] = i;
-	    }
+          mctop_get_reversesorted_array_uint(array, array_len);
 	  break;
 	}
       

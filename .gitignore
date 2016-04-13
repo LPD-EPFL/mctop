@@ -38,6 +38,7 @@
 /2621440
 /allocator
 /core
+/data/*
 /cscope.files
 /mct_load
 /mctop
