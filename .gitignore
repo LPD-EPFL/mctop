@@ -43,6 +43,14 @@
 /mctop
 /mctop_latency
 /mctop_sort
+/mctop_sort_no_sse
+/mctop_sort_no_sse_all_sockets
+/mctop_sort_sse
+/mctop_sort_sse_hyperthreads_1
+/mctop_sort_sse_hyperthreads_2
+/mctop_sort_sse_hyperthreads_3
+/mctop_sort_sse_hyperthreads_4
+/merge_sort_cilkplus_parallel
 /merge_sort_merge_level
 /merge_sort_merge_level_up
 /merge_sort_parallel_merge
@@ -53,7 +61,6 @@
 /merge_sort_std
 /merge_sort_std_parallel
 /merge_sort_tbb_parallel
-/merge_sort_cilkplus_parallel
 /node_tree
 /numa_alloc
 /pile
