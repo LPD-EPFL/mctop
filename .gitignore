@@ -38,8 +38,8 @@
 /2621440
 /allocator
 /core
-/data/*
 /cscope.files
+/data/*
 /mct_load
 /mctop
 /mctop_latency
@@ -65,6 +65,7 @@
 /node_tree
 /numa_alloc
 /pile
+/pool
 /run_on_node0
 /solaris
 /sort

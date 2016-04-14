@@ -6,8 +6,31 @@
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>
+#include <stdarg.h>
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+
+#define MCTOP_DEBUG 1
+
+#if MCTOP_DEBUG == 1
+static inline void
+mctop_dprint(const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vfprintf(stdout, format, args);
+  va_end(args);
+  fflush(stdout);
+}
+#else
+static inline void
+mctop_dprint(const char* format, ...)
+{
+
+}
 #endif
 
   /* ******************************************************************************** */

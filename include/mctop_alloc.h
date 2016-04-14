@@ -197,6 +197,36 @@ extern "C" {
 
 
   /* ******************************************************************************** */
+  /* MCTOP Allocator pool */
+  /* ******************************************************************************** */
+
+#define MCTOP_ALLOC_POOL_MAX_N     8
+
+  typedef struct mctop_alloc_args
+  {
+    int n_hwcs;
+    int n_config;
+    mctop_alloc_t* alloc;
+  } mctop_alloc_args_t;
+
+
+  typedef struct mctop_alloc_pool
+  {
+    mctop_t* topo;
+    mctop_alloc_args_t* allocs[MCTOP_ALLOC_NUM][MCTOP_ALLOC_POOL_MAX_N];
+  } mctop_alloc_pool_t;
+
+  mctop_alloc_pool_t* mctop_alloc_pool_create(mctop_t* topo);
+  void mctop_alloc_pool_free(mctop_alloc_pool_t* ap);
+
+
+  mctop_alloc_t* mctop_alloc_pool_get_alloc(mctop_alloc_pool_t* ap, const int n_hwcs,
+					    const int n_config, mctop_alloc_policy policy);
+  
+
+
+
+  /* ******************************************************************************** */
   /* Node merge tree */
   /* ******************************************************************************** */
 

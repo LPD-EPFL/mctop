@@ -2,6 +2,9 @@
 #include <mctop_internal.h>
 #include <darray.h>
 
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+
 /* #define MA_DP(args...) printf(args) */
 #define MA_DP(args...) //printf(args)
 
@@ -253,6 +256,14 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
       /* 	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket); */
     }
 
+  const int n_hwcs = alloc->n_hwcs;
+  if (unlikely((n_hwcs_per_socket * topo->n_sockets) < n_hwcs))
+    {
+      alloc->n_hwcs = n_hwcs_per_socket * topo->n_sockets;
+      fprintf(stderr, "MCTOP Warning: Asking for %u hw contexts, %u per socket. Returning %u contexts!\n",
+	      n_hwcs, n_hwcs_per_socket, alloc->n_hwcs);
+    }
+
   uint max_lat = topo->latencies[topo->socket_level];
   double min_bw = mctop_socket_get_bw_local(socket), tot_bw = min_bw;
   darray_add_double(bws, min_bw);
@@ -475,16 +486,17 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
   alloc->n_hwcs_used = 0;
-  if (n_hwcs > topo->n_hwcs)
+  if (n_hwcs <= 0)
+    {
+      alloc->n_hwcs = topo->n_hwcs;
+    }
+  else if (((int) n_hwcs) > topo->n_hwcs)
     {
       fprintf(stderr, "MCTOP Warning: Asking for %u hw contexts. This processor has %u contexts.\n",
 	      n_hwcs, topo->n_hwcs);
       alloc->n_hwcs = topo->n_hwcs;
     }
-  else if (n_hwcs <= 0)
-    {
-      alloc->n_hwcs = topo->n_hwcs;
-    }
+  
 
   if (policy <= MCTOP_ALLOC_BW_ROUND_ROBIN_CORES)
     {
@@ -549,32 +561,34 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
   alloc->global_barrier = malloc_assert(sizeof(mctop_barrier_t));
   mctop_barrier_init(alloc->global_barrier, alloc->n_hwcs);
 
-  alloc->core_sids = malloc_assert(alloc->n_hwcs * sizeof(uint));
-  darray_t* cores = darray_create();
-  for (int h = 0; h < alloc->n_hwcs; h++)
-    {
-      hwc_gs_t* core = mctop_hwcid_get_core(topo, alloc->hwcs[h]);
-      uint pos;
-      if (darray_exists_pos(cores, core->id, &pos))
-	{
-	  alloc->core_sids[h] = pos;
-	}
-	else
-	  {
-	    alloc->core_sids[h] = darray_get_num_elems(cores);
-	    darray_add(cores, core->id);
-	  }
-
-    }
-  darray_free(cores);
-
   alloc->n_cores = 0;
   alloc->n_hwcs_per_socket = NULL;
   alloc->n_cores_per_socket = NULL;
   alloc->node_to_nth_socket = NULL;
   alloc->socket_barriers = NULL;
+  alloc->core_sids = NULL;
   if (alloc->policy != MCTOP_ALLOC_NONE)
     {
+      alloc->core_sids = malloc_assert(alloc->n_hwcs * sizeof(uint));
+      darray_t* cores = darray_create();
+      for (int h = 0; h < alloc->n_hwcs; h++)
+	{
+	  hwc_gs_t* core = mctop_hwcid_get_core(topo, alloc->hwcs[h]);
+	  uint pos;
+	  if (darray_exists_pos(cores, core->id, &pos))
+	    {
+	      alloc->core_sids[h] = pos;
+	    }
+	  else
+	    {
+	      alloc->core_sids[h] = darray_get_num_elems(cores);
+	      darray_add(cores, core->id);
+	    }
+
+	}
+      darray_free(cores);
+
+
       alloc->n_hwcs_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       alloc->n_cores_per_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       mctop_alloc_details_calc(alloc, &alloc->n_cores, alloc->n_hwcs_per_socket, alloc->n_cores_per_socket);
@@ -663,7 +677,10 @@ void
 mctop_alloc_free(mctop_alloc_t* alloc)
 {
   free(alloc->hwcs);
-  free(alloc->core_sids);
+  if (alloc->core_sids)
+    {
+      free(alloc->core_sids);
+    }
   free((void*) alloc->hwcs_used);
 #ifdef __x86_64__
   free(alloc->hwcs_all);
@@ -1149,7 +1166,7 @@ mctop_alloc_malloc_free(void* mem, const size_t size)
   numa_free(mem, size);
 }
 
-/* barrier******************************************************************************** */
+/* barrier ******************************************************************************* */
 
 void
 mctop_alloc_barrier_wait_all(mctop_alloc_t* alloc)
@@ -1175,4 +1192,115 @@ mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc)
       const uint on = mctop_alloc_thread_node_id();
       mctop_barrier_wait(alloc->socket_barriers_cores[on]);
     }
+}
+
+
+/* pool ********************************************************************************** */
+
+
+mctop_alloc_pool_t*
+mctop_alloc_pool_create(mctop_t* topo)
+{
+  mctop_alloc_pool_t* ap = calloc_assert(1, sizeof(mctop_alloc_pool_t));
+  ap->topo = topo;
+  return ap;
+}
+
+static void
+mctop_alloc_args_free(mctop_alloc_args_t* aa)
+{
+  mctop_alloc_free(aa->alloc);
+  free(aa);
+}
+
+void
+mctop_alloc_pool_free(mctop_alloc_pool_t* ap)
+{
+  for (uint i = 0; i < MCTOP_ALLOC_NUM; i++)
+    {
+      mctop_alloc_args_t** alloc_args = ap->allocs[i];
+      for (uint i = 0; i < MCTOP_ALLOC_POOL_MAX_N; i++)
+	{
+	  mctop_alloc_args_t* aa = alloc_args[i];
+	  if (aa == NULL)
+	    {
+	      break;
+	    }
+	  mctop_alloc_args_free(aa);
+	}
+    }
+  free(ap);
+}
+
+static inline mctop_alloc_args_t*
+mctop_alloc_args_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  mctop_alloc_args_t* aa = malloc_assert(sizeof(mctop_alloc_args_t));
+  aa->n_hwcs = n_hwcs;
+  aa->n_config = n_config;
+  aa->alloc = mctop_alloc_create(topo, n_hwcs, n_config, policy);
+  return aa;
+}
+
+
+mctop_alloc_t*
+mctop_alloc_pool_get_alloc(mctop_alloc_pool_t* ap, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  int n_hwcs_actual = n_hwcs, n_config_actual = n_config;
+  switch (policy)
+    {
+    case MCTOP_ALLOC_NONE:
+    case MCTOP_ALLOC_SEQUENTIAL:
+      n_hwcs_actual = MCTOP_ALLOC_ALL;
+      n_config_actual = MCTOP_ALLOC_ALL;
+      break;
+    case MCTOP_ALLOC_MIN_LAT_HWCS:
+    case MCTOP_ALLOC_MIN_LAT_CORES_HWCS:
+    case MCTOP_ALLOC_MIN_LAT_CORES:
+    case MCTOP_ALLOC_BW_ROUND_ROBIN_HWCS:
+    case MCTOP_ALLOC_BW_ROUND_ROBIN_CORES:
+      n_hwcs_actual = MCTOP_ALLOC_ALL;
+      break;
+    default:
+      break;
+    }
+
+  mctop_dprint("MCTOP Alloc Pool: Get %-s allocator [#n_hwcs %-3d / #n_config %-2d]!\n",
+	       mctop_alloc_policy_desc[policy], n_hwcs, n_config);
+
+
+  mctop_alloc_args_t** alloc_args = ap->allocs[policy];
+  mctop_alloc_args_t* aa = NULL;
+  for (uint i = 0; i < MCTOP_ALLOC_POOL_MAX_N; i++)
+    {
+      aa = alloc_args[i];
+      if (aa == NULL)
+	{
+	  aa = alloc_args[i] = mctop_alloc_args_create(ap->topo, n_hwcs_actual, n_config_actual, policy);
+	  mctop_dprint("MCTOP Alloc Pool: Created %p - %-s allocator [#n_hwcs %-3d / #n_config %-2d]!\n",
+		       aa, mctop_alloc_policy_desc[policy], aa->n_hwcs, aa->n_config);
+	  break;
+	}
+      else if ((aa->n_hwcs == n_hwcs_actual) && (aa->n_config == n_config_actual))
+	{
+	  mctop_dprint("MCTOP Alloc Pool: Found   %p - %-s allocator! [#n_hwcs %-3d / #n_config %-2d]!\n",
+		       aa, mctop_alloc_policy_desc[policy], aa->n_hwcs, aa->n_config);
+	  break;
+	}
+    }
+
+  if (unlikely(aa == NULL))
+    {
+      fprintf(stderr, "MCTOP Warning: Out of pool space for new %s alloctors! \n\tReturning %s\n",
+	      mctop_alloc_policy_desc[policy], mctop_alloc_policy_desc[MCTOP_ALLOC_SEQUENTIAL]);
+      if (ap->allocs[MCTOP_ALLOC_SEQUENTIAL][0] == NULL)
+	{
+	  ap->allocs[MCTOP_ALLOC_SEQUENTIAL][0]->alloc = mctop_alloc_create(ap->topo,
+								     MCTOP_ALLOC_ALL,
+								     MCTOP_ALLOC_ALL,
+								     MCTOP_ALLOC_SEQUENTIAL);
+	}
+    }
+
+  return aa->alloc;
 }
