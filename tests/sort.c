@@ -357,8 +357,8 @@ test_pin(void* params)
 
   for (int c = 0; c < n_chunks_mine; c++)
     {
-      int* a = array + (((c * n_threads) + id) * chunk_size);
-      int* b = array_out + (((c * n_threads) + id) * chunk_size);
+      uint* a = array + (((c * n_threads) + id) * chunk_size);
+      uint* b = array_out + (((c * n_threads) + id) * chunk_size);
       memcpy(b, a, chunk_size_b);
       mqsort(b, chunk_size);
       /* qsort(bt, chunk_size, sizeof(int), cmpfunc); */
