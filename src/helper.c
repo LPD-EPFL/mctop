@@ -62,6 +62,7 @@ ll_random_traverse(volatile uint64_t* list, const size_t reps)
       list = (uint64_t*) *list;
     }
   volatile ticks __e = getticks();
+  assert(list != NULL);
   return (__e - __s) / reps;
 }
 
@@ -96,7 +97,7 @@ ll_random_create(volatile uint64_t* mem, const size_t size)
       idx = nxt;
     }
 
-  mem[idx * per_cl] = (uint64_t) mem;
+  mem[idx * per_cl] = (volatile uint64_t) mem;
   /* mem[idx * per_cl] = 0; */
 
   free(seeds);
