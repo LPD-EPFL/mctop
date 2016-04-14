@@ -74,7 +74,7 @@ LDFLAGS += -llgrp
 endif
 
 
-default: mctop
+default: mctop libmctop.a
 all: mctop mct_load tests
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \

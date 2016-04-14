@@ -194,25 +194,36 @@ dot_dont_link_cores_every(const uint n_cores)
   return root;
 }
 
-static void
+static uint
 dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
 {
   if (socket->level > 1)
     {
+      uint n_first_row = 1;
       uint n_cores = mctop_socket_get_num_cores(socket);
+      uint core_ids_first_row[n_cores];
+
       uint every = dot_dont_link_cores_every(n_cores);
       hwc_gs_t* pgs = NULL;
       hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
-      for (int i = 1; i <  n_cores; i++)
+      for (int i = 1; i < n_cores; i++)
 	{
 	  pgs = gs;
 	  gs = gs->next;
-	  if (i % every != 0)
+	  if ((i % every) != 0)
 	    {
 	      dot_gss_link_invis(ofp, 1, pgs->id, gs->id);
 	    }
+	  else
+	    {
+	      core_ids_first_row[n_first_row++] = i;
+	    }
 	}
+
+      printf("n_first_row = %u\n", n_first_row);
+      return core_ids_first_row[n_first_row / 2];
     }
+  return 0;
 }
 
 void
@@ -235,7 +246,7 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
       dot_gs_recurse(ofp, socket, 1);
       dot_tab_print(ofp, 1, "}\n");
 
-      dot_gs_add_invisible_links(ofp, socket);
+      const uint id_med_first_row = dot_gs_add_invisible_links(ofp, socket);
 
       dot_tab_print(ofp, 1, "node [color=red4];\n");
 
@@ -273,15 +284,16 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		}
 	      else
 		{
+		  const uint cp = id_med_first_row;
 		  if (topo->has_mem == BANDWIDTH)
 		    {
 		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-			     i, socket->id, socket->children[0]->id, socket->id, socket->mem_bandwidths_r[i]);
+			     i, socket->id, socket->children[cp]->id, socket->id, socket->mem_bandwidths_r[i]);
 		    }
 		  else
 		    {
 		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
-			     i, socket->id, socket->children[0]->id, socket->id);
+			     i, socket->id, socket->children[cp]->id, socket->id);
 		    }
 		}
 	    }
