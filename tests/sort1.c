@@ -65,7 +65,7 @@ timespec_diff(struct timespec start, struct timespec end)
 int
 main(int argc, char **argv) 
 {
-  int* __attribute__((aligned(64))) array;
+  uint* __attribute__((aligned(64))) array;
   int* chunks, chunk_size;
   uint chunks_per_thread = 1;
   size_t array_len = 1 * 1024 * 1024LL;
@@ -216,7 +216,7 @@ main(int argc, char **argv)
 
   for (int c = 0; c < n_chunks; c++)
     {
-      int* a = array + chunks[c];
+      uint* a = array + chunks[c];
       for (uint i = 0; i < chunk_size - 1; i++)
 	{
 	  /* assert(array_out[i] < array_out[i + 1]); */

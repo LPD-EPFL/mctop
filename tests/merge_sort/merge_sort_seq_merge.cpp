@@ -253,7 +253,6 @@ int main(int argc,char *argv[]){
     long n, threads;
     struct timeval start, stop;
     unsigned long usec;
-    mctop_alloc_policy allocation_policy;
     assert(argc >= 4);
 
     long array_size_mb = atol(argv[1]);
@@ -281,9 +280,6 @@ int main(int argc,char *argv[]){
       sortalgo = 0;
 
     
-    allocation_policy = (mctop_alloc_policy) atoi(argv[3]);
-    mctop_t * topo = mctop_load(NULL);
-    mctop_alloc_t *alloc = mctop_alloc_create(topo, threads, MCTOP_ALLOC_ALL, allocation_policy);
     readArray2(a, n);
     memcpy((void*)x,(void*)&a[n/2],(n/2) * sizeof(uint));
     __gnu_parallel::sort(a, a+(n/2));
