@@ -64,7 +64,8 @@ ifeq ($(OS_NAME), Linux)
 CFLAGS += -msse4
 CPPFLAGS += -msse4
 LDFLAGS += -lnuma
-MALLOC += -ljemalloc
+ifneq ($(UNAME), diassrv8)
+	MALLOC += -ljemalloc
 endif
 
 ifeq ($(OS_NAME), SunOS)
