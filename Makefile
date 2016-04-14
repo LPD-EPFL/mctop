@@ -114,7 +114,7 @@ libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 ################################################################################
 
 tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_sort1 sort sort1 sortcc \
-	 numa_alloc mergesort
+	 numa_alloc mergesort poll
 
 mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
 	merge_sort_parallel_merge_nosse merge_sort_seq_merge
@@ -126,6 +126,9 @@ run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 
 allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
+
+pool: ${TSTPATH}/pool.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/pool.o -o pool -lmctop ${LDFLAGS}
 
 node_tree: ${TSTPATH}/node_tree.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/node_tree.o -o node_tree -lmctop ${LDFLAGS}

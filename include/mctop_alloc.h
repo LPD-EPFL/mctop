@@ -73,8 +73,11 @@ extern "C" {
     mctop_barrier_t* global_barrier;
   } mctop_alloc_t;
 
+  struct mctop_alloc_pool;
+
   typedef struct mctop_thread_info
   {
+    struct mctop_alloc_pool* alloc_pool;
     mctop_alloc_t* alloc;
     uint is_pinned;
     int id;
@@ -129,6 +132,9 @@ extern "C" {
    *                                    n_config = how many sockets to use
    */
   mctop_alloc_t* mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy);
+  /* no barriers for simple !!! */
+  mctop_alloc_t* mctop_alloc_create_simple(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy);
+
   void mctop_alloc_free(mctop_alloc_t* alloc);
   void mctop_alloc_print(mctop_alloc_t* alloc);
   void mctop_alloc_print_short(mctop_alloc_t* alloc);
@@ -148,6 +154,9 @@ extern "C" {
   void mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc); /* wait for the threads of the node/socket to cross */
 
   void mctop_alloc_thread_print();     /* print current threads pin details */
+  uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */
+  mctop_alloc_t* mctop_alloc_thread_get_alloc(); /* return alloc used */
+
   uint mctop_alloc_thread_is_pinned(); /* is thread pinned? */
   int mctop_alloc_thread_id();	     /* thread id (NOT hw context id). -1 if thread is not pinned. */
   int mctop_alloc_thread_hw_context_id(); /* hw context id (the id the we use for set_cpu() */
@@ -195,6 +204,37 @@ extern "C" {
   void* mctop_alloc_malloc_on_nth_socket(mctop_alloc_t* alloc, const uint nth, const size_t size);
   void mctop_alloc_malloc_free(void* mem, const size_t size);
 
+
+  /* ******************************************************************************** */
+  /* MCTOP Allocator pool */
+  /* ******************************************************************************** */
+
+#define MCTOP_ALLOC_POOL_MAX_N     8
+
+  typedef struct mctop_alloc_args
+  {
+    int n_hwcs;
+    int n_config;
+    mctop_alloc_t* alloc;
+  } mctop_alloc_args_t;
+
+
+  typedef struct mctop_alloc_pool
+  {
+    mctop_t* topo;
+    mctop_alloc_args_t* allocs[MCTOP_ALLOC_NUM][MCTOP_ALLOC_POOL_MAX_N];
+    volatile mctop_alloc_t* current_alloc;
+  } mctop_alloc_pool_t;
+
+  mctop_alloc_pool_t* mctop_alloc_pool_create(mctop_t* topo);
+  void mctop_alloc_pool_free(mctop_alloc_pool_t* ap);
+
+
+  void mctop_alloc_pool_set_alloc(mctop_alloc_pool_t* ap, const int n_hwcs,
+				  const int n_config, mctop_alloc_policy policy);
+  
+
+  int mctop_alloc_pool_pin(mctop_alloc_pool_t* ap);
 
   /* ******************************************************************************** */
   /* Node merge tree */
