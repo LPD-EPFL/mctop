@@ -35,10 +35,12 @@
 /.#pile
 /.nfs0000000006da006300000015
 /.nfs0000000006da046700000154
+/.nfs0000000006da046d0000003f
 /2621440
 /allocator
 /core
 /cscope.files
+/data/*
 /mct_load
 /mctop
 /mctop_latency
@@ -64,6 +66,7 @@
 /node_tree
 /numa_alloc
 /pile
+/pool
 /run_on_node0
 /solaris
 /sort
