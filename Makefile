@@ -67,6 +67,7 @@ LDFLAGS += -lnuma
 ifneq ($(UNAME), diassrv8)
 	MALLOC += -ljemalloc
 endif
+endif
 
 ifeq ($(OS_NAME), SunOS)
 LDFLAGS += -llgrp
