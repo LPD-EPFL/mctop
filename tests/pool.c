@@ -4,14 +4,16 @@
 
 void* test_pin(void* params);
 
+pthread_barrier_t* barrier;
+
+volatile uint reps;
+const size_t spin_for = 3e9;
 int
 main(int argc, char **argv) 
 {
   char mct_file[100];
   uint manual_file = 0;
   int test_num_threads = 2;
-  int test_num_hwcs_per_socket = MCTOP_ALLOC_ALL;
-  mctop_alloc_policy test_policy = MCTOP_ALLOC_SEQUENTIAL;
   uint test_run_pin = 0;
 
   struct option long_options[] = 
@@ -27,7 +29,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:r", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:r:", long_options, &i);
 
       if(c == -1)
 	break;
@@ -47,14 +49,8 @@ main(int argc, char **argv)
 	case 'n':
 	  test_num_threads = atoi(optarg);
 	  break;
-	case 'c':
-	  test_num_hwcs_per_socket = atoi(optarg);
-	  break;
-	case 'p':
-	  test_policy = atoi(optarg);
-	  break;
 	case 'r':
-	  test_run_pin = 1;
+	  test_run_pin = atoi(optarg);
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -66,6 +62,8 @@ main(int argc, char **argv)
 	  exit(1);
 	}
     }
+
+  reps = test_run_pin;
 
   mctop_t* topo;
   if (manual_file)
@@ -81,21 +79,17 @@ main(int argc, char **argv)
     {
       mctop_print(topo);
 
+      barrier = malloc(sizeof(pthread_barrier_t));
+      assert(barrier != NULL);
+      pthread_barrier_init(barrier, NULL, test_num_threads);
+
       mctop_alloc_pool_t* ap = mctop_alloc_pool_create(topo);
       
-      mctop_alloc_t* alloc = mctop_alloc_pool_get_alloc(ap, test_num_threads,
-							test_num_hwcs_per_socket, test_policy);
-      for (uint i = 0; i < 100; i++)
-	{
-	  const mctop_alloc_policy p = rand() % MCTOP_ALLOC_NUM;
-	  const uint n_hwcs = rand() % topo->n_hwcs;
-	  const uint n_config = MCTOP_ALLOC_ALL;
-	  alloc = mctop_alloc_pool_get_alloc(ap, n_hwcs, n_config, p);
-	}
+      srand(time(NULL));
 
       if (test_run_pin)
 	{
-	  const uint n_hwcs = mctop_alloc_get_num_hw_contexts(alloc);
+	  const uint n_hwcs = test_num_threads;
 	  pthread_t threads[n_hwcs];
 	  pthread_attr_t attr;
 	  void* status;
@@ -104,9 +98,9 @@ main(int argc, char **argv)
 	  pthread_attr_init(&attr);
 	  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     
-	  for(int t = 0; t < n_hwcs; t++)
+	  for(int t = 0; t < n_hwcs - 1; t++)
 	    {
-	      int rc = pthread_create(&threads[t], &attr, test_pin, alloc);
+	      int rc = pthread_create(&threads[t], &attr, test_pin, ap);
 	      if (rc)
 		{
 		  printf("ERROR; return code from pthread_create() is %d\n", rc);
@@ -116,7 +110,22 @@ main(int argc, char **argv)
 
 	  pthread_attr_destroy(&attr);
 
-	  for(int t = 0; t < n_hwcs; t++)
+
+	  for (uint i = 0; i < reps; i++)
+	    {
+	      const mctop_alloc_policy p = rand() % MCTOP_ALLOC_NUM;
+	      const uint n_config = MCTOP_ALLOC_ALL;
+	      mctop_alloc_pool_set_alloc(ap, n_hwcs, n_config, p);
+	      pthread_barrier_wait(barrier);
+	      mctop_alloc_pool_pin(ap);
+	      mctop_alloc_thread_print(); fflush(stdout);
+	      for (volatile size_t i = 0; i < spin_for; i++);
+	      pthread_barrier_wait(barrier);
+	    }
+
+	  pthread_barrier_wait(barrier);
+
+	  for(int t = 0; t < n_hwcs - 1; t++)
 	    {
 	      int rc = pthread_join(threads[t], &status);
 	      if (rc) 
@@ -127,8 +136,8 @@ main(int argc, char **argv)
 	    }
 	}
 
+      free(barrier);
       mctop_alloc_pool_free(ap);
-
       mctop_free(topo);
     }
   return 0;
@@ -137,26 +146,19 @@ main(int argc, char **argv)
 void*
 test_pin(void* params)
 {
-  mctop_alloc_t* alloc = (mctop_alloc_t*) params;
+  mctop_alloc_pool_t* ap = (mctop_alloc_pool_t*) params;
 
-  mctop_alloc_barrier_wait_all(alloc);
-
-  /* const size_t reps = 1e9; */
-
-  mctop_alloc_pin_plus(alloc);
-
-  for (int r = 0; r < 1; r++)
+  for (uint i = 0; i < reps; i++)
     {
-      mctop_alloc_thread_print();
-
-      //      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
-
-      mctop_alloc_barrier_wait_node(alloc);
-
-      /* mctop_alloc_unpin(); */
-      /* mctop_alloc_thread_print(); */
-      //      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
+      pthread_barrier_wait(barrier);
+      mctop_alloc_pool_pin(ap);
+      mctop_alloc_thread_print(); fflush(stdout);
+      for (volatile size_t i = 0; i < spin_for; i++);
+      pthread_barrier_wait(barrier);
     }
+
+  pthread_barrier_wait(barrier);
+
 
   return NULL;
 }

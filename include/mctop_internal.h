@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+#include <atomics.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

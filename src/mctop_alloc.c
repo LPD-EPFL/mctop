@@ -479,10 +479,11 @@ mctop_alloc_details_calc(mctop_alloc_t* alloc, uint* n_cores, uint* n_hwcs_socke
   *n_cores = n;
 }
 
-mctop_alloc_t*
-mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+static mctop_alloc_t*
+mctop_alloc_create_config(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy,
+			  const uint do_more)
 {
-  mctop_alloc_t* alloc = malloc_assert(sizeof(mctop_alloc_t));
+  mctop_alloc_t* alloc = calloc_assert(1, sizeof(mctop_alloc_t));
   alloc->topo = topo;
   alloc->n_hwcs = n_hwcs;
   alloc->n_hwcs_used = 0;
@@ -516,15 +517,9 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
   alloc->hwcs_all = lgrp_root(lgrp_cookie);
 #endif
 
-  alloc->bw_proportions = NULL;
-
   switch (policy)
     {
     case MCTOP_ALLOC_NONE:
-      alloc->n_sockets = 0;
-      alloc->sockets = NULL;
-      alloc->max_latency = 0;
-      alloc->min_bandwidth = 0;
       break;
     case MCTOP_ALLOC_SEQUENTIAL:
       mctop_alloc_prep_sequential(alloc);
@@ -558,16 +553,13 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
       break;
     }
 
-  alloc->global_barrier = malloc_assert(sizeof(mctop_barrier_t));
-  mctop_barrier_init(alloc->global_barrier, alloc->n_hwcs);
+  if (do_more)
+    {
+      alloc->global_barrier = malloc_assert(sizeof(mctop_barrier_t));
+      mctop_barrier_init(alloc->global_barrier, alloc->n_hwcs);
+    }
 
-  alloc->n_cores = 0;
-  alloc->n_hwcs_per_socket = NULL;
-  alloc->n_cores_per_socket = NULL;
-  alloc->node_to_nth_socket = NULL;
-  alloc->socket_barriers = NULL;
-  alloc->core_sids = NULL;
-  if (alloc->policy != MCTOP_ALLOC_NONE)
+  if (do_more && likely(alloc->policy != MCTOP_ALLOC_NONE))
     {
       alloc->core_sids = malloc_assert(alloc->n_hwcs * sizeof(uint));
       darray_t* cores = darray_create();
@@ -595,6 +587,7 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
 
       alloc->socket_barriers = malloc_assert(topo->n_sockets * sizeof(mctop_barrier_t*));
       alloc->socket_barriers_cores = malloc_assert(topo->n_sockets * sizeof(mctop_barrier_t*));
+      
       alloc->node_to_nth_socket = calloc_assert(topo->n_sockets, sizeof(uint));
       for (int i = 0; i < alloc->n_sockets; i++)
 	{
@@ -609,6 +602,19 @@ mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_al
     }
  
   return alloc;
+}
+
+
+mctop_alloc_t*
+mctop_alloc_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  return mctop_alloc_create_config(topo, n_hwcs, n_config, policy, 1);
+}
+
+mctop_alloc_t*
+mctop_alloc_create_simple(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  return mctop_alloc_create_config(topo, n_hwcs, n_config, policy, 0);
 }
 
 void
@@ -706,7 +712,11 @@ mctop_alloc_free(mctop_alloc_t* alloc)
       free(alloc->bw_proportions);
     }
 
-  free(alloc->global_barrier);
+  if (alloc->global_barrier != NULL)
+    {
+      free(alloc->global_barrier);
+    }
+
   if (alloc->socket_barriers != NULL)
     {
       for (int i = 0; i < alloc->n_sockets; i++)
@@ -731,7 +741,13 @@ mctop_alloc_free(mctop_alloc_t* alloc)
 /* pinning */
 /* ******************************************************************************** */
 
-static __thread mctop_thread_info_t __mctop_thread_info = { .is_pinned = 0, .id = -1 };
+static __thread mctop_thread_info_t __mctop_thread_info = { .is_pinned = 0, .id = -1, .alloc = NULL };
+
+static inline mctop_thread_info_t*
+mctop_thread_get_info()
+{
+  return &__mctop_thread_info;
+}
 
 #ifdef __sparc__		/* SPARC */
 #  include <atomic.h>
@@ -882,18 +898,57 @@ mctop_alloc_pin_plus(mctop_alloc_t* alloc)
   return 0;
 }
 
+/* no stats, nothing, just pin! */
+static inline int
+mctop_alloc_pin_simple(mctop_alloc_t* alloc)
+{
+  __mctop_thread_info.alloc = alloc;
+  if (unlikely(alloc->policy == MCTOP_ALLOC_NONE))
+    {
+      __mctop_thread_info.id = FAI_U32(&alloc->n_hwcs_used);
+      return 0;
+    }
+
+  while (alloc->n_hwcs_used < alloc->n_hwcs)
+    {
+      for (uint i = 0; i < alloc->n_hwcs; i++)
+	{
+	  if (alloc->hwcs_used[i] == 0)
+	    {
+	      if (CAS_U8(&alloc->hwcs_used[i], 0, 1) == 0)
+		{
+		  UNUSED uint a = FAI_U32(&alloc->n_hwcs_used);
+		  alloc->hwcs_used[i] = 1;
+		  __mctop_thread_info.is_pinned = 1;
+		  __mctop_thread_info.id = i;
+
+		  const uint hwcid = alloc->hwcs[i];
+		  __mctop_thread_info.hwc_id = hwcid;
+
+		  return mctop_set_cpu(hwcid);
+ 		}
+	    }
+	}
+    }
+  return 0;
+}
+
 
 int
 mctop_alloc_unpin()
 {
   mctop_alloc_t* alloc = __mctop_thread_info.alloc;
-  if (mctop_alloc_thread_is_pinned())
+  if (likely(mctop_alloc_thread_is_pinned()))
     {
       DAF_U32(&alloc->n_hwcs_used);
       alloc->hwcs_used[mctop_alloc_thread_id()] = 0;
       int ret = mctop_alloc_pin_all(alloc);
       __mctop_thread_info.is_pinned = 0;
       return ret;
+    }
+  else if (alloc && alloc->policy == MCTOP_ALLOC_NONE)
+    {
+      DAF_U32(&alloc->n_hwcs_used);
     }
   return 1;
 }
@@ -1047,6 +1102,12 @@ uint
 mctop_alloc_thread_is_pinned()
 {
   return __mctop_thread_info.is_pinned;
+}
+
+mctop_alloc_t*
+mctop_alloc_thread_get_alloc()
+{
+  return __mctop_thread_info.alloc;
 }
 
 int
@@ -1238,13 +1299,13 @@ mctop_alloc_args_create(mctop_t* topo, const int n_hwcs, const int n_config, mct
   mctop_alloc_args_t* aa = malloc_assert(sizeof(mctop_alloc_args_t));
   aa->n_hwcs = n_hwcs;
   aa->n_config = n_config;
-  aa->alloc = mctop_alloc_create(topo, n_hwcs, n_config, policy);
+  aa->alloc = mctop_alloc_create_simple(topo, n_hwcs, n_config, policy);
   return aa;
 }
 
 
-mctop_alloc_t*
-mctop_alloc_pool_get_alloc(mctop_alloc_pool_t* ap, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+void
+mctop_alloc_pool_set_alloc(mctop_alloc_pool_t* ap, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
 {
   int n_hwcs_actual = n_hwcs, n_config_actual = n_config;
   switch (policy)
@@ -1295,12 +1356,28 @@ mctop_alloc_pool_get_alloc(mctop_alloc_pool_t* ap, const int n_hwcs, const int n
 	      mctop_alloc_policy_desc[policy], mctop_alloc_policy_desc[MCTOP_ALLOC_SEQUENTIAL]);
       if (ap->allocs[MCTOP_ALLOC_SEQUENTIAL][0] == NULL)
 	{
-	  ap->allocs[MCTOP_ALLOC_SEQUENTIAL][0]->alloc = mctop_alloc_create(ap->topo,
-								     MCTOP_ALLOC_ALL,
-								     MCTOP_ALLOC_ALL,
-								     MCTOP_ALLOC_SEQUENTIAL);
+	  ap->allocs[MCTOP_ALLOC_SEQUENTIAL][0] = mctop_alloc_args_create(ap->topo,
+									  MCTOP_ALLOC_ALL,
+									  MCTOP_ALLOC_ALL,
+									  MCTOP_ALLOC_SEQUENTIAL);
 	}
     }
 
-  return aa->alloc;
+  ap->current_alloc = aa->alloc;
+  MFENCE();
 }
+
+int
+mctop_alloc_pool_pin(mctop_alloc_pool_t* ap)
+{
+  mctop_thread_get_info()->alloc_pool = ap;
+  mctop_alloc_t* ca = (mctop_alloc_t*) ap->current_alloc;
+  if (unlikely(ca != mctop_alloc_thread_get_alloc()))
+    {
+      mctop_alloc_unpin();
+      return mctop_alloc_pin_simple(ca);
+    }
+  return 0;
+}
+
+
