@@ -74,7 +74,7 @@ LDFLAGS += -llgrp
 endif
 
 
-default: mctop
+default: mctop libmctop.a
 all: mctop mct_load tests
 
 INCLUDES   := ${INCLUDE}/mctop.h ${INCLUDE}/mctop_mem.h ${INCLUDE}/mctop_profiler.h ${INCLUDE}/helper.h \
@@ -214,7 +214,8 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 ################################################################################
 
 clean:
-	rm -f src/*.o *.a tests/*.o tests/merge_sort/*.o
+	rm -f src/*.o *.a tests/*.o tests/merge_sort/*.o mctop* mct_load \
+		numa_alloc allocator work_queue* run_on_node0 merge_sort_*
 
 
 ################################################################################
