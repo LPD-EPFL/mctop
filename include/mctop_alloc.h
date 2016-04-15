@@ -142,8 +142,10 @@ extern "C" {
 
   /* Thread functions ************************************************************************************************** */
 
-  int mctop_alloc_pin(mctop_alloc_t* alloc); /* does NOT fix numa node + cannot repin */
-  int mctop_alloc_pin_plus(mctop_alloc_t* alloc); /* mctop_alloc_pin + repin possible + fix numa node */
+  int mctop_alloc_pin(mctop_alloc_t* alloc); /* does NOT fix numa node + cannot repin (only if ALL threads unpin before any
+					      starts pinning again */
+  int mctop_alloc_pin_plus(mctop_alloc_t* alloc); /* mctop_alloc_pin + repin possible */
+  int mctop_alloc_pin_simple(mctop_alloc_t* alloc); /* pin plus without stats, such as core ids, smt ids, etc. */
 
   int mctop_alloc_unpin();
   int mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth);
@@ -240,7 +242,8 @@ extern "C" {
   /* Node merge tree */
   /* ******************************************************************************** */
 
-#define EVERYONE CROSS_SOCKET
+#define EVERYONE_HWC  HWC_GROUP
+#define EVERYONE_CORE (EVERYONE_HWC+1)
 
   typedef struct mctop_nt_pair
   {

@@ -47,6 +47,7 @@
 /mctop_sort
 /mctop_sort_no_sse
 /mctop_sort_no_sse_all_sockets
+/mctop_sort_no_sse_no_smt_all_sockets
 /mctop_sort_sse
 /mctop_sort_sse_hyperthreads_1
 /mctop_sort_sse_hyperthreads_2

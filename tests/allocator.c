@@ -137,21 +137,22 @@ test_pin(void* params)
 
   mctop_alloc_barrier_wait_all(alloc);
 
-  /* const size_t reps = 1e9; */
+  const size_t reps = 2e9;
 
-  mctop_alloc_pin_plus(alloc);
 
-  for (int r = 0; r < 1; r++)
+  for (int r = 0; r < 4; r++)
     {
+      /* mctop_alloc_pin_plus(alloc); */
+      mctop_alloc_pin(alloc);
       mctop_alloc_thread_print();
 
-      //      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
+      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
 
       mctop_alloc_barrier_wait_node(alloc);
 
-      /* mctop_alloc_unpin(); */
-      /* mctop_alloc_thread_print(); */
-      //      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
+      mctop_alloc_unpin();
+      mctop_alloc_thread_print();
+      for (volatile size_t i = 0; i < reps; i++) { __asm volatile ("nop"); }
     }
 
   return NULL;

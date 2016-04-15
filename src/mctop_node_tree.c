@@ -95,9 +95,13 @@ mctop_node_tree_add_barriers(mctop_node_tree_t* nt, mctop_type_t barrier_for)
 	    }
       
 	  nt->levels[l].barrier = malloc_assert(sizeof(mctop_barrier_t));
-	  if (barrier_for == EVERYONE)
+	  if (barrier_for == EVERYONE_HWC)
 	    {
 	      n_wait_lvl = nt->alloc->n_hwcs;
+	    }
+	  else if (barrier_for == EVERYONE_CORE)
+	    {
+	      n_wait_lvl = nt->alloc->n_cores;
 	    }
 	  mctop_barrier_init(nt->levels[l].barrier, n_wait_lvl);
 	  /* printf(" LVL %d : %zu threads\n", l, n_wait_lvl); */
@@ -114,6 +118,7 @@ mctop_nt_get_n_participants(mctop_node_tree_t* nt, const uint sid, mctop_type_t 
   switch (barrier_for)
     {
     case CORE:
+    case EVERYONE_CORE:
       n = nt->alloc->n_cores_per_socket[sid];
       break;
     default:
@@ -146,7 +151,7 @@ mctop_node_tree_add_id_offsets(mctop_node_tree_t* nt, mctop_type_t barrier_for)
 	      n_hwcs += mctop_nt_get_n_participants(nt, pair->help_nodes[h], barrier_for);
 	    }
 
-	  if (barrier_for == EVERYONE)
+	  if (barrier_for == EVERYONE_HWC || barrier_for == EVERYONE_CORE)
 	    {
 	      pair->n_hwcs = n_hwcs;
 	    }
@@ -182,7 +187,7 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
   for (int l = 0; l < nt->n_levels; l++)
     {
       mctop_nt_lvl_t* level = nt->levels + l;
-      printf("Lvl %d:\t", l); 
+      printf("Lvl %d:\t", l);
       for (int p = 0; p < level->n_pairs; p++)
 	{
 	  mctop_nt_pair_t* pair = &level->pairs[p];
@@ -217,7 +222,6 @@ mctop_node_tree_print(mctop_node_tree_t* nt)
 mctop_node_tree_t*
 mctop_alloc_node_tree_create(mctop_alloc_t* alloc, mctop_type_t barrier_for)
 {
-  assert(barrier_for == CORE || barrier_for == HW_CONTEXT || barrier_for == EVERYONE);
   const uint n_sockets = alloc->n_sockets;
   if ((n_sockets) & (n_sockets - 1))
     {
@@ -393,7 +397,7 @@ mctop_node_tree_get_work_description(mctop_node_tree_t* nt, const uint lvl, mcto
   const uint node = mctop_alloc_thread_node_id();
   uint spot = 0;
   mctop_nt_pair_t* pair;
-  if (nt->barrier_for == EVERYONE)
+  if (nt->barrier_for == EVERYONE_HWC || nt->barrier_for == EVERYONE_CORE)
     {
       pair = mctop_nt_get_pair_for_node_all(nt, lvl, node, &spot);
     }

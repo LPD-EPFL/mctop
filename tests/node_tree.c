@@ -101,7 +101,7 @@ main(int argc, char **argv)
 	}
 
 
-      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE);
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE_CORE);
       mctop_node_tree_print(nt);
 
       if (test_run_pin)

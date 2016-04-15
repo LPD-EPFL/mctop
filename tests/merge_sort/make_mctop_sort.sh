@@ -27,6 +27,9 @@ mv ./mctop_sort ./mctop_sort_sse_hyperthreads_4
 ${MAKE} clean && SSE=3 SSE_HYPERTHREAD_RATIO=3 ${MAKE} -kj mctop_sort
 mv ./mctop_sort ./mctop_sort_no_sse_all_sockets
 
+${MAKE} clean && SSE=4 SSE_HYPERTHREAD_RATIO=3 ${MAKE} -kj mctop_sort
+mv ./mctop_sort ./mctop_sort_no_sse_no_smt_all_sockets
+
 ${MAKE} clean && ${MAKE} -kj merge_sort_std_parallel
 
 ${MAKE} clean && ${MAKE} -kj merge_sort_tbb_parallel
