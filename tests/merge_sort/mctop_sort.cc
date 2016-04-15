@@ -146,7 +146,7 @@ void mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node);
 static inline uint
 mctop_sort_thread_insocket_merge_participate()
 {
-#if MCTOP_SORT_USE_SSE == 1
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 4
   if (mctop_alloc_thread_incore_id() == 0) // only cores!!
     {
       return 1;
@@ -160,7 +160,7 @@ mctop_sort_thread_insocket_merge_participate()
 static inline uint
 mctop_sort_thread_crosssocket_merge_participate()
 {
-#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2 || MCTOP_SORT_USE_SSE == 4
   if (mctop_alloc_thread_incore_id() == 0) // only cores!!
     {
       return 1;
@@ -245,7 +245,7 @@ mctop_sort_thr(void* params)
       MCTOP_P_STEP("seq sort", __steps, __a, __b, !mctop_alloc_thread_id());
     }
 
-#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2 || MCTOP_SORT_USE_SSE == 4
   // need extra barrier, cause the SMT threads will not need
   // to wait on the first merge barriers
   mctop_alloc_barrier_wait_node(alloc);
@@ -306,10 +306,8 @@ mctop_sort_thr(void* params)
 void static
 mctop_merge_barrier_wait(mctop_alloc_t* alloc)
 {
-#if MCTOP_SORT_USE_SSE == 1
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 4
   mctop_alloc_barrier_wait_node_cores(alloc);
-#elif MCTOP_SORT_USE_SSE == 2
-  mctop_alloc_barrier_wait_node(alloc);
 #else
   mctop_alloc_barrier_wait_node(alloc);
 #endif
@@ -339,9 +337,7 @@ mctop_sort_merge_in_socket(mctop_alloc_t* alloc, mctop_sort_nd_t* nd, const uint
   MCTOP_SORT_TYPE* dest = nd->destination;
 
   uint n_partitions = nd->n_chunks;
-#if MCTOP_SORT_USE_SSE == 1
-  const uint n_threads = mctop_alloc_get_num_cores_node(alloc, node);
-#elif MCTOP_SORT_USE_SSE == 2
+#if MCTOP_SORT_USE_SSE == 1 || MCTOP_SORT_USE_SSE == 2 || MCTOP_SORT_USE_SSE == 4
   const uint n_threads = mctop_alloc_get_num_cores_node(alloc, node);
 #else
   const uint n_threads = mctop_alloc_get_num_hw_contexts_node(alloc, node);

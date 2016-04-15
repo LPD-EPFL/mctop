@@ -242,7 +242,8 @@ extern "C" {
   /* Node merge tree */
   /* ******************************************************************************** */
 
-#define EVERYONE CROSS_SOCKET
+#define EVERYONE_HWC  HWC_GROUP
+#define EVERYONE_CORE (EVERYONE_HWC+1)
 
   typedef struct mctop_nt_pair
   {

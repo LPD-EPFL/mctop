@@ -157,7 +157,9 @@ main(int argc, char **argv)
 #elif MCTOP_SORT_USE_SSE == 0
       mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, HW_CONTEXT);
 #elif MCTOP_SORT_USE_SSE == 3
-      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE);
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE_HWC);
+#elif MCTOP_SORT_USE_SSE == 4
+      mctop_node_tree_t* nt = mctop_alloc_node_tree_create(alloc, EVERYONE_CORE);
 #endif
       if (test_verbose)
 	{
