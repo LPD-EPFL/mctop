@@ -8,6 +8,7 @@ ALLOCATORS="3 4 7 9"
 
 
 UNAME=$(uname -n)
+binf=bin/${UNAME};
 
 if [[ $UNAME == "lpdxeon2680" ]]
 then
@@ -25,7 +26,7 @@ then
   THREADS=$(seq 20 20 160)
 elif [[ $UNAME  == "ol-collab1" ]]
 then
-  VERSIONS="merge_sort_std_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
+  VERSIONS="merge_sort_std_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets mctop_sort_no_sse_no_smt_all_sockets"
   THREADS=$(seq 32 32 256)
 fi
 
@@ -37,10 +38,10 @@ do
   printf " =============================================== \n"
   printf " ======================================================================================================== \n"
 
-  printf "%29s:" "threads"
+  printf "%36s :" "threads"
   for thread in $THREADS
   do
-    printf " %8d" ${thread}
+    printf " %-9d" ${thread}
   done
   printf "\n"
   for allocator in $ALLOCATORS
@@ -51,10 +52,10 @@ do
     printf "\n"
     for version in $VERSIONS
     do
-      printf "%29s:" ${version}
+      printf "%36s :" ${version}
       for thread in $THREADS
       do
-          text=$(./${version} -n${thread} -s${size} -p${allocator} 2>&1);
+          text=$(./${binf}/${version} -n${thread} -s${size} -p${allocator} 2>&1);
 	  res=$(echo "$text" | awk '/Sorted/ {printf"%.3f", $9;}');
 	  error=$(echo "$text" | awk '/is sorted/ {printf"%d", $9;}');
         if [[ $res ]]
