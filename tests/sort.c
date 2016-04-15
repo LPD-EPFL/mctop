@@ -16,7 +16,7 @@
 
 void* test_pin(void* params);
 
-int* array, * array_out, * chunks;
+uint* array, * array_out, * chunks;
 size_t chunk_size = 1024 * 1024;
 size_t n_chunks;
 
@@ -189,14 +189,14 @@ main(int argc, char **argv)
       unsigned long* seeds = seed_rand();
 
       const size_t array_siz = array_len * sizeof(int);
-      array = (int*) malloc(array_siz);
+      array = (uint*) malloc(array_siz);
       assert(array != NULL);
-      array_out = (int*) malloc(array_siz);
+      array_out = (uint*) malloc(array_siz);
       assert(array_out != NULL);
 
       n_chunks = array_siz / chunk_size;
 
-      chunks = (int*) malloc(n_chunks * sizeof(int));
+      chunks = (uint*) malloc(n_chunks * sizeof(int));
       chunk_size = array_len / n_chunks;
 
       for (uint i = 0; i < n_chunks; i++)
@@ -357,8 +357,8 @@ test_pin(void* params)
 
   for (int c = 0; c < n_chunks_mine; c++)
     {
-      int* a = array + (((c * n_threads) + id) * chunk_size);
-      int* b = array_out + (((c * n_threads) + id) * chunk_size);
+      uint* a = array + (((c * n_threads) + id) * chunk_size);
+      uint* b = array_out + (((c * n_threads) + id) * chunk_size);
       memcpy(b, a, chunk_size_b);
       mqsort(b, chunk_size);
       /* qsort(bt, chunk_size, sizeof(int), cmpfunc); */
@@ -388,8 +388,8 @@ test_pin(void* params)
 	  if (nc < remain)
 	    {
 	      printf("%u -> ht, wooork - %d!\n", id, nc);
-	      int* a = array + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size);
-	      int* b = array_out + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size);
+	      uint* a = array + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size);
+	      uint* b = array_out + (n_threads * n_chunks_mine * chunk_size) + (nc * chunk_size);
 	      memcpy(b, a, chunk_size_b);
 	      mqsort(b, chunk_size);
 	    }

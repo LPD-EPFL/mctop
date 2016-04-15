@@ -1237,7 +1237,7 @@ print_cache_info(mctop_cache_info_t* mci, test_format_t test_format, const char*
 {
   if (test_format == MCT_FILE)
     {
-      printf("## Cache info ########################################################\n");
+      printf("## Cache info ############################################################\n");
       char out_file[50];
       sprintf(out_file, "./desc/%s.mct", hostname);
       printf("## MCTOP output in: %s\n", out_file);
