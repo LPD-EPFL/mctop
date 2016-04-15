@@ -1352,6 +1352,13 @@ mctop_alloc_pool_set_alloc(mctop_alloc_pool_t* ap, const int n_hwcs, const int n
 }
 
 int
+mctop_alloc_pool_pin_on_nth_socket(mctop_alloc_pool_t* ap, const uint n)
+{
+  mctop_thread_get_info()->alloc_pool = ap;
+  return mctop_alloc_pin_nth_socket((mctop_alloc_t*) ap->current_alloc, n);
+}
+
+int
 mctop_alloc_pool_pin(mctop_alloc_pool_t* ap)
 {
   mctop_thread_get_info()->alloc_pool = ap;

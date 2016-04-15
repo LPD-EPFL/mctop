@@ -236,6 +236,7 @@ extern "C" {
 				  const int n_config, mctop_alloc_policy policy);
   
 
+  int mctop_alloc_pool_pin_on_nth_socket(mctop_alloc_pool_t* ap, const uint n);
   int mctop_alloc_pool_pin(mctop_alloc_pool_t* ap);
 
   /* ******************************************************************************** */
