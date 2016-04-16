@@ -183,6 +183,7 @@ mctop_sort_thr(void* params)
   const size_t node_size = tot_size / alloc->n_sockets;
 
   mctop_alloc_pin(alloc);
+  mctop_hwcid_fix_numa_node(alloc->topo, mctop_alloc_thread_hw_context_id());
   //  MSD_DO(mctop_alloc_thread_print();)
 
   const uint my_node = mctop_alloc_thread_node_id();
@@ -194,10 +195,12 @@ mctop_sort_thr(void* params)
       MSD_DO(printf("Node %u :: Handle %zu KB\n", my_node, node_size / 1024););
 #if __sparc__
       nd->source = (MCTOP_SORT_TYPE*) malloc(2 * tot_size);
-#else
+#elif MCTOP_SORT_USE_NUMA_ALLOC == 1
+
       nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
-#endif
-      //      nd->destination = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, tot_size);
+#else
+      nd->source = (MCTOP_SORT_TYPE*) malloc(2 * tot_size);
+#endif	// MCTOP_SORT_USE_NUMA_ALLOC == 1
       nd->destination = nd->source + td->n_elems;
       assert(nd->source != NULL && nd->destination != NULL);
       nd->n_chunks = my_node_n_hwcs * MCTOP_NUM_CHUNKS_PER_THREAD;
@@ -295,8 +298,11 @@ mctop_sort_thr(void* params)
   
   if (mctop_alloc_thread_is_node_leader())
     {
+#if __sparc__ || MCTOP_SORT_USE_NUMA_ALLOC == 1
       mctop_alloc_malloc_free(nd->source, tot_size);
-           // mctop_alloc_malloc_free(nd->destination, tot_size);
+#else
+      free(nd->source);
+#endif	// MCTOP_SORT_USE_NUMA_ALLOC == 1
     }
 
   return NULL;
@@ -508,6 +514,7 @@ mctop_sort_merge(MCTOP_SORT_TYPE* src, MCTOP_SORT_TYPE* dest,
 void
 mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
 {
+  MCTOP_F_STEP(__steps, __a, __b);
   mctop_node_tree_t* nt = td->nt;
   // mctop_alloc_t* alloc = nt->alloc;
   mctop_sort_nd_t* my_nd = &td->node_data[my_node];
@@ -567,6 +574,8 @@ mctop_sort_merge_cross_socket(mctop_sort_td_t* td, const uint my_node)
               my_nd->source = my_nd->destination;
               my_nd->destination = tmp;
             }
+
+	  MCTOP_P_STEP_ND("   cross-socket merge", my_node, __steps, __a, __b, !my_merge_id);
 	}
       else
 	{

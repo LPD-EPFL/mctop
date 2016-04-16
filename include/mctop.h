@@ -333,7 +333,7 @@ extern "C" {
   }
 #endif
 
-#define MCTOP_PROF_STEP 0
+#define MCTOP_PROF_STEP 1
 #if MCTOP_PROF_STEP == 1
 #define MCTOP_F_STEP(__steps, __a, __b)		\
   mctop_ticks __steps = 0, __b, __a = mctop_getticks();	    
@@ -344,8 +344,20 @@ extern "C" {
       {									\
 	__b = mctop_getticks();						\
 	mctop_ticks __d = __b - __a;					\
-	printf("Step %2zu (%-20s): %-10zu cycles ~= %10f ms\n",		\
+	printf("Step %2zu (%-24s): %-10zu cycles ~= %10f ms\n",		\
 	       __steps++, str, __d, __d / 2100000.0);			\
+	__a = __b;							\
+	__b = mctop_getticks();						\
+      }									\
+  }
+#define MCTOP_P_STEP_ND(str, node, __steps, __a, __b, doit)		\
+  {									\
+    if (doit)								\
+      {									\
+	__b = mctop_getticks();						\
+	mctop_ticks __d = __b - __a;					\
+	printf("Step %2zu (%-24s): %-10zu cycles ~= %10f ms :: on %2u node\n", \
+	       __steps++, str, __d, __d / 2100000.0, node);		\
 	__a = __b;							\
 	__b = mctop_getticks();						\
       }									\
@@ -353,6 +365,7 @@ extern "C" {
 #else
 #define MCTOP_F_STEP(__steps, __a, __b)
 #define MCTOP_P_STEP(str, __steps, __a, __b, doit) 
+#define MCTOP_P_STEP_ND(str, node, __steps, __a, __b, doit)
 #endif
 
 #ifdef __cplusplus
