@@ -183,7 +183,9 @@ mctop_sort_thr(void* params)
   const size_t node_size = tot_size / alloc->n_sockets;
 
   mctop_alloc_pin(alloc);
+#if MCTOP_SORT_USE_NUMA_ALLOC == 0
   mctop_hwcid_fix_numa_node(alloc->topo, mctop_alloc_thread_hw_context_id());
+#endif
   //  MSD_DO(mctop_alloc_thread_print();)
 
   const uint my_node = mctop_alloc_thread_node_id();
@@ -196,7 +198,6 @@ mctop_sort_thr(void* params)
 #if __sparc__
       nd->source = (MCTOP_SORT_TYPE*) malloc(2 * tot_size);
 #elif MCTOP_SORT_USE_NUMA_ALLOC == 1
-
       nd->source = (MCTOP_SORT_TYPE*) mctop_alloc_malloc_on_nth_socket(alloc, my_node, 2 * tot_size);
 #else
       nd->source = (MCTOP_SORT_TYPE*) malloc(2 * tot_size);
@@ -299,9 +300,9 @@ mctop_sort_thr(void* params)
   if (mctop_alloc_thread_is_node_leader())
     {
 #if __sparc__ || MCTOP_SORT_USE_NUMA_ALLOC == 1
-      mctop_alloc_malloc_free(nd->source, tot_size);
+      mctop_alloc_malloc_free(array_a, tot_size);
 #else
-      free(nd->source);
+      free(array_a);
 #endif	// MCTOP_SORT_USE_NUMA_ALLOC == 1
     }
 
