@@ -779,7 +779,7 @@ mctop_alloc_pin_nth_socket(mctop_alloc_t* alloc, const uint nth)
     {
       return 0;
     }
-  return mctop_run_on_socket_ref(alloc->sockets[nth], 1);
+  return mctop_run_on_socket_ref(alloc->sockets[nth], 0);
 }
 
 /* pin to ALL hw contexts contained in alloc */

@@ -443,7 +443,7 @@ mctop_run_on_socket(mctop_t* topo, const uint socket_n)
       return -EINVAL;
     }
   socket_t* socket = &topo->sockets[socket_n];
-  return mctop_run_on_socket_ref(socket, 1);
+  return mctop_run_on_socket_ref(socket, 0);
 }
 
 int
@@ -468,7 +468,7 @@ mctop_run_on_node(mctop_t* topo, const uint node_n)
 
   const uint socket_n = topo->node_to_socket[node_n];
   socket_t* socket = &topo->sockets[socket_n];
-  return mctop_run_on_socket_ref(socket, 1);
+  return mctop_run_on_socket_ref(socket, 0);
 #elif __sparc
   return numa_run_on_node(node_n);
 #endif
