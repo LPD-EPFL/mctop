@@ -75,7 +75,7 @@ mctop_dprint(const char* format, ...)
     return m;
   }
 
-  extern int mctop_set_cpu(int cpu);
+  extern int mctop_set_cpu(mctop_t* topo, int cpu);
 
 
 #ifdef __cplusplus

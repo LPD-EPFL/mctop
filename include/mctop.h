@@ -296,7 +296,7 @@ extern "C" {
 
   int mctop_run_on_socket_ref(socket_t* socket, const uint fix_mem);
 
-  extern int mctop_set_cpu(int cpu);
+  extern int mctop_set_cpu(mctop_t* topo, int cpu);
 
 
   typedef uint64_t mctop_ticks;
@@ -335,7 +335,7 @@ extern "C" {
   }
 #endif
 
-#define MCTOP_PROF_STEP 1
+#define MCTOP_PROF_STEP 0
 #if MCTOP_PROF_STEP == 1
 #define MCTOP_F_STEP(__steps, __a, __b)		\
   mctop_ticks __steps = 0, __b, __a = mctop_getticks();	    
