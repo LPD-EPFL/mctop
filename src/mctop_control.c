@@ -239,15 +239,12 @@ int
 mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
 {
 #ifdef __x86_64__
-  if (likely(topo->has_mem))
+  /* printf("# HWID %-3u, SOCKET %-3u, numa_set_preferred(%u)\n", */
+  /* 	     hwcid, hwc->socket->id, hwc->socket->local_node); */
+  hw_context_t* hwc = &topo->hwcs[hwcid];
+  if (unlikely(hwc->local_node_wrong))
     {
-      /* printf("# HWID %-3u, SOCKET %-3u, numa_set_preferred(%u)\n", */
-      /* 	     hwcid, hwc->socket->id, hwc->socket->local_node); */
-      hw_context_t* hwc = &topo->hwcs[hwcid];
-      if (unlikely(hwc->local_node_wrong))
-	{
-	  numa_set_preferred(hwc->socket->local_node);
-	}
+      numa_set_preferred(hwc->socket->local_node);
       return 1;
     }
 #endif
@@ -480,10 +477,9 @@ mctop_run_on_node(mctop_t* topo, const uint node_n)
 
 
 
-/*  */
-
+/* if topo == NULL: don't try to fix the NUMA node */
 int
-mctop_set_cpu(int cpu) 
+mctop_set_cpu(mctop_t* topo, int cpu) 
 {
   int ret = 1;
 #if defined(__sparc__)
@@ -513,6 +509,11 @@ mctop_set_cpu(int cpu)
       /* printf("Problem with setting processor affinity: %s\n", */
       /* 	     strerror(errno)); */
       ret = 0;
+    }
+
+  if (likely(topo != NULL))
+    {
+      mctop_hwcid_fix_numa_node(topo, cpu);
     }
 #endif
 
