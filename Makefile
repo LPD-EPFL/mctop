@@ -65,7 +65,9 @@ CFLAGS += -msse4
 CPPFLAGS += -msse4
 LDFLAGS += -lnuma
 ifneq ($(UNAME), diassrv8)
-	MALLOC += -ljemalloc
+ifneq ($(UNAME), lpd48core)
+MALLOC += -ljemalloc
+endif
 endif
 endif
 
@@ -116,7 +118,7 @@ libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 ################################################################################
 
 tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_sort1 sort sort1 sortcc \
-	 numa_alloc mergesort pool
+	 numa_alloc numa_set_pref mergesort pool 
 
 mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
 	merge_sort_parallel_merge_nosse merge_sort_seq_merge
@@ -158,6 +160,9 @@ sortcc: libmctop.a ${INCLUDES}
 
 numa_alloc: ${TSTPATH}/numa_alloc.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_alloc.o -o numa_alloc -lmctop ${LDFLAGS}
+
+numa_set_pref: ${TSTPATH}/numa_set_pref.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_set_pref.o -o numa_set_pref -lmctop ${LDFLAGS}
 
 merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} ${MALLOC}
@@ -215,7 +220,7 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 
 clean:
 	rm -f src/*.o *.a tests/*.o tests/merge_sort/*.o mctop* mct_load \
-		numa_alloc allocator work_queue* run_on_node0 merge_sort_*
+		numa_* allocator work_queue* run_on_node0 merge_sort_*
 
 
 ################################################################################

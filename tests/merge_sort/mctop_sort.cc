@@ -183,9 +183,9 @@ mctop_sort_thr(void* params)
   const size_t node_size = tot_size / alloc->n_sockets;
 
   mctop_alloc_pin(alloc);
-  //#if MCTOP_SORT_USE_NUMA_ALLOC == 0
-  //mctop_hwcid_fix_numa_node(alloc->topo, mctop_alloc_thread_hw_context_id());
-  //#endif
+  #if MCTOP_SORT_USE_NUMA_ALLOC == 0
+  mctop_hwcid_fix_numa_node(alloc->topo, mctop_alloc_thread_hw_context_id());
+  #endif
   //  MSD_DO(mctop_alloc_thread_print();)
 
   const uint my_node = mctop_alloc_thread_node_id();

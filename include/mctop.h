@@ -104,6 +104,7 @@ extern "C" {
     uint n_siblings;		/* number of other sockets */
     struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st, max bw from this to sibling */
     struct sibling** siblings_in;	/* pointers to other sockets, sorted closest 1st, max bw sibling to this */
+    uint local_node_wrong;	/* does the OS have correct mapping of cores to nodes? */
     uint local_node;		/* local NUMA mem. node */
     uint n_nodes;		/* num of nodes = topo->n_sockets */
     uint* mem_latencies;	/* mem. latencies to NUMA nodes */
@@ -128,10 +129,11 @@ extern "C" {
     uint id;			/* mctop id */
     uint level;			/* latency hierarchy lvl */
     mctop_type_t type;		/* HW_CONTEXT or CORE? */
-    uint phy_id;			/* OS id (e.g., for set_cpu() */
+    uint phy_id;		/* OS id (e.g., for set_cpu() */
     socket_t* socket;		/* pointer to parent socket */
     struct hwc_gs* parent;	/* pointer to parent hwcgroup */
     struct hw_context* next;	/* link hwcs to a list */
+    uint local_node_wrong;	/* does the OS have correct mapping of hwc to local node? */
   } hw_context_t;
 
 
