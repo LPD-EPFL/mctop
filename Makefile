@@ -150,7 +150,7 @@ sort: ${TSTPATH}/sort.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort.o -o sort -lmctop ${LDFLAGS} ${MALLOC}
 
 mctop_sort: ${TSTPATH}/mctop_sort.o ${MSTPATH}/mctop_sort.o libmctop.a  ${INCLUDES} 
-	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS} ${MALLOC}
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MSTPATH}/mctop_sort.o ${TSTPATH}/mctop_sort.o -o mctop_sort -lmctop ${LDFLAGS}
 
 sort1: ${TSTPATH}/sort1.c libmctop.a ${INCLUDES} ${INCLUDE}/mqsort.h FORCE FORCE
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/sort1.c -o sort1 -lmctop ${LDFLAGS} ${MALLOC}
@@ -165,40 +165,40 @@ numa_set_pref: ${TSTPATH}/numa_set_pref.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/numa_set_pref.o -o numa_set_pref -lmctop ${LDFLAGS}
 
 merge_sort_std: ${TSTPATH}/merge_sort/merge_sort_std.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} ${MALLOC}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std.cpp -o merge_sort_std -lmctop ${LDFLAGS} 
 
 merge_sort_std_parallel: ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel  -fopenmp ${LDFLAGS} ${MALLOC}
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_std_parallel.cpp -o merge_sort_std_parallel  -fopenmp ${LDFLAGS} 
 
 merge_sort_tbb_parallel: ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp -o merge_sort_tbb_parallel -lmctop ${LDFLAGS} ${MALLOC} -fopenmp -ltbb
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_tbb_parallel.cpp -o merge_sort_tbb_parallel -lmctop ${LDFLAGS} -fopenmp -ltbb
 
 merge_sort_cilkplus_parallel: ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp libmctop.a ${INCLUDES}
-	g++-5 $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp -o merge_sort_cilkplus_parallel -lmctop ${LDFLAGS} ${MALLOC} -fopenmp -lcilkrts
+	g++-5 $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_cilkplus_parallel.cpp -o merge_sort_cilkplus_parallel -lmctop ${LDFLAGS} -fopenmp -lcilkrts
 
 merge_sort_parallel_merge: ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge.cpp -o merge_sort_parallel_merge -lmctop ${LDFLAGS} -fopenmp
 
 merge_sort_parallel_merge_imbalanced: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp -o merge_sort_parallel_merge_imbalanced -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_imbalanced.cpp -o merge_sort_parallel_merge_imbalanced -lmctop ${LDFLAGS} -fopenmp
 
 merge_sort_parallel_merge_notworking: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp -o merge_sort_parallel_merge_notworking -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_notworking.cpp -o merge_sort_parallel_merge_notworking -lmctop ${LDFLAGS}  -fopenmp
 
 merge_sort_merge_level: ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level.cpp -o merge_sort_merge_level -lmctop ${LDFLAGS} -fopenmp
 
 merge_sort_merge_level_up: ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp libmctop.a ${INCLUDES} FORCE FORCE
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp -o merge_sort_merge_level_up -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_merge_level_up.cpp -o merge_sort_merge_level_up -lmctop ${LDFLAGS} -fopenmp
 
 merge_sort_parallel_merge_nosse: ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_parallel_merge_nosse.cpp -o merge_sort_parallel_merge_nosse -lmctop ${LDFLAGS} -fopenmp
 
 cross_node_merging: ${TSTPATH}/merge_sort/cross_node_merging.c libmctop.a ${INCLUDES} FORCE FORCE
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/cross_node_merging.c -o cross_node_merging -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/cross_node_merging.c -o cross_node_merging -lmctop ${LDFLAGS} -fopenmp
 
 merge_sort_seq_merge: ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp libmctop.a ${INCLUDES}
-	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp -o merge_sort_seq_merge -lmctop ${LDFLAGS} ${MALLOC} -fopenmp
+	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp -o merge_sort_seq_merge -lmctop ${LDFLAGS} -fopenmp
 
 ################################################################################
 ## .o compilation generic rules ################################################
