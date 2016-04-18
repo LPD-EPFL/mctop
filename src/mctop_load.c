@@ -1,5 +1,6 @@
 #include <mctop.h>
 #include <mctop_internal.h>
+#include <helper.h>
 #include <time.h>
 
 typedef enum
@@ -256,6 +257,22 @@ mctop_load(const char* mct_file)
   fclose(ifile);
 
   free(have_data);
+
+#ifdef __x86_64__
+  if (topo->has_mem)
+    {
+      for (uint i = 0; i < topo->n_hwcs; i++)
+	{
+	  hw_context_t* hwc = &topo->hwcs[i];
+	  socket_t* socket = hwc->socket;
+	  if (unlikely(socket->local_node != numa_node_of_cpu(hwc->id)))
+	    {
+	      hwc->local_node_wrong = 1;
+	      socket->local_node_wrong = 1;
+	    }
+	}
+    }
+#endif
 
   double dur = (clock() - cstart) / (double) CLOCKS_PER_SEC;
   printf("MCTOP Info: Topology loaded in %.3f ms\n", 1000 * dur);
