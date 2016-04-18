@@ -65,7 +65,9 @@ CFLAGS += -msse4
 CPPFLAGS += -msse4
 LDFLAGS += -lnuma
 ifneq ($(UNAME), diassrv8)
+ifneq ($(UNAME), lpd48core)
 MALLOC += -ljemalloc
+endif
 endif
 endif
 
