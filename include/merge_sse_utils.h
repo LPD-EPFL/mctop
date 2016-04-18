@@ -48,10 +48,10 @@ static inline void sse_merge_aligned_32bit(void *a, void *b, void *dest, size_t 
       crt_a++;
   }
 
-  const size_t size_ab = size_a_128 + size_b_128;
-  for (size_t ii = (crt_a + crt_b); ii < size_ab; ii++)
-    {
-     // while ((crt_a < size_a_128) || (crt_b < size_b_128)){
+  //const size_t size_ab = size_a_128 + size_b_128;
+  //for (size_t ii = (crt_a + crt_b); ii < size_ab; ii++)
+    //{
+      while ((crt_a < size_a_128) || (crt_b < size_b_128)){
       if ((crt_a < size_a_128) && ((crt_b>=size_b_128) || (_mm_comilt_ss(*(a128 + crt_a),*(b128 + crt_b))))){
           sse_bitonic_merge_4(next,a128[crt_a],&(dest128[next_val]),&last);
           crt_a++;

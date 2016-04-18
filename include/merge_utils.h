@@ -92,7 +92,7 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
       dest[k] = a[counter];
       uint temp;
       size_t element = k;
-      while (dest[element] < dest[element-1]) {
+      while (dest[element] < dest[element-1] && element > 0) {
         temp = dest[element-1];
         dest[element-1] = dest[element];
         dest[element] = temp;
@@ -105,7 +105,7 @@ static inline void merge_arrays_unaligned_sse(SORT_TYPE* a, SORT_TYPE* b, SORT_T
       dest[k] = b[counter];
       uint temp;
       size_t element = k;
-      while (dest[element] < dest[element-1]) {
+      while (dest[element] < dest[element-1] && element > 0) {
         temp = dest[element-1];
         dest[element-1] = dest[element];
         dest[element] = temp;

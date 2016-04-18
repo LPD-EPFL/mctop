@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 
-#define MCTOP_DEBUG 1
+#define MCTOP_DEBUG 0
 
 #if MCTOP_DEBUG == 1
 static inline void
