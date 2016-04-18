@@ -124,7 +124,7 @@ mctop_node_tree_add_barriers(mctop_node_tree_t* nt, mctop_type_t barrier_for)
 	}
       nt->levels[l].barrier = malloc_assert(sizeof(mctop_barrier_t));
       mctop_barrier_init(nt->levels[l].barrier, n_wait_lvl);
-      printf(" LVL %d : %zu threads\n", l, n_wait_lvl);
+      /* printf(" LVL %d : %zu threads\n", l, n_wait_lvl); */
     }
 
   darray_free(nodes);
