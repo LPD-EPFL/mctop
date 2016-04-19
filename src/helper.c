@@ -15,7 +15,7 @@ get_num_hw_ctx()
   int nc = 0;
   while (1)
     {
-      if (!mctop_set_cpu(nc))
+      if (!mctop_set_cpu(NULL, nc))
   	{
   	  break;
   	}
