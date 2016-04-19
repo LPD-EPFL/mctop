@@ -116,6 +116,7 @@ spin_time(size_t n)
   volatile ticks __e = getticks();
   return __e - __s;
 }
+
 int
 dvfs_scale_up(const size_t n_reps, const double ratio, double* dur)
 {

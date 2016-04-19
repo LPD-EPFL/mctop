@@ -19,12 +19,9 @@ extern void cdf_cluster_free(cdf_cluster_t* cc);
 extern cdf_cluster_t* cdf_cluster_create_empty(const int n_clusters);
 
 mctop_t*
-mctop_construct(uint64_t** lat_table_norm, 
-		 const size_t N,
-		 uint64_t** mem_lat_table,
-		 const uint n_sockets,
-		 cdf_cluster_t* cc,
-		 const int is_smt)
+mctop_construct(uint64_t** lat_table_norm, const size_t N,
+		 uint64_t** mem_lat_table, const uint n_sockets,
+		 cdf_cluster_t* cc, const int is_smt)
 {
   int free_cc = 0;
   if (cc == NULL)
