@@ -76,6 +76,7 @@
 /sort1c
 /sort_algos
 /sortcc
+/topo_latencies
 /work_queue
 /work_queue_sort
 /work_queue_sort1
