@@ -228,7 +228,8 @@ extern "C" {
     volatile mctop_alloc_t* current_alloc;
   } mctop_alloc_pool_t;
 
-  mctop_alloc_pool_t* mctop_alloc_pool_create(mctop_t* topo);
+  mctop_alloc_pool_t* mctop_alloc_pool_create_empty(mctop_t* topo);
+  mctop_alloc_pool_t* mctop_alloc_pool_create(mctop_t* topo, const int n_hwcs, const int n_cnf, mctop_alloc_policy plc);
   void mctop_alloc_pool_free(mctop_alloc_pool_t* ap);
 
 

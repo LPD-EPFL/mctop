@@ -7,7 +7,7 @@ void* test_pin(void* params);
 pthread_barrier_t* barrier;
 
 volatile uint reps;
-const size_t spin_for = 3e9;
+const size_t spin_for = 2e9;
 int
 main(int argc, char **argv) 
 {
@@ -83,7 +83,10 @@ main(int argc, char **argv)
       assert(barrier != NULL);
       pthread_barrier_init(barrier, NULL, test_num_threads);
 
-      mctop_alloc_pool_t* ap = mctop_alloc_pool_create(topo);
+      mctop_alloc_pool_t* ap = mctop_alloc_pool_create(topo,
+						       MCTOP_ALLOC_ALL,
+						       MCTOP_ALLOC_ALL,
+						       MCTOP_ALLOC_SEQUENTIAL);
       
       srand(time(NULL));
 
@@ -113,7 +116,7 @@ main(int argc, char **argv)
 
 	  for (uint i = 0; i < reps; i++)
 	    {
-	      const mctop_alloc_policy p = rand() % MCTOP_ALLOC_NUM;
+	      const mctop_alloc_policy p =rand() % MCTOP_ALLOC_NUM;
 	      const uint n_config = MCTOP_ALLOC_ALL;
 	      mctop_alloc_pool_set_alloc(ap, n_hwcs, n_config, p);
 	      pthread_barrier_wait(barrier);

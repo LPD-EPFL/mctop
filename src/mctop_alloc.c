@@ -1240,10 +1240,24 @@ mctop_alloc_barrier_wait_node_cores(mctop_alloc_t* alloc)
 
 
 mctop_alloc_pool_t*
-mctop_alloc_pool_create(mctop_t* topo)
+mctop_alloc_pool_create_empty(mctop_t* topo)
 {
   mctop_alloc_pool_t* ap = calloc_assert(1, sizeof(mctop_alloc_pool_t));
   ap->topo = topo;
+  return ap;
+}
+
+mctop_alloc_pool_t*
+mctop_alloc_pool_create(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy)
+{
+  mctop_alloc_pool_t* ap = calloc_assert(1, sizeof(mctop_alloc_pool_t));
+  ap->topo = topo;
+  for (mctop_alloc_policy p = 0; p < MCTOP_ALLOC_NUM; p++)
+    {
+      mctop_alloc_pool_set_alloc(ap, n_hwcs, n_config, p);
+    }
+
+  mctop_alloc_pool_set_alloc(ap, n_hwcs, n_config, policy);
   return ap;
 }
 
