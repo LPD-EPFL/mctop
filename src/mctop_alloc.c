@@ -917,17 +917,27 @@ mctop_alloc_pin_simple(mctop_alloc_t* alloc)
 }
 
 
-int
-mctop_alloc_unpin()
+static inline int
+mctop_alloc_hwctx_release(mctop_alloc_t* alloc)
 {
-  mctop_alloc_t* alloc = __mctop_thread_info.alloc;
   if (likely(mctop_alloc_thread_is_pinned()))
     {
       DAF_U32(&alloc->n_hwcs_used);
       alloc->hwcs_used[mctop_alloc_thread_id()] = 0;
-      int ret = mctop_alloc_pin_all(alloc);
       __mctop_thread_info.is_pinned = 0;
-      return ret;
+      return 1;
+    }
+  return 0;
+}
+
+
+int
+mctop_alloc_unpin()
+{
+  mctop_alloc_t* alloc = __mctop_thread_info.alloc;
+  if (likely(mctop_alloc_hwctx_release(alloc)))
+    {
+      return mctop_alloc_pin_all(alloc);
     }
   return 1;
 }
@@ -1376,10 +1386,8 @@ mctop_alloc_pool_pin(mctop_alloc_pool_t* ap)
   /* if the allocator has changed or the thread is not pinned */
   if (unlikely(ca != mctop_alloc_thread_get_alloc() || !mctop_alloc_thread_is_pinned()))
     {
-      mctop_alloc_unpin();
+      mctop_alloc_hwctx_release(mctop_alloc_thread_get_alloc());
       return mctop_alloc_pin_simple(ca);
     }
   return 0;
 }
-
-
