@@ -16,7 +16,7 @@ then
 elif [[ $UNAME == "lpd48core" ]]
 then
   THREADS="6 12 24 48"
-  VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_no_sse_all_sockets"
+  VERSIONS="merge_sort_std_parallel merge_sort_tbb_parallel mctop_sort_no_sse mctop_sort_no_sse_no_smt_all_sockets"
 elif [[ $UNAME == "lpdquad" ]]
 then
   THREADS="12 24 36 48 60 72 84 96"
