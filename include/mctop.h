@@ -94,12 +94,12 @@ extern "C" {
     uint latency;		/* comm. latency within group */
     socket_t* socket;		/* Group: pointer to parent socket */
     struct hwc_gs* parent;	/* Group: pointer to parent hwcgroup */
+    struct hwc_gs* next;	/* link groups of a level to a list */
     uint n_hwcs;		/* num. of hwcs descendants */
     struct hw_context** hwcs;	/* descendant hwcs */
     uint n_cores;	        /* num. of physical cores (if !smt = n_hwcs */
     uint n_children;		/* num. of hwc_group descendants */
     struct hwc_gs** children;	/* pointer to children hwcgroup */
-    struct hwc_gs* next;	/* link groups of a level to a list */
     mctop_t* topo;		/* link to topology socket only info */
     uint n_siblings;		/* number of other sockets */
     struct sibling** siblings;	/* pointers to other sockets, sorted closest 1st, max bw from this to sibling */
@@ -197,6 +197,7 @@ extern "C" {
   sibling_t* mctop_get_first_sibling_lvl(mctop_t* topo, const uint lvl);
   sibling_t* mctop_get_sibling_with_sockets(mctop_t* topo, socket_t* s0, socket_t* s1);
 
+  uint mctop_get_num_levels(mctop_t* topo);
   size_t mctop_get_num_nodes(mctop_t* topo);
   size_t mctop_get_num_cores_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_socket(mctop_t* topo);

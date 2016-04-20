@@ -54,6 +54,11 @@ mctop_get_first_sibling_lvl(mctop_t* topo, const uint lvl)
   return NULL;
 }
 
+inline uint
+mctop_get_num_levels(mctop_t* topo)
+{
+  return topo->n_levels;
+}
 
 inline size_t
 mctop_get_num_nodes(mctop_t* topo)

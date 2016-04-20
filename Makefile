@@ -118,7 +118,7 @@ libmctop.a: ${MCTOPLIB_OBJS} ${INCLUDES}
 ################################################################################
 
 tests: run_on_node0 allocator node_tree work_queue work_queue_sort work_queue_sort1 sort sort1 sortcc \
-	 numa_alloc numa_set_pref mergesort pool 
+	 numa_alloc numa_set_pref mergesort pool topo_latencies
 
 mergesort: merge_sort_std merge_sort_std_parallel merge_sort_parallel_merge \
 	merge_sort_parallel_merge_nosse merge_sort_seq_merge
@@ -130,6 +130,9 @@ run_on_node0: ${TSTPATH}/run_on_node0.o libmctop.a ${INCLUDES}
 
 allocator: ${TSTPATH}/allocator.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/allocator.o -o allocator -lmctop ${LDFLAGS}
+
+topo_latencies: ${TSTPATH}/topo_latencies.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/topo_latencies.o -o topo_latencies -lmctop ${LDFLAGS}
 
 pool: ${TSTPATH}/pool.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/pool.o -o pool -lmctop ${LDFLAGS}
@@ -220,7 +223,7 @@ $(TSTPATH)/%.o:: $(TSTPATH)/%.c
 
 clean:
 	rm -f src/*.o *.a tests/*.o tests/merge_sort/*.o mctop* mct_load \
-		numa_* allocator work_queue* run_on_node0 merge_sort_*
+		numa_* allocator topo_latencies work_queue* run_on_node0 merge_sort_*
 
 
 ################################################################################
