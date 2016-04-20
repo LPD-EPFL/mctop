@@ -916,6 +916,44 @@ mctop_alloc_pin_simple(mctop_alloc_t* alloc)
   return 0;
 }
 
+#define MCTOP_ALLOC_PIN_ON_DEBUG    1
+
+/* no stats, nothing, just pin! */
+int
+mctop_alloc_pin_on(mctop_alloc_t* alloc, const uint on)
+{
+  __mctop_thread_info.alloc = alloc;
+
+#if MCTOP_ALLOC_PIN_ON_DEBUG == 1
+  if (unlikely(on >= alloc->n_hwcs))
+    {
+      fprintf(stderr, "MCTOP Alloc Pool: Warning trying to pin on %u th hwc. Alloc %p has %u!\n",
+	      on, alloc, alloc->n_hwcs);
+      return 0;
+    }
+
+  if (unlikely(alloc->hwcs_used[on]))
+    {
+      fprintf(stderr, "MCTOP Alloc Pool: Warning trying to pin on %u th hwc. Already used!\n", on);
+    }
+#endif  /* MCTOP_ALLOC_PIN_ON_DEBUG == 1 */
+
+  alloc->hwcs_used[on] = 1;
+  UNUSED uint a = FAI_U32(&alloc->n_hwcs_used);
+  __mctop_thread_info.is_pinned = 1;
+  __mctop_thread_info.id = on;
+
+  if (likely(alloc->policy != MCTOP_ALLOC_NONE))
+    {
+      const uint hwcid = alloc->hwcs[on];
+      __mctop_thread_info.hwc_id = hwcid;
+      return mctop_set_cpu(NULL, hwcid);
+    }
+  else
+    {
+      return 0;
+    }
+}
 
 static inline int
 mctop_alloc_hwctx_release(mctop_alloc_t* alloc)
@@ -1388,6 +1426,20 @@ mctop_alloc_pool_pin(mctop_alloc_pool_t* ap)
     {
       mctop_alloc_hwctx_release(mctop_alloc_thread_get_alloc());
       return mctop_alloc_pin_simple(ca);
+    }
+  return 0;
+}
+
+int
+mctop_alloc_pool_pin_on(mctop_alloc_pool_t* ap, const uint seq_id)
+{
+  mctop_thread_get_info()->alloc_pool = ap;
+  mctop_alloc_t* ca = (mctop_alloc_t*) ap->current_alloc;
+  /* if the allocator has changed or the thread is not pinned */
+  if (unlikely(ca != mctop_alloc_thread_get_alloc() || !mctop_alloc_thread_is_pinned()))
+    {
+      mctop_alloc_hwctx_release(mctop_alloc_thread_get_alloc());
+      return mctop_alloc_pin_on(ca, seq_id);
     }
   return 0;
 }
