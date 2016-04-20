@@ -242,9 +242,11 @@ mctop_hwcid_fix_numa_node(mctop_t* topo, const uint hwcid)
   /* printf("# HWID %-3u, SOCKET %-3u, numa_set_preferred(%u)\n", */
   /* 	     hwcid, hwc->socket->id, hwc->socket->local_node); */
   hw_context_t* hwc = &topo->hwcs[hwcid];
-  if (unlikely(hwc->local_node_wrong))
+#warning test if this change works
+  const uint correct_node = hwc->socket->local_node;
+  if (unlikely(hwc->local_node_wrong || correct_node != numa_preferred()))
     {
-      numa_set_preferred(hwc->socket->local_node);
+      numa_set_preferred(correct_node);
       return 1;
     }
 #endif
