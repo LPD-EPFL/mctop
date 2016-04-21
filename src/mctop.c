@@ -152,7 +152,7 @@ crawl(void* param)
   mctop_prof_stats_t* stats = malloc_assert(sizeof(mctop_prof_stats_t));
 
   volatile size_t sum = 0;
-
+  int node_local = -1;
   for (int x = 0; x < _num_hw_ctx; x++)
     {
       clock_t _clock_start = clock();
@@ -165,7 +165,7 @@ crawl(void* param)
 	    }
 
 	  /* mem. latency measurements */
-	  int node_local = -1;
+	  node_local = -1;
 	  if (unlikely(_do_mem == ON_TIME))
 	    {
 	      volatile ticks mem_lats[_num_sockets];
@@ -236,6 +236,8 @@ crawl(void* param)
 	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
 		{
 		  high_stdev_retry = 1;
+		  cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
+		  test_cache_line = cache_lines_create(_test_cl_size, node_local);
 		}
 
 	      if (unlikely(_verbose))
