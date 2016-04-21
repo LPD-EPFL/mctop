@@ -3,688 +3,430 @@
  ======================================================================================================== 
  ===============================================     1 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.009    0.009    0.008    0.011    0.050    0.012    0.030    0.025
-      merge_sort_tbb_parallel:    0.034    0.014    0.014    0.039    0.015    0.033    0.015    0.015
-            mctop_sort_no_sse:    0.037    0.036    0.037    0.019    0.000    0.000    0.038    0.019
-               mctop_sort_sse:    0.037    0.032    0.038    0.029    0.000    0.000    0.022    0.019
-mctop_sort_sse_hyperthreads_1:    0.038    0.037    0.038    0.030    0.000    0.000    0.020    0.019
-mctop_sort_sse_hyperthreads_2:    0.038    0.037    0.029    0.024    0.000    0.000    0.037    0.037
-mctop_sort_sse_hyperthreads_3:    0.039    0.037    0.029    0.023    0.000    0.000    0.036    0.028
-mctop_sort_sse_hyperthreads_4:    0.038    0.025    0.019    0.019    0.000    0.000    0.037    0.037
-mctop_sort_no_sse_all_sockets:    0.039    0.037    0.029    0.024    0.000    0.000    0.019    0.037
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.009    0.010    0.069    0.046    0.013    0.068    0.067    0.088
-      merge_sort_tbb_parallel:    0.025    0.041    0.036    0.016    0.017    0.015    0.015    0.015
-            mctop_sort_no_sse:    0.035    0.028    0.000    0.021    0.019    0.019    0.019    0.019
-               mctop_sort_sse:    0.019    0.019    0.000    0.019    0.019    0.019    0.019    0.019
-mctop_sort_sse_hyperthreads_1:    0.019    0.019    0.000    0.019    0.019    0.019    0.019    0.019
-mctop_sort_sse_hyperthreads_2:    0.019    0.019    0.000    0.036    0.037    0.029    0.026    0.019
-mctop_sort_sse_hyperthreads_3:    0.019    0.036    0.000    0.038    0.031    0.027    0.023    0.019
-mctop_sort_sse_hyperthreads_4:    0.019    0.037    0.000    0.031    0.027    0.036    0.028    0.025
-mctop_sort_no_sse_all_sockets:    0.020    0.019    0.000    0.019    0.019    0.019    0.037    0.037
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.009    0.041    0.009    0.009    0.070    0.020    0.046    0.065
-      merge_sort_tbb_parallel:    0.014    0.044    0.047    0.016    0.046    0.047    0.028    0.044
-            mctop_sort_no_sse:    0.036    0.030    0.000    0.026    0.019    0.019    0.019    0.019
-               mctop_sort_sse:    0.037    0.029    0.000    0.023    0.019    0.019    0.019    0.019
-mctop_sort_sse_hyperthreads_1:    0.019    0.019    0.000    0.019    0.038    0.032    0.037    0.030
-mctop_sort_sse_hyperthreads_2:    0.026    0.020    0.000    0.036    0.037    0.035    0.028    0.023
-mctop_sort_sse_hyperthreads_3:    0.019    0.039    0.000    0.032    0.028    0.024    0.019    0.019
-mctop_sort_sse_hyperthreads_4:    0.036    0.038    0.000    0.036    0.036    0.033    0.037    0.037
-mctop_sort_no_sse_all_sockets:    0.036    0.029    0.000    0.035    0.028    0.024    0.019    0.019
+             merge_sort_std_parallel :    0.006     0.013     0.012     0.008     0.054     0.070     0.097     0.081 
+             merge_sort_tbb_parallel :    0.031     0.033     0.038     0.035     0.036     0.037     0.033     0.032 
+                   mctop_sort_no_sse :    0.035     0.029     0.000     0.038     0.032     0.029     0.026     0.019 
+                      mctop_sort_sse :    0.019     0.019     0.000     0.038     0.031     0.036     0.037     0.030 
+       mctop_sort_sse_hyperthreads_1 :    0.026     0.019     0.000     0.038     0.032     0.028     0.026     0.021 
+       mctop_sort_sse_hyperthreads_2 :    0.019     0.019     0.000     0.019     0.019     0.019     0.019     0.019 
+       mctop_sort_sse_hyperthreads_3 :    0.019     0.019     0.000     0.019     0.019     0.019     0.019     0.037 
+       mctop_sort_sse_hyperthreads_4 :    0.038     0.030     0.000     0.038     0.031     0.028     0.026     0.021 
+       mctop_sort_no_sse_all_sockets :    0.039     0.032     0.000     0.037     0.036     0.030     0.027     0.037 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.007     0.005     0.006     0.063     0.060     0.015     0.066     0.056 
+             merge_sort_tbb_parallel :    0.034     0.031     0.029     0.036     0.035     0.034     0.036     0.029 
+                   mctop_sort_no_sse :    0.038     0.037     0.037     0.038     0.000     0.000     0.038     0.032 
+                      mctop_sort_sse :    0.038     0.032     0.027     0.024     0.000     0.000     0.036     0.030 
+       mctop_sort_sse_hyperthreads_1 :    0.027     0.027     0.021     0.019     0.000     0.000     0.019     0.019 
+       mctop_sort_sse_hyperthreads_2 :    0.019     0.019     0.019     0.019     0.000     0.000     0.037     0.038 
+       mctop_sort_sse_hyperthreads_3 :    0.032     0.027     0.024     0.019     0.000     0.000     0.019     0.019 
+       mctop_sort_sse_hyperthreads_4 :    0.019     0.019     0.019     0.019     0.000     0.000     0.019     0.019 
+       mctop_sort_no_sse_all_sockets :    0.019     0.019     0.019     0.019     0.000     0.000     0.038     0.030 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.009    0.009    0.008    0.020    0.051    0.012    0.023    0.031
-      merge_sort_tbb_parallel:    0.038    0.040    0.016    0.037    0.015    0.026    0.044    0.014
-            mctop_sort_no_sse:    0.037    0.029    0.036    0.029    0.037    0.037    0.029    0.023
-               mctop_sort_sse:    0.019    0.019    0.019    0.019    0.019    0.019    0.019    0.019
-mctop_sort_sse_hyperthreads_1:    0.019    0.019    0.019    0.019    0.019    0.019    0.019    0.019
-mctop_sort_sse_hyperthreads_2:    0.019    0.037    0.030    0.027    0.025    0.021    0.019    0.036
-mctop_sort_sse_hyperthreads_3:    0.037    0.030    0.038    0.036    0.030    0.026    0.021    0.019
-mctop_sort_sse_hyperthreads_4:    0.019    0.019    0.019    0.019    0.019    0.019    0.019    0.019
-mctop_sort_no_sse_all_sockets:    0.019    0.019    0.019    0.019    0.019    0.019    0.019    0.019
+             merge_sort_std_parallel :    0.006     0.005     0.005     0.033     0.008     0.009     0.071     0.058 
+             merge_sort_tbb_parallel :    0.039     0.032     0.037     0.040     0.038     0.038     0.031     0.039 
+                   mctop_sort_no_sse :    0.038     0.038     0.035     0.029     0.026     0.021     0.019     0.034 
+                      mctop_sort_sse :    0.033     0.029     0.026     0.021     0.019     0.019     0.019     0.019 
+       mctop_sort_sse_hyperthreads_1 :    0.019     0.019     0.019     0.019     0.019     0.037     0.028     0.024 
+       mctop_sort_sse_hyperthreads_2 :    0.019     0.019     0.038     0.038     0.027     0.024     0.020     0.019 
+       mctop_sort_sse_hyperthreads_3 :    0.019     0.019     0.020     0.037     0.039     0.032     0.029     0.026 
+       mctop_sort_sse_hyperthreads_4 :    0.021     0.019     0.019     0.019     0.019     0.019     0.019     0.019 
+       mctop_sort_no_sse_all_sockets :    0.019     0.019     0.019     0.019     0.019     0.019     0.019     0.019 
 
 
  ======================================================================================================== 
  ===============================================     2 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.014    0.011    0.014    0.017    0.103    0.071    0.064    0.082
-      merge_sort_tbb_parallel:    0.057    0.022    0.023    0.021    0.051    0.050    0.023    0.023
-            mctop_sort_no_sse:    0.069    0.046    0.040    0.041    0.000    0.000    0.041    0.067
-               mctop_sort_sse:    0.047    0.066    0.046    0.040    0.000    0.000    0.066    0.046
-mctop_sort_sse_hyperthreads_1:    0.040    0.065    0.043    0.070    0.000    0.000    0.069    0.067
-mctop_sort_sse_hyperthreads_2:    0.068    0.067    0.068    0.050    0.000    0.000    0.067    0.046
-mctop_sort_sse_hyperthreads_3:    0.040    0.040    0.040    0.041    0.000    0.000    0.040    0.040
-mctop_sort_sse_hyperthreads_4:    0.040    0.040    0.040    0.040    0.000    0.000    0.040    0.040
-mctop_sort_no_sse_all_sockets:    0.040    0.040    0.040    0.040    0.000    0.000    0.040    0.040
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.014    0.011    0.014    0.017    0.021    0.056    0.058    0.036
-      merge_sort_tbb_parallel:    0.018    0.051    0.044    0.021    0.049    0.023    0.048    0.025
-            mctop_sort_no_sse:    0.068    0.069    0.000    0.044    0.041    0.041    0.041    0.068
-               mctop_sort_sse:    0.069    0.068    0.000    0.050    0.068    0.046    0.040    0.040
-mctop_sort_sse_hyperthreads_1:    0.040    0.040    0.000    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_2:    0.040    0.040    0.000    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_3:    0.040    0.040    0.000    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_4:    0.040    0.040    0.000    0.040    0.040    0.040    0.040    0.040
-mctop_sort_no_sse_all_sockets:    0.040    0.040    0.000    0.041    0.040    0.040    0.040    0.040
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.013    0.011    0.014    0.016    0.108    0.077    0.091    0.051
-      merge_sort_tbb_parallel:    0.044    0.046    0.042    0.051    0.052    0.021    0.022    0.023
-            mctop_sort_no_sse:    0.068    0.046    0.000    0.041    0.040    0.069    0.070    0.047
-               mctop_sort_sse:    0.066    0.069    0.000    0.045    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_1:    0.041    0.041    0.000    0.041    0.041    0.041    0.041    0.041
-mctop_sort_sse_hyperthreads_2:    0.040    0.040    0.000    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_3:    0.041    0.041    0.000    0.070    0.070    0.045    0.040    0.041
-mctop_sort_sse_hyperthreads_4:    0.040    0.040    0.000    0.040    0.064    0.069    0.047    0.040
-mctop_sort_no_sse_all_sockets:    0.040    0.041    0.000    0.041    0.041    0.041    0.071    0.066
+             merge_sort_std_parallel :    0.020     0.008     0.008     0.067     0.060     0.009     0.015     0.091 
+             merge_sort_tbb_parallel :    0.036     0.035     0.041     0.040     0.042     0.042     0.036     0.044 
+                   mctop_sort_no_sse :    0.064     0.045     0.000     0.059     0.040     0.069     0.061     0.044 
+                      mctop_sort_sse :    0.040     0.066     0.000     0.060     0.041     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_1 :    0.040     0.040     0.000     0.040     0.040     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_2 :    0.040     0.040     0.000     0.071     0.055     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_3 :    0.040     0.040     0.000     0.069     0.047     0.041     0.040     0.040 
+       mctop_sort_sse_hyperthreads_4 :    0.040     0.040     0.000     0.040     0.040     0.044     0.040     0.040 
+       mctop_sort_no_sse_all_sockets :    0.040     0.040     0.000     0.067     0.047     0.040     0.040     0.040 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.011     0.008     0.033     0.009     0.012     0.010     0.039     0.082 
+             merge_sort_tbb_parallel :    0.038     0.036     0.040     0.039     0.040     0.043     0.038     0.041 
+                   mctop_sort_no_sse :    0.071     0.050     0.040     0.040     0.000     0.000     0.064     0.047 
+                      mctop_sort_sse :    0.040     0.040     0.040     0.065     0.000     0.000     0.067     0.047 
+       mctop_sort_sse_hyperthreads_1 :    0.040     0.040     0.040     0.040     0.000     0.000     0.070     0.048 
+       mctop_sort_sse_hyperthreads_2 :    0.040     0.040     0.040     0.040     0.000     0.000     0.070     0.063 
+       mctop_sort_sse_hyperthreads_3 :    0.044     0.040     0.041     0.040     0.000     0.000     0.070     0.051 
+       mctop_sort_sse_hyperthreads_4 :    0.040     0.040     0.040     0.040     0.000     0.000     0.066     0.049 
+       mctop_sort_no_sse_all_sockets :    0.040     0.040     0.040     0.068     0.000     0.000     0.057     0.041 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.013    0.014    0.014    0.016    0.023    0.078    0.070    0.082
-      merge_sort_tbb_parallel:    0.049    0.052    0.021    0.022    0.051    0.022    0.049    0.019
-            mctop_sort_no_sse:    0.067    0.047    0.040    0.040    0.040    0.040    0.040    0.040
-               mctop_sort_sse:    0.040    0.040    0.040    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_1:    0.040    0.040    0.040    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_2:    0.040    0.040    0.039    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_3:    0.040    0.040    0.040    0.040    0.040    0.040    0.040    0.040
-mctop_sort_sse_hyperthreads_4:    0.040    0.040    0.040    0.040    0.040    0.040    0.040    0.040
-mctop_sort_no_sse_all_sockets:    0.040    0.041    0.040    0.040    0.040    0.040    0.040    0.040
+             merge_sort_std_parallel :    0.011     0.007     0.009     0.011     0.069     0.036     0.058     0.079 
+             merge_sort_tbb_parallel :    0.041     0.038     0.042     0.036     0.039     0.040     0.043     0.041 
+                   mctop_sort_no_sse :    0.070     0.047     0.040     0.040     0.040     0.040     0.054     0.040 
+                      mctop_sort_sse :    0.040     0.040     0.040     0.041     0.040     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_1 :    0.040     0.040     0.040     0.040     0.040     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_2 :    0.040     0.068     0.070     0.051     0.040     0.040     0.040     0.040 
+       mctop_sort_sse_hyperthreads_3 :    0.040     0.040     0.041     0.040     0.041     0.040     0.041     0.040 
+       mctop_sort_sse_hyperthreads_4 :    0.065     0.048     0.040     0.040     0.040     0.040     0.068     0.068 
+       mctop_sort_no_sse_all_sockets :    0.070     0.048     0.040     0.068     0.046     0.041     0.040     0.070 
 
 
  ======================================================================================================== 
  ===============================================     4 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.023    0.017    0.017    0.041    0.053    0.026    0.022    0.061
-      merge_sort_tbb_parallel:    0.026    0.031    0.054    0.027    0.031    0.048    0.061    0.054
-            mctop_sort_no_sse:    0.023    0.022    0.020    0.023    0.000    0.000    0.028    0.030
-               mctop_sort_sse:    0.019    0.018    0.020    0.019    0.000    0.000    0.024    0.023
-mctop_sort_sse_hyperthreads_1:      n/a    0.022      n/a    0.025    0.000    0.000      n/a    0.029
-mctop_sort_sse_hyperthreads_2:    0.020    0.021      n/a    0.021    0.000    0.000      n/a    0.027
-mctop_sort_sse_hyperthreads_3:    0.020    0.019    0.017    0.024    0.000    0.000    0.027    0.029
-mctop_sort_sse_hyperthreads_4:    0.020    0.022    0.021    0.021    0.000    0.000    0.026    0.027
-mctop_sort_no_sse_all_sockets:    0.022    0.020    0.020    0.023    0.000    0.000    0.029    0.030
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.022    0.017    0.017    0.021    0.023    0.069    0.108    0.057
-      merge_sort_tbb_parallel:    0.051    0.053    0.031    0.058    0.028    0.060    0.035    0.032
-            mctop_sort_no_sse:    0.022    0.019    0.000    0.020    0.022    0.022    0.027    0.028
-               mctop_sort_sse:    0.020    0.015    0.000    0.018    0.020    0.024    0.022    0.023
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.029
-mctop_sort_sse_hyperthreads_2:    0.021      n/a    0.000      n/a      n/a      n/a      n/a    0.028
-mctop_sort_sse_hyperthreads_3:    0.021      n/a    0.000      n/a      n/a    0.024    0.029    0.030
-mctop_sort_sse_hyperthreads_4:    0.020      n/a    0.000      n/a      n/a    0.022    0.026    0.026
-mctop_sort_no_sse_all_sockets:    0.022    0.021    0.000    0.020    0.020    0.023    0.026    0.029
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.022    0.017    0.020    0.088    0.022    0.015    0.053    0.050
-      merge_sort_tbb_parallel:    0.029    0.058    0.028    0.048    0.058    0.029    0.058    0.058
-            mctop_sort_no_sse:    0.023    0.016    0.000    0.020    0.022    0.025    0.026    0.025
-               mctop_sort_sse:    0.020    0.017    0.000    0.018    0.019    0.022    0.023    0.023
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.029
-mctop_sort_sse_hyperthreads_2:    0.022      n/a    0.000      n/a      n/a      n/a      n/a    0.026
-mctop_sort_sse_hyperthreads_3:    0.019      n/a    0.000      n/a      n/a    0.024    0.028    0.024
-mctop_sort_sse_hyperthreads_4:    0.020      n/a    0.000      n/a      n/a    0.027    0.028    0.029
-mctop_sort_no_sse_all_sockets:    0.022    0.022    0.000    0.022    0.021    0.025    0.025    0.029
+             merge_sort_std_parallel :    0.021     0.033     0.014     0.049     0.033     0.057     0.082     0.045 
+             merge_sort_tbb_parallel :    0.043     0.045     0.046     0.048     0.048     0.050     0.043     0.042 
+                   mctop_sort_no_sse :    0.021     0.019     0.000     0.022     0.028     0.032     0.030     0.034 
+                      mctop_sort_sse :    0.019     0.015     0.000     0.020     0.022     0.027     0.027     0.029 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.037 
+       mctop_sort_sse_hyperthreads_2 :    0.020*      n/a     0.000       n/a       n/a       n/a       n/a     0.035 
+       mctop_sort_sse_hyperthreads_3 :    0.019       n/a     0.000       n/a       n/a       n/a     0.032     0.031 
+       mctop_sort_sse_hyperthreads_4 :    0.019*      n/a     0.000       n/a       n/a       n/a     0.031     0.031 
+       mctop_sort_no_sse_all_sockets :    0.021     0.019     0.000     0.029     0.024     0.025     0.032     0.039 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.021     0.014     0.014     0.038     0.013     0.093     0.112     0.093 
+             merge_sort_tbb_parallel :    0.050     0.049     0.043     0.047     0.045     0.050     0.045     0.049 
+                   mctop_sort_no_sse :    0.021     0.022     0.022     0.026     0.000     0.000     0.033     0.034 
+                      mctop_sort_sse :    0.019     0.017     0.017     0.022     0.000     0.000     0.029     0.037 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.022       n/a     0.024     0.000     0.000       n/a     0.039 
+       mctop_sort_sse_hyperthreads_2 :    0.020*    0.021       n/a     0.030     0.000     0.000       n/a     0.036 
+       mctop_sort_sse_hyperthreads_3 :    0.021     0.019       n/a     0.026     0.000     0.000       n/a     0.033 
+       mctop_sort_sse_hyperthreads_4 :    0.019*    0.019       n/a     0.024     0.000     0.000       n/a     0.034 
+       mctop_sort_no_sse_all_sockets :    0.020     0.020     0.019     0.025     0.000     0.000     0.032     0.033 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.022    0.016    0.017    0.018    0.022    0.070    0.085    0.066
-      merge_sort_tbb_parallel:    0.055    0.054    0.050    0.028    0.056    0.051    0.052    0.026
-            mctop_sort_no_sse:    0.024    0.016    0.015    0.015    0.018    0.016    0.018    0.019
-               mctop_sort_sse:    0.022    0.014    0.014    0.013    0.014    0.014    0.014    0.016
-mctop_sort_sse_hyperthreads_1:    0.021      n/a      n/a      n/a      n/a      n/a      n/a    0.022
-mctop_sort_sse_hyperthreads_2:    0.022      n/a      n/a      n/a      n/a      n/a      n/a    0.023
-mctop_sort_sse_hyperthreads_3:    0.022    0.016      n/a      n/a      n/a      n/a      n/a    0.021
-mctop_sort_sse_hyperthreads_4:    0.023    0.015    0.013      n/a      n/a      n/a      n/a    0.023
-mctop_sort_no_sse_all_sockets:    0.025    0.014    0.015    0.014    0.016    0.016    0.019    0.018
+             merge_sort_std_parallel :    0.020     0.013     0.013     0.012     0.069     0.088     0.051     0.051 
+             merge_sort_tbb_parallel :    0.037     0.044     0.047     0.047     0.056     0.049     0.040     0.048 
+                   mctop_sort_no_sse :    0.025     0.019     0.017     0.019     0.021     0.097     0.152     0.031 
+                      mctop_sort_sse :    0.021     0.015     0.014     0.018     0.020     0.024     0.025     0.028 
+       mctop_sort_sse_hyperthreads_1 :    0.023       n/a       n/a       n/a       n/a       n/a       n/a     0.101 
+       mctop_sort_sse_hyperthreads_2 :    0.021       n/a       n/a       n/a       n/a       n/a       n/a     0.067 
+       mctop_sort_sse_hyperthreads_3 :    0.023     0.017       n/a       n/a       n/a       n/a       n/a     0.037 
+       mctop_sort_sse_hyperthreads_4 :    0.021     0.016     0.015       n/a       n/a       n/a       n/a     0.032 
+       mctop_sort_no_sse_all_sockets :    0.022     0.016     0.017     0.018     0.021     0.028     0.029     0.040 
 
 
  ======================================================================================================== 
  ===============================================     8 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.040    0.026    0.024    0.027    0.029    0.035    0.082    0.084
-      merge_sort_tbb_parallel:    0.066    0.063    0.064    0.053    0.070    0.071    0.062    0.057
-            mctop_sort_no_sse:    0.040    0.035    0.032    0.030    0.000    0.000    0.035    0.039
-               mctop_sort_sse:    0.035    0.029    0.029    0.027    0.000    0.000    0.031    0.033
-mctop_sort_sse_hyperthreads_1:      n/a    0.035      n/a    0.029    0.000    0.000      n/a    0.035
-mctop_sort_sse_hyperthreads_2:    0.036    0.035      n/a    0.032    0.000    0.000      n/a    0.035
-mctop_sort_sse_hyperthreads_3:    0.036    0.032    0.031    0.033    0.000    0.000    0.033    0.036
-mctop_sort_sse_hyperthreads_4:    0.037    0.033    0.031    0.029    0.000    0.000    0.033    0.031
-mctop_sort_no_sse_all_sockets:    0.039    0.036    0.033    0.033    0.000    0.000    0.036    0.039
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.041    0.026    0.024    0.027    0.071    0.081    0.063    0.122
-      merge_sort_tbb_parallel:    0.070    0.044    0.052    0.073    0.068    0.054    0.065    0.054
-            mctop_sort_no_sse:    0.040    0.030    0.000    0.027    0.027    0.035    0.036    0.034
-               mctop_sort_sse:    0.035    0.024    0.000    0.027    0.023    0.030    0.031    0.031
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.034
-mctop_sort_sse_hyperthreads_2:    0.036      n/a    0.000      n/a      n/a      n/a      n/a    0.031
-mctop_sort_sse_hyperthreads_3:    0.037      n/a    0.000      n/a      n/a    0.034    0.032    0.031
-mctop_sort_sse_hyperthreads_4:    0.036      n/a    0.000      n/a      n/a    0.031    0.035    0.035
-mctop_sort_no_sse_all_sockets:    0.039    0.026    0.000    0.025    0.027    0.028    0.033    0.036
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.040    0.027    0.028    0.026    0.087    0.088    0.061    0.085
-      merge_sort_tbb_parallel:    0.052    0.073    0.054    0.071    0.052    0.062    0.044    0.054
-            mctop_sort_no_sse:    0.040    0.028    0.000    0.026    0.027    0.035    0.034    0.037
-               mctop_sort_sse:    0.036    0.024    0.000    0.026    0.024    0.030    0.031    0.029
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.034
-mctop_sort_sse_hyperthreads_2:    0.036      n/a    0.000      n/a      n/a      n/a      n/a    0.032
-mctop_sort_sse_hyperthreads_3:    0.036      n/a    0.000      n/a      n/a    0.035    0.031    0.032
-mctop_sort_sse_hyperthreads_4:    0.035      n/a    0.000      n/a      n/a    0.033    0.034    0.030
-mctop_sort_no_sse_all_sockets:    0.039    0.027    0.000    0.026    0.027    0.036    0.037    0.037
+             merge_sort_std_parallel :    0.040     0.024     0.023     0.094     0.040     0.031     0.081     0.093 
+             merge_sort_tbb_parallel :    0.057     0.052     0.062     0.060     0.062     0.061     0.065     0.059 
+                   mctop_sort_no_sse :    0.039     0.030     0.000     0.028     0.031     0.042     0.038     0.044 
+                      mctop_sort_sse :    0.035     0.024     0.000     0.036     0.026     0.032     0.032     0.035 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.042 
+       mctop_sort_sse_hyperthreads_2 :    0.035*      n/a     0.000       n/a       n/a       n/a       n/a     0.041 
+       mctop_sort_sse_hyperthreads_3 :    0.035       n/a     0.000       n/a       n/a       n/a     0.040     0.042 
+       mctop_sort_sse_hyperthreads_4 :    0.035*      n/a     0.000       n/a       n/a       n/a     0.039     0.042 
+       mctop_sort_no_sse_all_sockets :    0.038     0.028     0.000     0.026     0.026     0.038     0.036     0.050 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.050     0.025     0.020     0.020     0.020     0.054     0.094     0.056 
+             merge_sort_tbb_parallel :    0.059     0.065     0.060     0.065     0.056     0.072     0.062     0.058 
+                   mctop_sort_no_sse :    0.039     0.035     0.032     0.037     0.000     0.000     0.034     0.042 
+                      mctop_sort_sse :    0.035     0.030     0.029     0.038     0.000     0.000     0.034     0.032 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.037       n/a     0.037     0.000     0.000       n/a     0.041 
+       mctop_sort_sse_hyperthreads_2 :    0.035*    0.035       n/a     0.032     0.000     0.000       n/a     0.041 
+       mctop_sort_sse_hyperthreads_3 :    0.035     0.035       n/a     0.030     0.000     0.000       n/a     0.042 
+       mctop_sort_sse_hyperthreads_4 :    0.035*    0.032       n/a     0.033     0.000     0.000       n/a     0.042 
+       mctop_sort_no_sse_all_sockets :    0.039     0.035     0.028     0.045     0.000     0.000     0.038     0.053 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.040    0.027    0.024    0.027    0.029    0.102    0.056    0.109
-      merge_sort_tbb_parallel:    0.042    0.052    0.051    0.065    0.053    0.053    0.058    0.075
-            mctop_sort_no_sse:    0.043    0.027    0.023    0.022    0.026    0.023    0.025    0.028
-               mctop_sort_sse:    0.038    0.024    0.020    0.020    0.022    0.021    0.020    0.020
-mctop_sort_sse_hyperthreads_1:    0.038      n/a      n/a      n/a      n/a      n/a      n/a    0.031
-mctop_sort_sse_hyperthreads_2:    0.039      n/a      n/a      n/a      n/a      n/a      n/a    0.029
-mctop_sort_sse_hyperthreads_3:    0.038    0.024      n/a      n/a      n/a      n/a      n/a    0.027
-mctop_sort_sse_hyperthreads_4:    0.038    0.024    0.021      n/a      n/a      n/a      n/a    0.028
-mctop_sort_no_sse_all_sockets:    0.041    0.026    0.022    0.023    0.022    0.024    0.024    0.027
+             merge_sort_std_parallel :    0.040     0.025     0.024     0.029     0.019     0.076     0.060     0.073 
+             merge_sort_tbb_parallel :    0.057     0.055     0.072     0.057     0.064     0.062     0.068     0.059 
+                   mctop_sort_no_sse :    0.041     0.029     0.022     0.024     0.027     0.029     0.037     0.039 
+                      mctop_sort_sse :    0.042     0.024     0.023     0.021     0.025     0.032     0.036     0.031 
+       mctop_sort_sse_hyperthreads_1 :    0.036       n/a       n/a       n/a       n/a       n/a       n/a     0.039 
+       mctop_sort_sse_hyperthreads_2 :    0.037       n/a       n/a       n/a       n/a       n/a       n/a     0.034 
+       mctop_sort_sse_hyperthreads_3 :    0.038     0.024       n/a       n/a       n/a       n/a       n/a     0.038 
+       mctop_sort_sse_hyperthreads_4 :    0.037     0.024     0.021       n/a       n/a       n/a       n/a     0.043 
+       mctop_sort_no_sse_all_sockets :    0.038     0.028     0.024     0.023     0.027     0.032     0.032     0.042 
 
 
  ======================================================================================================== 
  ===============================================    16 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.073    0.046    0.044    0.038    0.063    0.053    0.074    0.121
-      merge_sort_tbb_parallel:    0.086    0.078    0.084    0.088    0.082    0.086    0.084    0.089
-            mctop_sort_no_sse:    0.074    0.064    0.061    0.054    0.000    0.000    0.046    0.054
-               mctop_sort_sse:    0.066    0.052    0.052    0.047    0.000    0.000    0.042    0.043
-mctop_sort_sse_hyperthreads_1:      n/a    0.060      n/a    0.053    0.000    0.000      n/a    0.045
-mctop_sort_sse_hyperthreads_2:    0.066    0.059      n/a    0.054    0.000    0.000      n/a    0.041
-mctop_sort_sse_hyperthreads_3:    0.068    0.055    0.050    0.053    0.000    0.000    0.042    0.044
-mctop_sort_sse_hyperthreads_4:    0.064    0.055    0.049    0.048    0.000    0.000    0.041    0.044
-mctop_sort_no_sse_all_sockets:    0.071    0.064    0.056    0.054    0.000    0.000    0.046    0.052
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.074    0.045    0.045    0.040    0.090    0.070    0.125    0.164
-      merge_sort_tbb_parallel:    0.088    0.082    0.094    0.085    0.090    0.088    0.090    0.087
-            mctop_sort_no_sse:    0.074    0.049    0.000    0.035    0.035    0.050    0.049    0.050
-               mctop_sort_sse:    0.065    0.042    0.000    0.033    0.035    0.037    0.037    0.043
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.044
-mctop_sort_sse_hyperthreads_2:    0.066      n/a    0.000      n/a      n/a      n/a      n/a    0.044
-mctop_sort_sse_hyperthreads_3:    0.069      n/a    0.000      n/a      n/a    0.042    0.040    0.047
-mctop_sort_sse_hyperthreads_4:    0.064      n/a    0.000      n/a      n/a    0.041    0.041    0.048
-mctop_sort_no_sse_all_sockets:    0.071    0.045    0.000    0.042    0.036    0.043    0.044    0.043
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.074    0.046    0.038    0.050    0.040    0.067    0.101    0.105
-      merge_sort_tbb_parallel:    0.082    0.087    0.083    0.096    0.083    0.083    0.081    0.093
-            mctop_sort_no_sse:    0.074    0.045    0.000    0.037    0.038    0.043    0.045    0.046
-               mctop_sort_sse:    0.066    0.042    0.000    0.033    0.034    0.044    0.038    0.037
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.050
-mctop_sort_sse_hyperthreads_2:    0.065      n/a    0.000      n/a      n/a      n/a      n/a    0.040
-mctop_sort_sse_hyperthreads_3:    0.069      n/a    0.000      n/a      n/a    0.040    0.044    0.048
-mctop_sort_sse_hyperthreads_4:    0.065      n/a    0.000      n/a      n/a    0.041    0.041    0.049
-mctop_sort_no_sse_all_sockets:    0.073    0.046    0.000    0.035    0.037    0.042    0.042    0.050
+             merge_sort_std_parallel :    0.073     0.045     0.035     0.057     0.086     0.091     0.055     0.128 
+             merge_sort_tbb_parallel :    0.088     0.093     0.085     0.091     0.082     0.083     0.084     0.090 
+                   mctop_sort_no_sse :    0.071     0.044     0.000     0.034     0.038     0.049     0.054     0.049 
+                      mctop_sort_sse :    0.065     0.040     0.000     0.032     0.034     0.042     0.037     0.043 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.047 
+       mctop_sort_sse_hyperthreads_2 :    0.066*      n/a     0.000       n/a       n/a       n/a       n/a     0.053 
+       mctop_sort_sse_hyperthreads_3 :    0.082       n/a     0.000       n/a       n/a       n/a     0.044     0.063 
+       mctop_sort_sse_hyperthreads_4 :    0.064       n/a     0.000       n/a       n/a       n/a     0.048     0.052 
+       mctop_sort_no_sse_all_sockets :    0.070     0.044     0.000     0.036     0.037     0.054     0.049     0.052 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.073     0.044     0.035     0.036     0.039     0.100     0.059     0.140 
+             merge_sort_tbb_parallel :    0.084     0.095     0.090     0.082     0.088     0.086     0.093     0.085 
+                   mctop_sort_no_sse :    0.070     0.066     0.055     0.057     0.000     0.000     0.050     0.063 
+                      mctop_sort_sse :    0.064     0.053     0.040     0.050     0.000     0.000     0.043     0.046 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.061       n/a     0.055     0.000     0.000       n/a     0.060 
+       mctop_sort_sse_hyperthreads_2 :    0.066*    0.058       n/a     0.051     0.000     0.000       n/a     0.046 
+       mctop_sort_sse_hyperthreads_3 :    0.066     0.056       n/a     0.055     0.000     0.000       n/a     0.053 
+       mctop_sort_sse_hyperthreads_4 :    0.064     0.056       n/a     0.048     0.000     0.000       n/a     0.042 
+       mctop_sort_no_sse_all_sockets :    0.070     0.067     0.047     0.055     0.000     0.000     0.046     0.063 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.073    0.046    0.044    0.041    0.039    0.040    0.067    0.087
-      merge_sort_tbb_parallel:    0.081    0.095    0.098    0.086    0.083    0.092    0.087    0.087
-            mctop_sort_no_sse:    0.075    0.046    0.036    0.031    0.035    0.034    0.033    0.035
-               mctop_sort_sse:    0.066    0.040    0.031    0.031    0.032    0.029    0.029    0.029
-mctop_sort_sse_hyperthreads_1:    0.067      n/a      n/a      n/a      n/a      n/a      n/a    0.038
-mctop_sort_sse_hyperthreads_2:    0.067      n/a      n/a      n/a      n/a      n/a      n/a    0.039
-mctop_sort_sse_hyperthreads_3:    0.069    0.042      n/a      n/a      n/a      n/a      n/a    0.038
-mctop_sort_sse_hyperthreads_4:    0.065    0.041    0.038      n/a      n/a      n/a      n/a    0.041
-mctop_sort_no_sse_all_sockets:    0.072    0.044    0.034    0.031    0.035    0.032    0.032    0.037
+             merge_sort_std_parallel :    0.074     0.045     0.069     0.035     0.069     0.043     0.056     0.099 
+             merge_sort_tbb_parallel :    0.081     0.088     0.081     0.087     0.090     0.085     0.086     0.082 
+                   mctop_sort_no_sse :    0.072     0.043     0.035     0.032     0.041     0.047     0.042     0.051 
+                      mctop_sort_sse :    0.063     0.038     0.032     0.031     0.034     0.035     0.035     0.044 
+       mctop_sort_sse_hyperthreads_1 :    0.065       n/a       n/a       n/a       n/a       n/a       n/a     0.041 
+       mctop_sort_sse_hyperthreads_2 :    0.065       n/a       n/a       n/a       n/a       n/a       n/a     0.048 
+       mctop_sort_sse_hyperthreads_3 :    0.062     0.039       n/a       n/a       n/a       n/a       n/a     0.044 
+       mctop_sort_sse_hyperthreads_4 :    0.063     0.038     0.030       n/a       n/a       n/a       n/a     0.044 
+       mctop_sort_no_sse_all_sockets :    0.069     0.045     0.037     0.035     0.041     0.038     0.050     0.048 
 
 
  ======================================================================================================== 
  ===============================================    32 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.143    0.080    0.062    0.123    0.060    0.089    0.097    0.136
-      merge_sort_tbb_parallel:    0.175    0.191    0.188    0.177    0.192    0.180    0.177    0.176
-            mctop_sort_no_sse:    0.135    0.111    0.097    0.089    0.000    0.000    0.076    0.070
-               mctop_sort_sse:    0.119    0.097    0.090    0.080    0.000    0.000    0.071    0.057
-mctop_sort_sse_hyperthreads_1:      n/a    0.105      n/a    0.085    0.000    0.000      n/a    0.070
-mctop_sort_sse_hyperthreads_2:    0.117    0.102      n/a    0.085    0.000    0.000      n/a    0.060
-mctop_sort_sse_hyperthreads_3:    0.123    0.101    0.090    0.084    0.000    0.000    0.068    0.061
-mctop_sort_sse_hyperthreads_4:    0.120    0.099    0.091    0.090    0.000    0.000    0.068    0.060
-mctop_sort_no_sse_all_sockets:    0.134    0.113    0.096    0.092    0.000    0.000    0.071    0.070
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.143    0.084    0.078    0.066    0.059    0.108    0.187    0.087
-      merge_sort_tbb_parallel:    0.169    0.173    0.186    0.185    0.205    0.156    0.184    0.189
-            mctop_sort_no_sse:    0.135    0.079    0.000    0.058    0.058    0.063    0.074    0.072
-               mctop_sort_sse:    0.120    0.072    0.000    0.050    0.053    0.054    0.060    0.064
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.067
-mctop_sort_sse_hyperthreads_2:    0.118      n/a    0.000      n/a      n/a      n/a      n/a    0.065
-mctop_sort_sse_hyperthreads_3:    0.121      n/a    0.000      n/a      n/a    0.063    0.064    0.066
-mctop_sort_sse_hyperthreads_4:    0.119      n/a    0.000      n/a      n/a    0.059    0.066    0.064
-mctop_sort_no_sse_all_sockets:    0.136    0.079    0.000    0.057    0.056    0.064    0.068    0.069
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.141    0.080    0.063    0.070    0.130    0.082    0.099    0.167
-      merge_sort_tbb_parallel:    0.165    0.185    0.181    0.181    0.194    0.178    0.180    0.169
-            mctop_sort_no_sse:    0.136    0.078    0.000    0.059    0.058    0.068    0.069    0.071
-               mctop_sort_sse:    0.121    0.070    0.000    0.052    0.050    0.060    0.061    0.062
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.065
-mctop_sort_sse_hyperthreads_2:    0.118      n/a    0.000      n/a      n/a      n/a      n/a    0.066
-mctop_sort_sse_hyperthreads_3:    0.121      n/a    0.000      n/a      n/a    0.071    0.078    0.142
-mctop_sort_sse_hyperthreads_4:    0.120      n/a    0.000      n/a      n/a    0.064    0.063    0.068
-mctop_sort_no_sse_all_sockets:    0.135    0.079    0.000    0.056    0.058    0.071    0.067    0.081
+             merge_sort_std_parallel :    0.144     0.084     0.075     0.064     0.147     0.164     0.137     0.109 
+             merge_sort_tbb_parallel :    0.166     0.194     0.187     0.199     0.157     0.185     0.207     0.187 
+                   mctop_sort_no_sse :    0.132     0.077     0.000     0.053     0.055     0.072     0.071     0.071 
+                      mctop_sort_sse :    0.120     0.069     0.000     0.050     0.049     0.056     0.061     0.058 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.089 
+       mctop_sort_sse_hyperthreads_2 :    0.117*      n/a     0.000       n/a       n/a       n/a       n/a     0.068 
+       mctop_sort_sse_hyperthreads_3 :    0.120       n/a     0.000       n/a       n/a       n/a     0.067     0.069 
+       mctop_sort_sse_hyperthreads_4 :    0.120*      n/a     0.000       n/a       n/a       n/a     0.062     0.063 
+       mctop_sort_no_sse_all_sockets :    0.133     0.077     0.000     0.053     0.052     0.065     0.071     0.066 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.139     0.081     0.078     0.112     0.161     0.079     0.084     0.122 
+             merge_sort_tbb_parallel :    0.183     0.187     0.189     0.188     0.137     0.201     0.192     0.160 
+                   mctop_sort_no_sse :    0.127     0.113     0.074     0.102     0.000     0.000     0.054     0.073 
+                      mctop_sort_sse :    0.119     0.096     0.074     0.080     0.000     0.000     0.047     0.060 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.110       n/a     0.084     0.000     0.000       n/a     0.090 
+       mctop_sort_sse_hyperthreads_2 :    0.128*    0.102       n/a     0.082     0.000     0.000       n/a     0.067 
+       mctop_sort_sse_hyperthreads_3 :    0.118     0.099       n/a     0.082     0.000     0.000       n/a     0.067 
+       mctop_sort_sse_hyperthreads_4 :    0.119*    0.096       n/a     0.081     0.000     0.000       n/a     0.061 
+       mctop_sort_no_sse_all_sockets :    0.132     0.115     0.076     0.102     0.000     0.000     0.059     0.083 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.143    0.084    0.080    0.066    0.064    0.070    0.072    0.089
-      merge_sort_tbb_parallel:    0.188    0.177    0.201    0.175    0.166    0.188    0.181    0.182
-            mctop_sort_no_sse:    0.132    0.082    0.064    0.052    0.057    0.053    0.051    0.053
-               mctop_sort_sse:    0.117    0.075    0.056    0.046    0.049    0.047    0.045    0.041
-mctop_sort_sse_hyperthreads_1:    0.120      n/a      n/a      n/a      n/a      n/a      n/a    0.055
-mctop_sort_sse_hyperthreads_2:    0.117      n/a      n/a      n/a      n/a      n/a      n/a    0.058
-mctop_sort_sse_hyperthreads_3:    0.120    0.070      n/a      n/a      n/a      n/a      n/a    0.057
-mctop_sort_sse_hyperthreads_4:    0.120    0.073    0.055      n/a      n/a      n/a      n/a    0.044
-mctop_sort_no_sse_all_sockets:    0.128    0.079    0.060    0.052    0.054    0.052    0.048    0.051
+             merge_sort_std_parallel :    0.139     0.086     0.076     0.128     0.060     0.072     0.079     0.076 
+             merge_sort_tbb_parallel :    0.192     0.163     0.182     0.167     0.184     0.195     0.187     0.185 
+                   mctop_sort_no_sse :    0.134     0.081     0.064     0.055     0.062     0.060     0.061     0.061 
+                      mctop_sort_sse :    0.117     0.073     0.055     0.066     0.054     0.061     0.052     0.050 
+       mctop_sort_sse_hyperthreads_1 :    0.114       n/a       n/a       n/a       n/a       n/a       n/a     0.076 
+       mctop_sort_sse_hyperthreads_2 :    0.114       n/a       n/a       n/a       n/a       n/a       n/a     0.072 
+       mctop_sort_sse_hyperthreads_3 :    0.117     0.072       n/a       n/a       n/a       n/a       n/a     0.057 
+       mctop_sort_sse_hyperthreads_4 :    0.116     0.069     0.054       n/a       n/a       n/a       n/a     0.055 
+       mctop_sort_no_sse_all_sockets :    0.129     0.079     0.061     0.055     0.074     0.058     0.063     0.059 
 
 
  ======================================================================================================== 
  ===============================================    64 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.248    0.157    0.140    0.110    0.132    0.105    0.149    0.134
-      merge_sort_tbb_parallel:    0.256    0.254    0.263    0.253    0.252    0.246    0.255    0.246
-            mctop_sort_no_sse:    0.240    0.194    0.166    0.143    0.000    0.000    0.117    0.109
-               mctop_sort_sse:    0.211    0.165    0.151    0.127    0.000    0.000    0.104    0.092
-mctop_sort_sse_hyperthreads_1:      n/a    0.187      n/a    0.134    0.000    0.000      n/a    0.102
-mctop_sort_sse_hyperthreads_2:    0.209    0.176      n/a    0.133    0.000    0.000      n/a    0.101
-mctop_sort_sse_hyperthreads_3:    0.209    0.173    0.161    0.132    0.000    0.000    0.106    0.100
-mctop_sort_sse_hyperthreads_4:    0.212    0.174    0.159    0.128    0.000    0.000    0.114    0.101
-mctop_sort_no_sse_all_sockets:    0.237    0.194    0.163    0.142    0.000    0.000    0.120    0.126
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.249    0.155    0.119    0.133    0.140    0.126    0.157    0.133
-      merge_sort_tbb_parallel:    0.246    0.266    0.264    0.260    0.256    0.259    0.253    0.239
-            mctop_sort_no_sse:    0.244    0.140    0.000    0.098    0.094    0.108    0.111    0.117
-               mctop_sort_sse:    0.213    0.131    0.000    0.086    0.086    0.106    0.096    0.101
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.105
-mctop_sort_sse_hyperthreads_2:    0.211      n/a    0.000      n/a      n/a      n/a      n/a    0.110
-mctop_sort_sse_hyperthreads_3:    0.212      n/a    0.000      n/a      n/a    0.098    0.103    0.097
-mctop_sort_sse_hyperthreads_4:    0.213      n/a    0.000      n/a      n/a    0.097    0.098    0.101
-mctop_sort_no_sse_all_sockets:    0.241    0.141    0.000    0.092    0.093    0.108    0.121    0.111
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.250    0.156    0.140    0.110    0.098    0.141    0.155    0.163
-      merge_sort_tbb_parallel:    0.256    0.261    0.253    0.243    0.256    0.261    0.258    0.259
-            mctop_sort_no_sse:    0.241    0.141    0.000    0.099    0.093    0.107    0.112    0.115
-               mctop_sort_sse:    0.213    0.125    0.000    0.087    0.085    0.092    0.097    0.093
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.105
-mctop_sort_sse_hyperthreads_2:    0.208      n/a    0.000      n/a      n/a      n/a      n/a    0.099
-mctop_sort_sse_hyperthreads_3:    0.214      n/a    0.000      n/a      n/a    0.101    0.110    0.100
-mctop_sort_sse_hyperthreads_4:    0.212      n/a    0.000      n/a      n/a    0.096    0.099    0.096
-mctop_sort_no_sse_all_sockets:    0.235    0.140    0.000    0.091    0.093    0.111    0.115    0.114
+             merge_sort_std_parallel :    0.249     0.154     0.151     0.124     0.111     0.134     0.108     0.105 
+             merge_sort_tbb_parallel :    0.262     0.253     0.240     0.251     0.257     0.246     0.264     0.255 
+                   mctop_sort_no_sse :    0.234     0.140     0.000     0.092     0.089     0.116     0.110     0.107 
+                      mctop_sort_sse :    0.210     0.126     0.000     0.083     0.080     0.103     0.096     0.094 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.101 
+       mctop_sort_sse_hyperthreads_2 :    0.209*      n/a     0.000       n/a       n/a       n/a       n/a     0.100 
+       mctop_sort_sse_hyperthreads_3 :    0.206*      n/a     0.000       n/a       n/a       n/a     0.094     0.098 
+       mctop_sort_sse_hyperthreads_4 :    0.211*      n/a     0.000       n/a       n/a       n/a     0.095     0.111 
+       mctop_sort_no_sse_all_sockets :    0.239     0.138     0.000     0.090     0.086     0.104     0.121     0.106 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.250     0.155     0.159     0.121     0.098     0.124     0.131     0.115 
+             merge_sort_tbb_parallel :    0.257     0.246     0.264     0.233     0.243     0.257     0.252     0.248 
+                   mctop_sort_no_sse :    0.234     0.183     0.133     0.151     0.000     0.000     0.087     0.118 
+                      mctop_sort_sse :    0.214     0.167     0.122     0.128     0.000     0.000     0.075     0.093 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.189       n/a     0.136     0.000     0.000       n/a     0.107 
+       mctop_sort_sse_hyperthreads_2 :    0.210*    0.176       n/a     0.136     0.000     0.000       n/a     0.103 
+       mctop_sort_sse_hyperthreads_3 :    0.207*    0.177       n/a     0.130     0.000     0.000       n/a     0.094 
+       mctop_sort_sse_hyperthreads_4 :    0.216*    0.173       n/a     0.134     0.000     0.000       n/a     0.096 
+       mctop_sort_no_sse_all_sockets :    0.234     0.193     0.132     0.145     0.000     0.000     0.093     0.110 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.251    0.154    0.142    0.158    0.099    0.094    0.137    0.145
-      merge_sort_tbb_parallel:    0.252    0.256    0.253    0.255    0.227    0.258    0.251    0.252
-            mctop_sort_no_sse:    0.237    0.148    0.105    0.087    0.093    0.087    0.080    0.085
-               mctop_sort_sse:    0.206    0.123    0.095    0.079    0.085    0.083    0.074    0.069
-mctop_sort_sse_hyperthreads_1:    0.203      n/a      n/a      n/a      n/a      n/a      n/a    0.096
-mctop_sort_sse_hyperthreads_2:    0.204      n/a      n/a      n/a      n/a      n/a      n/a    0.074
-mctop_sort_sse_hyperthreads_3:    0.201    0.126      n/a      n/a      n/a      n/a      n/a    0.071
-mctop_sort_sse_hyperthreads_4:    0.197    0.122    0.094      n/a      n/a      n/a      n/a    0.094
-mctop_sort_no_sse_all_sockets:    0.226    0.143    0.106    0.088    0.091    0.085    0.079    0.084
+             merge_sort_std_parallel :    0.244     0.158     0.135     0.121     0.095     0.089     0.178     0.132 
+             merge_sort_tbb_parallel :    0.255     0.246     0.235     0.257     0.251     0.223     0.250     0.254 
+                   mctop_sort_no_sse :    0.227     0.140     0.111     0.092     0.099     0.093     0.092     0.094 
+                      mctop_sort_sse :    0.200     0.126     0.097     0.080     0.088     0.084     0.081     0.094 
+       mctop_sort_sse_hyperthreads_1 :    0.202       n/a       n/a       n/a       n/a       n/a       n/a     0.104 
+       mctop_sort_sse_hyperthreads_2 :    0.206       n/a       n/a       n/a       n/a       n/a       n/a     0.103 
+       mctop_sort_sse_hyperthreads_3 :    0.204     0.132       n/a       n/a       n/a       n/a       n/a     0.108 
+       mctop_sort_sse_hyperthreads_4 :    0.201     0.123     0.094       n/a       n/a       n/a       n/a     0.099 
+       mctop_sort_no_sse_all_sockets :    0.226     0.134     0.107     0.090     0.096     0.091     0.084     0.090 
 
 
  ======================================================================================================== 
  ===============================================   128 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.443    0.269    0.217    0.219    0.176    0.238    0.263    0.201
-      merge_sort_tbb_parallel:    0.504    0.489    0.512    0.452    0.536    0.529    0.511    0.528
-            mctop_sort_no_sse:    0.431    0.327    0.268    0.232    0.000    0.000    0.189    0.169
-               mctop_sort_sse:    0.380    0.296    0.252    0.205    0.000    0.000    0.172    0.144
-mctop_sort_sse_hyperthreads_1:      n/a    0.314      n/a    0.218    0.000    0.000      n/a    0.156
-mctop_sort_sse_hyperthreads_2:    0.385    0.310      n/a    0.210    0.000    0.000      n/a    0.152
-mctop_sort_sse_hyperthreads_3:    0.393    0.307    0.260    0.211    0.000    0.000    0.178    0.158
-mctop_sort_sse_hyperthreads_4:    0.388    0.306    0.249    0.219    0.000    0.000    0.174    0.147
-mctop_sort_no_sse_all_sockets:    0.430    0.323    0.270    0.219    0.000    0.000    0.190    0.170
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.442    0.268    0.265    0.189    0.271    0.216    0.243    0.202
-      merge_sort_tbb_parallel:    0.513    0.492    0.499    0.485    0.528    0.490    0.518    0.498
-            mctop_sort_no_sse:    0.435    0.252    0.000    0.164    0.161    0.169    0.168    0.168
-               mctop_sort_sse:    0.389    0.220    0.000    0.151    0.148    0.153    0.156    0.151
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.159
-mctop_sort_sse_hyperthreads_2:    0.386      n/a    0.000      n/a      n/a      n/a      n/a    0.152
-mctop_sort_sse_hyperthreads_3:    0.392      n/a    0.000      n/a      n/a    0.150    0.156    0.155
-mctop_sort_sse_hyperthreads_4:    0.388      n/a    0.000      n/a      n/a    0.154    0.152    0.153
-mctop_sort_no_sse_all_sockets:    0.432    0.249    0.000    0.162    0.159    0.161    0.166    0.163
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.451    0.270    0.215    0.231    0.192    0.258    0.266    0.233
-      merge_sort_tbb_parallel:    0.571    0.540    0.534    0.542    0.530    0.531    0.490    0.503
-            mctop_sort_no_sse:    0.433    0.248    0.000    0.165    0.162    0.170    0.164    0.163
-               mctop_sort_sse:    0.383    0.221    0.000    0.151    0.150    0.153    0.151    0.150
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.155
-mctop_sort_sse_hyperthreads_2:    0.385      n/a    0.000      n/a      n/a      n/a      n/a    0.157
-mctop_sort_sse_hyperthreads_3:    0.386      n/a    0.000      n/a      n/a    0.155    0.153    0.151
-mctop_sort_sse_hyperthreads_4:    0.394      n/a    0.000      n/a      n/a    0.151    0.154    0.154
-mctop_sort_no_sse_all_sockets:    0.407    0.253    0.000    0.161    0.159    0.162    0.166    0.164
+             merge_sort_std_parallel :    0.445     0.272     0.233     0.227     0.199     0.227     0.204     0.200 
+             merge_sort_tbb_parallel :    0.502     0.495     0.500     0.515     0.497     0.456     0.530     0.511 
+                   mctop_sort_no_sse :    0.435     0.252     0.000     0.165     0.157     0.166     0.166     0.162 
+                      mctop_sort_sse :    0.393     0.220     0.000     0.144     0.144     0.144     0.148     0.147 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.157 
+       mctop_sort_sse_hyperthreads_2 :    0.384*      n/a     0.000       n/a       n/a       n/a       n/a     0.154 
+       mctop_sort_sse_hyperthreads_3 :    0.393       n/a     0.000       n/a       n/a       n/a     0.155     0.151 
+       mctop_sort_sse_hyperthreads_4 :    0.391*      n/a     0.000       n/a       n/a       n/a     0.149     0.144 
+       mctop_sort_no_sse_all_sockets :    0.432     0.234     0.000     0.155     0.155     0.167     0.161     0.160 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.448     0.273     0.215     0.219     0.255     0.178     0.187     0.190 
+             merge_sort_tbb_parallel :    0.490     0.521     0.501     0.491     0.494     0.518     0.513     0.514 
+                   mctop_sort_no_sse :    0.439     0.314     0.233     0.223     0.000     0.000     0.147     0.173 
+                      mctop_sort_sse :    0.392     0.293     0.218     0.203     0.000     0.000     0.140     0.143 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.324       n/a     0.213     0.000     0.000       n/a     0.161 
+       mctop_sort_sse_hyperthreads_2 :    0.391*    0.311       n/a     0.213     0.000     0.000       n/a     0.149 
+       mctop_sort_sse_hyperthreads_3 :    0.388     0.305       n/a     0.208     0.000     0.000       n/a     0.161 
+       mctop_sort_sse_hyperthreads_4 :    0.394*    0.301       n/a     0.207     0.000     0.000       n/a     0.153 
+       mctop_sort_no_sse_all_sockets :    0.430     0.316     0.231     0.219     0.000     0.000     0.161     0.162 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.451    0.269    0.236    0.212    0.180    0.201    0.195    0.294
-      merge_sort_tbb_parallel:    0.528    0.497    0.490    0.512    0.522    0.502    0.497    0.512
-            mctop_sort_no_sse:    0.428    0.239    0.187    0.167    0.165    0.151    0.141    0.144
-               mctop_sort_sse:    0.362    0.223    0.175    0.152    0.153    0.143    0.143    0.125
-mctop_sort_sse_hyperthreads_1:    0.385      n/a      n/a      n/a      n/a      n/a      n/a    0.154
-mctop_sort_sse_hyperthreads_2:    0.356      n/a      n/a      n/a      n/a      n/a      n/a    0.144
-mctop_sort_sse_hyperthreads_3:    0.366    0.226      n/a      n/a      n/a      n/a      n/a    0.149
-mctop_sort_sse_hyperthreads_4:    0.368    0.211    0.169      n/a      n/a      n/a      n/a    0.126
-mctop_sort_no_sse_all_sockets:    0.419    0.233    0.187    0.160    0.160    0.147    0.134    0.140
+             merge_sort_std_parallel :    0.450     0.273     0.318     0.207     0.213     0.348     0.195     0.198 
+             merge_sort_tbb_parallel :    0.534     0.498     0.523     0.526     0.514     0.513     0.506     0.493 
+                   mctop_sort_no_sse :    0.398     0.255     0.191     0.164     0.178     0.162     0.154     0.181 
+                      mctop_sort_sse :    0.370     0.213     0.168     0.145     0.152     0.143     0.138     0.143 
+       mctop_sort_sse_hyperthreads_1 :    0.358       n/a       n/a       n/a       n/a       n/a       n/a     0.142 
+       mctop_sort_sse_hyperthreads_2 :    0.370       n/a       n/a       n/a       n/a       n/a       n/a     0.155 
+       mctop_sort_sse_hyperthreads_3 :    0.370     0.220       n/a       n/a       n/a       n/a       n/a     0.135 
+       mctop_sort_sse_hyperthreads_4 :    0.367     0.215     0.170       n/a       n/a       n/a       n/a     0.152 
+       mctop_sort_no_sse_all_sockets :    0.403     0.254     0.187     0.155     0.166     0.158     0.152     0.162 
 
 
  ======================================================================================================== 
  ===============================================   256 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    0.890    0.479    0.427    0.382    0.334    0.328    0.316    0.358
-      merge_sort_tbb_parallel:    0.913    0.868    0.851    0.869    0.901    0.857    0.888    0.872
-            mctop_sort_no_sse:    0.836    0.595    0.470    0.351    0.000    0.000    0.318    0.271
-               mctop_sort_sse:    0.743    0.567    0.438    0.345    0.000    0.000    0.290    0.247
-mctop_sort_sse_hyperthreads_1:      n/a    0.594      n/a    0.361    0.000    0.000      n/a    0.260
-mctop_sort_sse_hyperthreads_2:    0.750    0.576      n/a    0.348    0.000    0.000      n/a    0.250
-mctop_sort_sse_hyperthreads_3:    0.759    0.567    0.438    0.338    0.000    0.000    0.294    0.248
-mctop_sort_sse_hyperthreads_4:    0.755    0.572    0.444    0.340    0.000    0.000    0.287    0.248
-mctop_sort_no_sse_all_sockets:    0.815    0.593    0.452    0.363    0.000    0.000    0.303    0.267
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    0.818    0.477    0.422    0.405    0.372    0.316    0.289    0.321
-      merge_sort_tbb_parallel:    0.890    0.863    0.942    0.850    0.859    0.867    0.874    0.865
-            mctop_sort_no_sse:    0.869    0.472    0.000    0.288    0.284    0.287    0.280    0.259
-               mctop_sort_sse:    0.754    0.404    0.000    0.267    0.262    0.252    0.251    0.241
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.251
-mctop_sort_sse_hyperthreads_2:    0.739      n/a    0.000      n/a      n/a      n/a      n/a    0.265
-mctop_sort_sse_hyperthreads_3:    0.762      n/a    0.000      n/a      n/a    0.260    0.255    0.249
-mctop_sort_sse_hyperthreads_4:    0.754      n/a    0.000      n/a      n/a    0.257    0.252    0.246
-mctop_sort_no_sse_all_sockets:    0.823    0.447    0.000    0.280    0.271    0.271    0.271    0.256
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    0.880    0.469    0.437    0.376    0.343    0.430    0.308    0.390
-      merge_sort_tbb_parallel:    0.885    0.863    0.859    0.871    0.910    0.853    0.868    0.867
-            mctop_sort_no_sse:    0.870    0.464    0.000    0.293    0.277    0.268    0.270    0.281
-               mctop_sort_sse:    0.751    0.404    0.000    0.274    0.261    0.262    0.253    0.239
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.257
-mctop_sort_sse_hyperthreads_2:    0.748      n/a    0.000      n/a      n/a      n/a      n/a    0.249
-mctop_sort_sse_hyperthreads_3:    0.760      n/a    0.000      n/a      n/a    0.268    0.254    0.246
-mctop_sort_sse_hyperthreads_4:    0.757      n/a    0.000      n/a      n/a    0.255    0.255    0.243
-mctop_sort_no_sse_all_sockets:    0.876    0.466    0.000    0.280    0.276    0.270    0.279    0.257
+             merge_sort_std_parallel :    0.883     0.481     0.368     0.398     0.405     0.365     0.484     0.300 
+             merge_sort_tbb_parallel :    0.872     0.871     0.880     0.907     0.924     0.852     0.910     0.875 
+                   mctop_sort_no_sse :    0.866     0.460     0.000     0.273     0.287     0.284     0.269     0.271 
+                      mctop_sort_sse :    0.750     0.413     0.000     0.253     0.253     0.242     0.258     0.244 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.246 
+       mctop_sort_sse_hyperthreads_2 :    0.756*      n/a     0.000       n/a       n/a       n/a       n/a     0.243 
+       mctop_sort_sse_hyperthreads_3 :    0.758       n/a     0.000       n/a       n/a       n/a     0.243     0.246 
+       mctop_sort_sse_hyperthreads_4 :    0.765*      n/a     0.000       n/a       n/a       n/a     0.246     0.248 
+       mctop_sort_no_sse_all_sockets :    0.821     0.461     0.000     0.273     0.291     0.265     0.255     0.254 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    0.915     0.486     0.425     0.391     0.365     0.314     0.331     0.333 
+             merge_sort_tbb_parallel :    0.885     0.849     0.874     0.888     0.866     0.886     0.875     0.982 
+                   mctop_sort_no_sse :    0.821     0.576     0.418     0.365     0.000     0.000     0.263     0.261 
+                      mctop_sort_sse :    0.763     0.559     0.391     0.346     0.000     0.000     0.244     0.228 
+       mctop_sort_sse_hyperthreads_1 :      n/a     0.629       n/a     0.372     0.000     0.000       n/a     0.243 
+       mctop_sort_sse_hyperthreads_2 :    0.755*    0.574       n/a     0.367     0.000     0.000       n/a     0.236 
+       mctop_sort_sse_hyperthreads_3 :    0.759     0.567       n/a     0.340     0.000     0.000       n/a     0.244 
+       mctop_sort_sse_hyperthreads_4 :    0.769*    0.573       n/a     0.355     0.000     0.000       n/a     0.244 
+       mctop_sort_no_sse_all_sockets :    0.846     0.609     0.416     0.382     0.000     0.000     0.264     0.260 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    0.879    0.479    0.438    0.529    0.373    0.403    0.308    0.355
-      merge_sort_tbb_parallel:    0.877    0.866    0.856    0.914    0.914    0.930    0.907    0.958
-            mctop_sort_no_sse:    0.787    0.440    0.323    0.290    0.287    0.262    0.244    0.247
-               mctop_sort_sse:    0.732    0.396    0.304    0.254    0.266    0.250    0.235    0.216
-mctop_sort_sse_hyperthreads_1:    0.743      n/a      n/a      n/a      n/a      n/a      n/a    0.248
-mctop_sort_sse_hyperthreads_2:    0.710      n/a      n/a      n/a      n/a      n/a      n/a    0.240
-mctop_sort_sse_hyperthreads_3:    0.742    0.407      n/a      n/a      n/a      n/a      n/a    0.220
-mctop_sort_sse_hyperthreads_4:    0.763    0.406    0.314      n/a      n/a      n/a      n/a    0.219
-mctop_sort_no_sse_all_sockets:    0.835    0.465    0.319    0.293    0.280    0.257    0.246    0.242
+             merge_sort_std_parallel :    0.913     0.477     0.615     0.358     0.338     0.378     0.405     0.343 
+             merge_sort_tbb_parallel :    0.853     0.860     0.894     0.882     1.016     0.844     0.859     0.914 
+                   mctop_sort_no_sse :    0.856     0.491     0.352     0.296     0.294     0.301     0.258     0.271 
+                      mctop_sort_sse :    0.722     0.397     0.301     0.249     0.261     0.253     0.235     0.222 
+       mctop_sort_sse_hyperthreads_1 :    0.705       n/a       n/a       n/a       n/a       n/a       n/a     0.242 
+       mctop_sort_sse_hyperthreads_2 :    0.757       n/a       n/a       n/a       n/a       n/a       n/a     0.261 
+       mctop_sort_sse_hyperthreads_3 :    0.690     0.400       n/a       n/a       n/a       n/a       n/a     0.261 
+       mctop_sort_sse_hyperthreads_4 :    0.725     0.398     0.294       n/a       n/a       n/a       n/a     0.230 
+       mctop_sort_no_sse_all_sockets :    0.747     0.421     0.346     0.284     0.287     0.269     0.264     0.250 
 
 
  ======================================================================================================== 
  ===============================================   512 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    1.694    0.939    0.670    0.689    0.566    0.532    0.497    0.521
-      merge_sort_tbb_parallel:    1.982    1.860    1.871    1.871    1.932    1.913    1.925    1.812
-            mctop_sort_no_sse:    1.712    1.137    0.954    0.639    0.000    0.000    0.535    0.434
-               mctop_sort_sse:    1.497    1.126    0.793    0.633    0.000    0.000    0.508    0.425
-mctop_sort_sse_hyperthreads_1:      n/a    1.260      n/a    0.687    0.000    0.000      n/a    0.443
-mctop_sort_sse_hyperthreads_2:    1.477    1.125      n/a    0.647    0.000    0.000      n/a    0.420
-mctop_sort_sse_hyperthreads_3:    1.516    1.123    0.818    0.628    0.000    0.000    0.517    0.428
-mctop_sort_sse_hyperthreads_4:    1.509    1.122    0.850    0.653    0.000    0.000    0.512    0.441
-mctop_sort_no_sse_all_sockets:    1.715    1.162    0.895    0.648    0.000    0.000    0.561    0.429
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    1.682    0.966    0.870    0.700    0.582    0.571    0.536    0.494
-      merge_sort_tbb_parallel:    1.851    1.815    1.848    1.830    1.823    1.939    1.870    1.886
-            mctop_sort_no_sse:    1.721    0.929    0.000    0.527    0.519    0.494    0.496    0.493
-               mctop_sort_sse:    1.499    0.790    0.000    0.500    0.477    0.468    0.466    0.409
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.439
-mctop_sort_sse_hyperthreads_2:    1.495      n/a    0.000      n/a      n/a      n/a      n/a    0.420
-mctop_sort_sse_hyperthreads_3:    1.519      n/a    0.000      n/a      n/a    0.478    0.474    0.418
-mctop_sort_sse_hyperthreads_4:    1.511      n/a    0.000      n/a      n/a    0.474    0.480    0.421
-mctop_sort_no_sse_all_sockets:    1.716    0.837    0.000    0.517    0.491    0.496    0.493    0.426
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    1.709    0.922    0.844    0.690    0.560    0.742    0.526    0.606
-      merge_sort_tbb_parallel:    1.859    1.864    1.856    1.935    1.863    1.871    1.823    1.907
-            mctop_sort_no_sse:    1.714    0.917    0.000    0.531    0.516    0.499    0.496    0.425
-               mctop_sort_sse:    1.497    0.788    0.000    0.494    0.481    0.476    0.464    0.412
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.441
-mctop_sort_sse_hyperthreads_2:    1.487      n/a    0.000      n/a      n/a      n/a      n/a    0.424
-mctop_sort_sse_hyperthreads_3:    1.516      n/a    0.000      n/a      n/a    0.473    0.476    0.416
-mctop_sort_sse_hyperthreads_4:    1.507      n/a    0.000      n/a      n/a    0.469    0.471    0.414
-mctop_sort_no_sse_all_sockets:    1.714    0.831    0.000    0.515    0.496    0.494    0.494    0.424
+             merge_sort_std_parallel :    1.653     0.949     0.861     0.700     0.612     0.522     0.489     0.495 
+             merge_sort_tbb_parallel :    1.810     1.823     1.819     1.813     1.829     1.857     1.851     1.842 
+                   mctop_sort_no_sse :    1.718     0.852     0.000     0.515     0.502     0.497     0.486     0.422 
+                      mctop_sort_sse :    1.507     0.801     0.000     0.481     0.461     0.455     0.456     0.405 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.418 
+       mctop_sort_sse_hyperthreads_2 :    1.503*      n/a     0.000       n/a       n/a       n/a       n/a     0.404 
+       mctop_sort_sse_hyperthreads_3 :    1.509       n/a     0.000       n/a       n/a       n/a     0.453     0.412 
+       mctop_sort_sse_hyperthreads_4 :    1.516*      n/a     0.000       n/a       n/a       n/a     0.447     0.414 
+       mctop_sort_no_sse_all_sockets :    1.713     0.855     0.000     0.505     0.497     0.502     0.501     0.414 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    1.677     0.932     0.884     0.704     0.597     0.537     0.489     0.533 
+             merge_sort_tbb_parallel :    1.859     1.956     1.839     1.915     1.885     1.862     1.837     1.795 
+                   mctop_sort_no_sse :    1.712     1.151     0.829     0.655     0.000     0.000     0.466     0.415 
+                      mctop_sort_sse :    1.498     1.121     0.756     0.632     0.000     0.000     0.438     0.393 
+       mctop_sort_sse_hyperthreads_1 :      n/a     1.205       n/a     0.685     0.000     0.000       n/a     0.448 
+       mctop_sort_sse_hyperthreads_2 :    1.504*    1.127       n/a     0.659     0.000     0.000       n/a     0.412 
+       mctop_sort_sse_hyperthreads_3 :    1.506     1.138       n/a     0.646     0.000     0.000       n/a     0.405 
+       mctop_sort_sse_hyperthreads_4 :    1.520*    1.129       n/a     0.644     0.000     0.000       n/a     0.410 
+       mctop_sort_no_sse_all_sockets :    1.702     1.172     0.826     0.648     0.000     0.000     0.448     0.436 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    1.690    0.937    0.674    0.679    0.677    0.545    0.627    0.615
-      merge_sort_tbb_parallel:    1.875    1.841    1.846    1.829    1.751    1.905    1.793    1.843
-            mctop_sort_no_sse:    1.657    0.860    0.614    0.544    0.531    0.486    0.437    0.413
-               mctop_sort_sse:    1.432    0.758    0.564    0.481    0.493    0.465    0.426    0.514
-mctop_sort_sse_hyperthreads_1:    1.479      n/a      n/a      n/a      n/a      n/a      n/a    0.430
-mctop_sort_sse_hyperthreads_2:    1.431      n/a      n/a      n/a      n/a      n/a      n/a    0.395
-mctop_sort_sse_hyperthreads_3:    1.448    0.787      n/a      n/a      n/a      n/a      n/a    0.395
-mctop_sort_sse_hyperthreads_4:    1.458    0.759    0.580      n/a      n/a      n/a      n/a    0.398
-mctop_sort_no_sse_all_sockets:    1.593    0.834    0.668    0.528    0.520    0.475    0.432    0.416
+             merge_sort_std_parallel :    1.719     0.930     0.841     0.702     0.644     0.674     0.622     0.602 
+             merge_sort_tbb_parallel :    1.864     1.827     1.871     1.860     1.810     1.825     1.918     1.836 
+                   mctop_sort_no_sse :    1.719     0.852     0.693     0.537     0.536     0.508     0.457     0.420 
+                      mctop_sort_sse :    1.446     0.747     0.570     0.461     0.485     0.452     0.421     0.372 
+       mctop_sort_sse_hyperthreads_1 :    1.463       n/a       n/a       n/a       n/a       n/a       n/a     0.434 
+       mctop_sort_sse_hyperthreads_2 :    1.424       n/a       n/a       n/a       n/a       n/a       n/a     0.411 
+       mctop_sort_sse_hyperthreads_3 :    1.441     0.750       n/a       n/a       n/a       n/a       n/a     0.407 
+       mctop_sort_sse_hyperthreads_4 :    1.452     0.762     0.564       n/a       n/a       n/a       n/a     0.394 
+       mctop_sort_no_sse_all_sockets :    1.585     0.819     0.652     0.520     0.509     0.474     0.434     0.429 
 
 
  ======================================================================================================== 
  ===============================================  1024 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    3.332    1.818    1.667    1.331    1.049    0.982    0.886    1.209
-      merge_sort_tbb_parallel:    3.536    3.510    3.553    3.570    3.613    3.628    3.560    3.523
-            mctop_sort_no_sse:    3.409    2.309    1.834    1.262    0.000    0.000    1.031    0.801
-               mctop_sort_sse:    3.063    2.289    1.603    1.250    0.000    0.000    0.966    0.782
-mctop_sort_sse_hyperthreads_1:      n/a    2.407      n/a    1.318    0.000    0.000      n/a    0.829
-mctop_sort_sse_hyperthreads_2:    3.041    2.311      n/a    1.261    0.000    0.000      n/a    0.807
-mctop_sort_sse_hyperthreads_3:    3.112    2.269    1.632    1.242    0.000    0.000    0.978    0.783
-mctop_sort_sse_hyperthreads_4:    3.060    2.289    1.620    1.252    0.000    0.000    0.977    0.789
-mctop_sort_no_sse_all_sockets:    3.391    2.311    1.814    1.267    0.000    0.000    1.014    0.784
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    3.335    1.842    1.640    1.311    1.121    0.974    0.881    0.956
-      merge_sort_tbb_parallel:    3.620    3.599    3.596    3.617    3.590    3.669    3.650    3.551
-            mctop_sort_no_sse:    3.392    1.828    0.000    1.009    0.973    0.960    0.966    0.794
-               mctop_sort_sse:    3.059    1.577    0.000    0.957    0.919    0.917    0.910    0.786
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.822
-mctop_sort_sse_hyperthreads_2:    3.058      n/a    0.000      n/a      n/a      n/a      n/a    0.791
-mctop_sort_sse_hyperthreads_3:    3.090      n/a    0.000      n/a      n/a    0.944    0.924    0.780
-mctop_sort_sse_hyperthreads_4:    3.081      n/a    0.000      n/a      n/a    0.939    0.968    0.795
-mctop_sort_no_sse_all_sockets:    3.379    1.823    0.000    1.056    0.970    1.040    0.949    0.784
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    3.337    1.804    1.627    1.268    1.073    1.113    1.160    0.913
-      merge_sort_tbb_parallel:    3.557    3.617    3.581    3.570    3.550    3.639    3.560    3.587
-            mctop_sort_no_sse:    3.393    1.823    0.000    1.051    0.969    0.968    0.965    0.795
-               mctop_sort_sse:    3.062    1.574    0.000    0.952    0.920    0.908    0.913    0.779
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    0.818
-mctop_sort_sse_hyperthreads_2:    3.065      n/a    0.000      n/a      n/a      n/a      n/a    0.791
-mctop_sort_sse_hyperthreads_3:    3.085      n/a    0.000      n/a      n/a    0.955    0.918    0.772
-mctop_sort_sse_hyperthreads_4:    3.105      n/a    0.000      n/a      n/a    0.924    0.935    0.784
-mctop_sort_no_sse_all_sockets:    3.394    1.824    0.000    1.000    1.058    0.959    0.955    0.786
+             merge_sort_std_parallel :    3.348     1.818     1.655     1.316     1.146     1.008     0.955     1.109 
+             merge_sort_tbb_parallel :    3.540     3.741     3.549     3.540     3.536     3.725     3.652     3.645 
+                   mctop_sort_no_sse :    3.369     1.832     0.000     1.021     0.950     0.947     0.941     0.771 
+                      mctop_sort_sse :    3.072     1.586     0.000     0.904     0.885     0.886     0.866     0.757 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     0.781 
+       mctop_sort_sse_hyperthreads_2 :    3.052*      n/a     0.000       n/a       n/a       n/a       n/a     0.762 
+       mctop_sort_sse_hyperthreads_3 :    3.074       n/a     0.000       n/a       n/a       n/a     0.915     0.740 
+       mctop_sort_sse_hyperthreads_4 :    3.100*      n/a     0.000       n/a       n/a       n/a     0.894     0.742 
+       mctop_sort_no_sse_all_sockets :    3.366     1.819     0.000     1.006     1.005     0.962     0.919     0.755 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    3.327     1.844     1.618     1.345     1.333     0.989     0.881     0.795 
+             merge_sort_tbb_parallel :    3.634     3.593     3.555     3.547     3.543     3.628     3.668     3.590 
+                   mctop_sort_no_sse :    3.377     2.492     1.582     1.243     0.000     0.000     0.870     0.757 
+                      mctop_sort_sse :    3.070     2.312     1.505     1.256     0.000     0.000     0.833     0.755 
+       mctop_sort_sse_hyperthreads_1 :      n/a     2.475       n/a     1.345     0.000     0.000       n/a     0.778 
+       mctop_sort_sse_hyperthreads_2 :    3.077*    2.297       n/a     1.251     0.000     0.000       n/a     0.760 
+       mctop_sort_sse_hyperthreads_3 :    3.064     2.281       n/a     1.260     0.000     0.000       n/a     0.742 
+       mctop_sort_sse_hyperthreads_4 :    3.112*    2.279       n/a     1.263     0.000     0.000       n/a     0.753 
+       mctop_sort_no_sse_all_sockets :    3.371     2.487     1.587     1.298     0.000     0.000     0.899     0.821 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    3.352    1.829    1.642    1.302    1.037    1.020    0.985    0.922
-      merge_sort_tbb_parallel:    3.655    3.577    3.673    3.555    3.544    3.576    3.559    3.573
-            mctop_sort_no_sse:    3.322    1.926    1.254    1.064    1.065    0.915    0.829    0.762
-               mctop_sort_sse:    2.919    1.576    1.150    0.925    0.965    0.884    0.816    0.748
-mctop_sort_sse_hyperthreads_1:    2.946      n/a      n/a      n/a      n/a      n/a      n/a    0.789
-mctop_sort_sse_hyperthreads_2:    2.915      n/a      n/a      n/a      n/a      n/a      n/a    0.753
-mctop_sort_sse_hyperthreads_3:    2.965    1.601      n/a      n/a      n/a      n/a      n/a    0.757
-mctop_sort_sse_hyperthreads_4:    2.898    1.578    1.116      n/a      n/a      n/a      n/a    0.801
-mctop_sort_no_sse_all_sockets:    3.297    1.802    1.314    1.008    1.067    0.905    0.821    0.745
+             merge_sort_std_parallel :    3.340     1.785     1.640     1.316     1.107     1.245     0.943     0.891 
+             merge_sort_tbb_parallel :    3.702     3.648     3.563     3.620     3.657     3.610     3.677     3.588 
+                   mctop_sort_no_sse :    3.283     1.859     1.198     0.941     0.997     0.967     0.830     0.750 
+                      mctop_sort_sse :    2.921     1.571     1.097     0.882     0.932     0.841     0.778     0.721 
+       mctop_sort_sse_hyperthreads_1 :    2.929       n/a       n/a       n/a       n/a       n/a       n/a     0.781 
+       mctop_sort_sse_hyperthreads_2 :    2.883       n/a       n/a       n/a       n/a       n/a       n/a     0.752 
+       mctop_sort_sse_hyperthreads_3 :    2.931     1.548       n/a       n/a       n/a       n/a       n/a     0.719 
+       mctop_sort_sse_hyperthreads_4 :    2.911     1.530     1.094       n/a       n/a       n/a       n/a     0.747 
+       mctop_sort_no_sse_all_sockets :    3.160     1.783     1.291     1.060     1.062     0.885     0.782     0.773 
 
 
  ======================================================================================================== 
  ===============================================  2048 MB =============================================== 
  ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:    6.705    3.736    3.100    2.646    2.132    1.897    1.989    1.573
-      merge_sort_tbb_parallel:    7.376    7.467    7.451    7.472    7.572    7.409    7.511    7.588
-            mctop_sort_no_sse:    6.802    4.810    3.545    2.654    0.000    0.000    2.184    1.587
-               mctop_sort_sse:    6.265    4.701    3.227    2.525    0.000    0.000    1.954    1.574
-mctop_sort_sse_hyperthreads_1:      n/a    4.936      n/a    2.660    0.000    0.000      n/a    1.627
-mctop_sort_sse_hyperthreads_2:    6.369    4.711      n/a    2.490    0.000    0.000      n/a    1.575
-mctop_sort_sse_hyperthreads_3:    6.490    4.660    3.276    2.514    0.000    0.000    1.954    1.547
-mctop_sort_sse_hyperthreads_4:    6.320    4.703    3.229    2.540    0.000    0.000    1.969    1.559
-mctop_sort_no_sse_all_sockets:    6.804    4.810    3.563    2.539    0.000    0.000    2.076    1.561
+                             threads : 12        24        36        48        60        72        84        96       
  --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:    6.734    3.671    3.192    2.633    2.115    1.871    2.095    1.639
-      merge_sort_tbb_parallel:    7.517    7.535    7.473    7.500    7.412    7.574    7.481    7.461
-            mctop_sort_no_sse:    6.800    3.568    0.000    2.137    2.072    2.077    2.074    1.585
-               mctop_sort_sse:    6.241    3.204    0.000    1.922    1.865    1.859    1.833    1.559
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    1.643
-mctop_sort_sse_hyperthreads_2:    6.396      n/a    0.000      n/a      n/a      n/a      n/a    1.563
-mctop_sort_sse_hyperthreads_3:    6.477      n/a    0.000      n/a      n/a    1.949    1.873    1.549
-mctop_sort_sse_hyperthreads_4:    6.271      n/a    0.000      n/a      n/a    1.888    1.853    1.562
-mctop_sort_no_sse_all_sockets:    6.808    3.567    0.000    2.126    2.059    2.079    2.046    1.562
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:    6.686    3.635    2.957    2.476    2.128    2.092    2.185    1.976
-      merge_sort_tbb_parallel:    7.438    7.361    7.327    7.590    7.491    7.609    7.363    7.542
-            mctop_sort_no_sse:    6.793    3.585    0.000    2.141    2.089    2.095    2.070    1.592
-               mctop_sort_sse:    6.226    3.219    0.000    1.916    1.864    1.858    1.842    1.551
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    1.618
-mctop_sort_sse_hyperthreads_2:    6.397      n/a    0.000      n/a      n/a      n/a      n/a    1.756
-mctop_sort_sse_hyperthreads_3:    6.500      n/a    0.000      n/a      n/a    1.960    1.863    1.545
-mctop_sort_sse_hyperthreads_4:    6.286      n/a    0.000      n/a      n/a    1.882    1.835    1.576
-mctop_sort_no_sse_all_sockets:    6.806    3.590    0.000    2.108    2.068    2.043    2.044    1.556
+             merge_sort_std_parallel :    6.821     3.652     3.395     2.618     2.197     1.908     1.732     1.638 
+             merge_sort_tbb_parallel :    7.534     7.490     7.482     7.297     7.621     7.333     7.385     7.395 
+                   mctop_sort_no_sse :    6.794     3.576     0.000     2.120     2.047     2.100     2.029     1.536 
+                      mctop_sort_sse :    6.255     3.263     0.000     1.838     1.771     1.774     1.745     1.472 
+       mctop_sort_sse_hyperthreads_1 :      n/a       n/a     0.000       n/a       n/a       n/a       n/a     1.573 
+       mctop_sort_sse_hyperthreads_2 :    6.412*      n/a     0.000       n/a       n/a       n/a       n/a     1.538 
+       mctop_sort_sse_hyperthreads_3 :    6.439       n/a     0.000       n/a       n/a       n/a     1.783     1.492 
+       mctop_sort_sse_hyperthreads_4 :    6.296       n/a     0.000       n/a       n/a       n/a     1.811     1.466 
+       mctop_sort_no_sse_all_sockets :    6.756     3.569     0.000     2.064     2.020     2.016     1.972     1.513 
+ --------------------------------------------- ALLOCATOR: 6 --------------------------------------------- 
+             merge_sort_std_parallel :    6.731     3.646     3.021     2.636     2.197     1.954     1.716     1.718 
+             merge_sort_tbb_parallel :    7.484     7.573     7.229     7.469     7.417     7.615     7.518     7.612 
+                   mctop_sort_no_sse :    6.734     4.895     3.192     2.640     0.000     0.000     1.712     1.532 
+                      mctop_sort_sse :    6.259     4.658     3.045     2.544     0.000     0.000     1.639     1.476 
+       mctop_sort_sse_hyperthreads_1 :      n/a     5.027       n/a     2.700     0.000     0.000       n/a     1.561 
+       mctop_sort_sse_hyperthreads_2 :    6.457*    4.698       n/a     2.537     0.000     0.000       n/a     1.481 
+       mctop_sort_sse_hyperthreads_3 :    6.402     4.687       n/a     2.542     0.000     0.000       n/a     1.490 
+       mctop_sort_sse_hyperthreads_4 :    6.346     4.673       n/a     2.530     0.000     0.000       n/a     1.475 
+       mctop_sort_no_sse_all_sockets :    6.786     4.886     3.184     2.645     0.000     0.000     1.731     1.530 
  --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:    6.712    3.733    3.105    2.641    2.242    1.911    1.703    1.869
-      merge_sort_tbb_parallel:    7.432    7.404    7.510    7.412    7.495    7.484    7.598    7.509
-            mctop_sort_no_sse:    6.688    3.666    2.592    2.115    2.152    1.946    1.744    1.567
-               mctop_sort_sse:    5.900    3.169    2.321    1.885    1.949    1.774    1.628    1.498
-mctop_sort_sse_hyperthreads_1:    6.010      n/a      n/a      n/a      n/a      n/a      n/a    1.572
-mctop_sort_sse_hyperthreads_2:    5.886      n/a      n/a      n/a      n/a      n/a      n/a    1.506
-mctop_sort_sse_hyperthreads_3:    5.990    3.231      n/a      n/a      n/a      n/a      n/a    1.494
-mctop_sort_sse_hyperthreads_4:    5.870    3.177    2.396      n/a      n/a      n/a      n/a    1.522
-mctop_sort_no_sse_all_sockets:    6.409    3.549    2.538    2.054    2.091    1.798    1.730    1.499
-
-
- ======================================================================================================== 
- ===============================================  4096 MB =============================================== 
- ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:   13.715    7.383    6.068    5.066    4.240    3.858    3.264    3.032
-      merge_sort_tbb_parallel:   14.752   14.343   14.857   14.365   14.466   14.899   14.855   14.478
-            mctop_sort_no_sse:   13.844    9.773    7.111    5.138    0.000    0.000    4.349    3.323
-               mctop_sort_sse:   12.803    9.662    6.562    5.045    0.000    0.000    3.936    3.166
-mctop_sort_sse_hyperthreads_1:      n/a   10.142      n/a    5.319    0.000    0.000      n/a    3.278
-mctop_sort_sse_hyperthreads_2:   12.793    9.669      n/a    5.039    0.000    0.000      n/a    3.186
-mctop_sort_sse_hyperthreads_3:   13.035    9.552    6.675    5.009    0.000    0.000    4.002    3.123
-mctop_sort_sse_hyperthreads_4:   12.910    9.622    6.625    5.047    0.000    0.000    3.994    3.157
-mctop_sort_no_sse_all_sockets:   13.785    9.781    7.173    5.039    0.000    0.000    4.262    3.255
- --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:   13.625    7.503    5.828    4.258    4.315    3.711    3.945    2.959
-      merge_sort_tbb_parallel:   14.561   14.295   14.718   14.355   14.723   14.351   14.473   14.634
-            mctop_sort_no_sse:   13.827    7.149    0.000    4.220    4.140    4.083    4.155    3.286
-               mctop_sort_sse:   12.785    6.575    0.000    3.880    3.789    3.768    3.837    3.140
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    3.276
-mctop_sort_sse_hyperthreads_2:   12.814      n/a    0.000      n/a      n/a      n/a      n/a    3.165
-mctop_sort_sse_hyperthreads_3:   13.048      n/a    0.000      n/a      n/a    3.865    3.790    3.120
-mctop_sort_sse_hyperthreads_4:   12.916      n/a    0.000      n/a      n/a    3.820    3.781    3.150
-mctop_sort_no_sse_all_sockets:   13.838    7.162    0.000    4.142    4.123    4.095    4.103    3.191
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:   13.622    7.408    6.120    5.208    4.305    3.724    3.295    3.218
-      merge_sort_tbb_parallel:   14.651   14.663   14.685   14.784   14.938   14.521   14.368   14.695
-            mctop_sort_no_sse:   13.818    7.154    0.000    4.205    4.112    4.112    4.158    3.244
-               mctop_sort_sse:   12.808    6.580    0.000    3.887    3.802    3.764    3.773    3.149
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    3.399
-mctop_sort_sse_hyperthreads_2:   12.799      n/a    0.000      n/a      n/a      n/a      n/a    3.169
-mctop_sort_sse_hyperthreads_3:   13.045      n/a    0.000      n/a      n/a    3.831    3.836    3.121
-mctop_sort_sse_hyperthreads_4:   12.923      n/a    0.000      n/a      n/a    3.826    3.786    3.142
-mctop_sort_no_sse_all_sockets:   13.816    7.134    0.000    4.165    4.105    4.082    4.074    3.184
- --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:   13.589    7.420    5.375    4.989    4.235    3.972    3.524    2.922
-      merge_sort_tbb_parallel:   14.450   14.584   14.733   14.394   14.751   14.697   14.689   14.432
-            mctop_sort_no_sse:   13.540    7.318    5.198    4.177    4.299    3.884    3.417    3.104
-               mctop_sort_sse:   11.997    6.468    4.738    3.836    3.972    3.651    3.322    3.062
-mctop_sort_sse_hyperthreads_1:   12.493      n/a      n/a      n/a      n/a      n/a      n/a    3.207
-mctop_sort_sse_hyperthreads_2:   11.999      n/a      n/a      n/a      n/a      n/a      n/a    3.074
-mctop_sort_sse_hyperthreads_3:   12.255    6.612      n/a      n/a      n/a      n/a      n/a    3.127
-mctop_sort_sse_hyperthreads_4:   11.970    6.481    4.713      n/a      n/a      n/a      n/a    3.085
-mctop_sort_no_sse_all_sockets:   13.036    7.135    5.132    4.108    4.206    3.790    3.362    3.173
-
-
- ======================================================================================================== 
- ===============================================  8192 MB =============================================== 
- ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:   28.000   15.215   11.490    9.919    8.275    7.453    7.099    6.065
-      merge_sort_tbb_parallel:   28.419   29.103   28.149   28.103   28.307   28.303   28.350   28.253
-            mctop_sort_no_sse:   28.278   19.927   14.475   10.476    0.000    0.000    8.720    6.641
-               mctop_sort_sse:   26.397   19.925   13.433   10.366    0.000    0.000    8.001    6.432
-mctop_sort_sse_hyperthreads_1:      n/a   20.838      n/a   10.818    0.000    0.000      n/a    6.722
-mctop_sort_sse_hyperthreads_2:   26.916   19.878      n/a   10.345    0.000    0.000      n/a    6.471
-mctop_sort_sse_hyperthreads_3:   27.409   19.631   13.680   10.214    0.000    0.000    8.282    6.393
-mctop_sort_sse_hyperthreads_4:   26.683   19.819   13.530   10.310    0.000    0.000    8.095    6.416
-mctop_sort_no_sse_all_sockets:   28.299   19.906   14.437   10.473    0.000    0.000    8.516    6.504
- --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:   27.872   15.149   11.989    9.780    8.361    7.597    6.856    6.050
-      merge_sort_tbb_parallel:   28.319   28.271   28.482   28.185   28.199   28.473   29.197   28.545
-            mctop_sort_no_sse:   28.307   14.524    0.000    8.438    8.234    8.233    8.346    6.582
-               mctop_sort_sse:   26.411   13.480    0.000    7.863    7.754    7.728    7.639    6.273
-mctop_sort_sse_hyperthreads_1:      n/a      n/a    0.000      n/a      n/a      n/a      n/a    6.634
-mctop_sort_sse_hyperthreads_2:   26.898      n/a    0.000      n/a      n/a      n/a      n/a    6.369
-mctop_sort_sse_hyperthreads_3:   27.380      n/a    0.000      n/a      n/a    7.996
-
- ======================================================================================================== 
- ===============================================  8192 MB =============================================== 
- ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:   27.967    15.090    11.545     9.941     8.381     7.668     7.012     6.072 
-      merge_sort_tbb_parallel:   28.068    28.521    28.356    28.322    28.802    28.368    28.535    28.652 
-            mctop_sort_no_sse:   28.293    19.901    14.616    10.473     0.000     0.000     8.656     6.633 
-               mctop_sort_sse:   26.384*   19.923*   13.417*   10.381*    0.000     0.000     8.035*    6.432*
-mctop_sort_sse_hyperthreads_1:      n/a    20.828*      n/a    10.821*    0.000     0.000       n/a     6.732*
-mctop_sort_sse_hyperthreads_2:   26.826*   19.870*      n/a    10.346*    0.000     0.000       n/a     6.477*
-mctop_sort_sse_hyperthreads_3:   27.358*   19.636*   13.671*   10.227*    0.000     0.000     8.111*    6.524*
-mctop_sort_sse_hyperthreads_4:   26.610*   19.801*   13.562*   10.306*    0.000     0.000     8.056*    6.418*
-mctop_sort_no_sse_all_sockets:   28.290    19.910    14.413    10.480     0.000     0.000     8.505     6.505 
- --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:   27.924    15.116    10.882    10.204     8.320     7.519     7.135     6.446 
-      merge_sort_tbb_parallel:   28.331    28.846    28.242    28.390    28.437    28.486    27.969    28.111 
-            mctop_sort_no_sse:   28.297    14.500     0.000     8.412     8.295     8.207     8.335     6.562 
-               mctop_sort_sse:   26.389*   13.508*    0.000     7.819*    7.745*    7.698*    7.678*    6.380*
-mctop_sort_sse_hyperthreads_1:      n/a       n/a     0.000       n/a       n/a       n/a       n/a     6.620*
-mctop_sort_sse_hyperthreads_2:   26.932*      n/a     0.000       n/a       n/a       n/a       n/a     6.394*
-mctop_sort_sse_hyperthreads_3:   27.359*      n/a     0.000       n/a       n/a     8.013*    7.796*    6.258*
-mctop_sort_sse_hyperthreads_4:   26.600*      n/a     0.000       n/a       n/a     7.849*    7.704*    6.363*
-mctop_sort_no_sse_all_sockets:   28.302    14.474     0.000     8.280     8.230     8.178     8.209     6.422 
- --------------------------------------------- ALLOCATOR: 7 --------------------------------------------- 
-      merge_sort_std_parallel:   28.042    15.015    11.282     9.848     8.564     7.547     6.677     6.042 
-      merge_sort_tbb_parallel:   28.192    28.508    28.178    28.284    28.663    28.514    29.213    28.299 
-            mctop_sort_no_sse:   28.310    14.511     0.000     8.415     8.243     8.247     8.330     6.538 
-               mctop_sort_sse:   26.445*   13.494*    0.000     7.866*    7.741*    7.718*    7.659*    6.317*
-mctop_sort_sse_hyperthreads_1:      n/a       n/a     0.000       n/a       n/a       n/a       n/a     6.650*
-mctop_sort_sse_hyperthreads_2:   26.856*      n/a     0.000       n/a       n/a       n/a       n/a     6.376*
-mctop_sort_sse_hyperthreads_3:   27.438*      n/a     0.000       n/a       n/a     7.997*    7.802*    6.297*
-mctop_sort_sse_hyperthreads_4:   26.611*      n/a     0.000       n/a       n/a     7.857*    7.738*    6.354*
-mctop_sort_no_sse_all_sockets:   28.276    14.492     0.000     8.297     8.236     8.160     8.166     6.445 
- --------------------------------------------- ALLOCATOR: 9 --------------------------------------------- 
-      merge_sort_std_parallel:   28.060    15.079    11.336    10.151     8.492     7.510     7.069     5.999 
-      merge_sort_tbb_parallel:   28.314    28.544    28.027    29.088    28.423    28.529    28.361    28.463 
-            mctop_sort_no_sse:   27.581    14.897    10.482     8.395     8.648     7.764     6.936     6.357 
-               mctop_sort_sse:   24.967*   13.207*    9.590*    7.807*    8.139*    7.465*    6.778*    6.251*
-mctop_sort_sse_hyperthreads_1:   24.986*      n/a       n/a       n/a       n/a       n/a       n/a     6.549*
-mctop_sort_sse_hyperthreads_2:   24.448*      n/a       n/a       n/a       n/a       n/a       n/a     6.280*
-mctop_sort_sse_hyperthreads_3:   25.024*   13.466*      n/a       n/a       n/a       n/a       n/a     6.223*
-mctop_sort_sse_hyperthreads_4:   24.459*   13.211*    9.612*      n/a       n/a       n/a       n/a     6.262*
-mctop_sort_no_sse_all_sockets:   26.582    14.466    10.365     8.258     8.435     7.639     6.799     6.307 
-
-
- ======================================================================================================== 
- ===============================================  4096 MB =============================================== 
- ======================================================================================================== 
-                      threads:       12       24       36       48       60       72       84       96
- --------------------------------------------- ALLOCATOR: 3 --------------------------------------------- 
-      merge_sort_std_parallel:   13.750     7.389     5.847     5.027     4.332     3.784     3.288     2.981 
-      merge_sort_tbb_parallel:   14.491    14.676    14.657    14.382    14.640    14.781    14.385    14.604 
-            mctop_sort_no_sse:   13.785     9.769     7.136     5.171     0.000     0.000     4.318     3.318 
-               mctop_sort_sse:   12.826     9.677     6.544     5.079     0.000     0.000     3.930     3.148 
-mctop_sort_sse_hyperthreads_1:      n/a    10.136       n/a     5.331     0.000     0.000       n/a     3.300 
-mctop_sort_sse_hyperthreads_2:   12.796*    9.675       n/a     5.082     0.000     0.000       n/a     3.177 
-mctop_sort_sse_hyperthreads_3:   13.076*    9.549     6.681*    4.977     0.000     0.000     4.003*    3.129 
-mctop_sort_sse_hyperthreads_4:   12.889*    9.625     6.623*    5.064     0.000     0.000     3.963*    3.142 
-mctop_sort_no_sse_all_sockets:   13.799     9.781     7.120     5.169     0.000     0.000     4.268     3.178 
- --------------------------------------------- ALLOCATOR: 4 --------------------------------------------- 
-      merge_sort_std_parallel:   13.816     7.410     5.772     4.243     4.241     3.715     3.350     3.428 
-      merge_sort_tbb_parallel:   14.826    14.574    14.918    14.540    14.248    14.878    14.608    14.820 
-            mctop_sort_no_sse:   13.785     7.130     0.000     4.219     4.147     4.109     4.127     3.250 
-               mctop_sort_sse:   12.828     6.584     0.000     3.846     3.815     3.801     3.751     3.143 
-mctop_sort_sse_hyperthreads_1:      n/a       n/a     0.000       n/a       n/a       n/a       n/a     3.292 
-mctop_sort_sse_hyperthreads_2:   12.764*      n/a     0.000       n/a       n/a       n/a       n/a 
+             merge_sort_std_parallel :    6.882     3.687     3.337     2.561     2.294     1.859     1.695     1.598 
+             merge_sort_tbb_parallel :    7.377     7.405     7.492     7.403     7.383     7.538     7.496     7.401 
+                   mctop_sort_no_sse :    6.636     3.652     2.502     2.083     2.141     1.797     1.690     1.481 
+                      mctop_sort_sse :    5.914     3.176     2.286     1.807     1.855     1.705     1.551     1.421 
+       mctop_sort_sse_hyperthreads_1 :    5.929       n/a       n/a       n/a       n/a       n/a       n/a     1.521 
+       mctop_sort_sse_hyperthreads_2 :    5.947       n/a       n/a       n/a       n/a       n/a       n/a     1.440 
+       mctop_sort_sse_hyperthreads_3 :    5.925     3.192       n/a       n/a       n/a       n/a       n/a     1.433 
+       mctop_sort_sse_hyperthreads_4 :    5.891     3.166     2.280       n/a       n/a       n/a       n/a     1.420 
+       mctop_sort_no_sse_all_sockets :    6.319     3.515     2.499     2.039     2.084     1.866     1.679     1.451 
