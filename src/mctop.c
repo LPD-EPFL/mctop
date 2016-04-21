@@ -213,9 +213,8 @@ crawl(void* param)
 
 	  for (size_t rep = 0; rep < _num_reps; rep++)
 	    {
-#ifndef __sparc
 	      barrier2_cross_explicit(barrier2, tid, 5);
-#endif
+
 	      if (likely(tid == 0))
 		{
 		  barrier2_cross(barrier2, tid, rep);
@@ -1012,7 +1011,7 @@ main(int argc, char **argv)
       topo = mctop_load(NULL);
     }
 
-  if (!test_mem_augment || (test_mem_augment && topo->cache == NULL))
+  if (test_do_mem > NO_MEM && (!test_mem_augment || (test_mem_augment && topo->cache == NULL)))
     {
       printf("#### Calculating cache latencies / sizes\n");
       mctop_cache_info_t* mci = mctop_cache_size_estimate();
