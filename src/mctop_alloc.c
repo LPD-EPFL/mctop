@@ -5,8 +5,8 @@
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
-/* #define MA_DP(args...) printf(args) */
-#define MA_DP(args...) //printf(args)
+#define MA_DP(args...) printf(args)
+//#define MA_DP(args...) //printf(args)
 
 void
 mctop_alloc_help()
@@ -251,9 +251,14 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 	  n_hwcs_avail /= topo->n_hwcs_per_core;
 	}
       uint n_sockets = (alloc->n_hwcs / n_hwcs_avail) + ((alloc->n_hwcs % n_hwcs_avail) > 0);
+      if (n_sockets > topo->n_sockets && smt_first < 0)
+	{
+	  n_sockets = topo->n_sockets;
+	}
       n_hwcs_per_socket = (alloc->n_hwcs / n_sockets) + ((alloc->n_hwcs % n_sockets) > 0);
-      /* printf("Balancing! %u hwcs, %u hwcs avail per socket -- Need #Sockets: %u, Put %u per socket\n", */
-      /* 	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket); */
+
+      printf("Balancing! %u hwcs, %u hwcs avail per socket -- Need #Sockets: %u, Put %u per socket\n",
+      	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket);
     }
 
   const int n_hwcs = alloc->n_hwcs;
@@ -307,9 +312,13 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 
   if (smt_first < 0 && topo->is_smt) /* have gotten ONLY physical cores so far */
     {
+      if (balance == 1)
+	{
+	  n_hwcs_per_socket = (alloc->n_hwcs - hwc_i) / darray_get_num_elems(sockets) || 1;
+	}
       for (int hwc = 1; (hwc_i < alloc->n_hwcs) && (hwc < topo->n_hwcs_per_core); hwc++)
 	{
-	  MA_DP("---- Now getting the #%u HWCs of cores\n", hwc);
+	  MA_DP("---- Now getting the #%u HWCs of cores -- %u per socket\n", hwc, n_hwcs_per_socket);
 	  DARRAY_FOR_EACH(sockets, i)
 	    {
 	      socket_t* socket = (socket_t*) DARRAY_GET_N(sockets, i);
