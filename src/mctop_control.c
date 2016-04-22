@@ -66,6 +66,13 @@ mctop_get_num_nodes(mctop_t* topo)
   return topo->n_sockets;
 }
 
+size_t 
+mctop_get_num_cores(mctop_t* topo)
+{
+  return topo->n_hwcs / topo->n_hwcs_per_core;
+}
+
+
 inline size_t
 mctop_get_num_cores_per_socket(mctop_t* topo)
 {

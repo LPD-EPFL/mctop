@@ -199,6 +199,7 @@ extern "C" {
 
   uint mctop_get_num_levels(mctop_t* topo);
   size_t mctop_get_num_nodes(mctop_t* topo);
+  size_t mctop_get_num_cores(mctop_t* topo);
   size_t mctop_get_num_cores_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_socket(mctop_t* topo);
   size_t mctop_get_num_hwc_per_core(mctop_t* topo);
