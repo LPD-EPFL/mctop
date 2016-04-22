@@ -179,17 +179,14 @@ enum
 double
 mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, const size_t reps)
 {
-  const uint n_streams = 1;
-  volatile uint64_t* m0, * m1;
-  m0 = (uint64_t*) mem;
-  /* m1 = (uint64_t*) mem[1]; */
-  volatile size_t sum[n_streams], suma = 0;
+  volatile uint64_t* m0 = (uint64_t*) mem;
+  size_t sum;
+  volatile size_t suma = 0;
 
   const size_t n_warmup = n >> 2;
   for (size_t i = 0; i < n_warmup; i++)
     {
-      sum[0] = m0[i];
-      /* sum[1] = m1[i]; */
+      sum = m0[i];
     }
 
 
@@ -201,8 +198,7 @@ mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, cons
 	{
 	  for (size_t i = 0; i < n; i++)
 	    {
-	      sum[0] = m0[i];
-	      /* sum[1] = m1[i]; */
+	      sum = m0[i];
 	    }
 	}
     }
@@ -213,7 +209,6 @@ mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, cons
 	  for (size_t i = 0; i < n; i++)
 	    {
 	      m0[i] = 0xAAAAFFFF;
-	      /* m1[i] = 0xFFFFAAAA; */
 	    }
 	}
     }
@@ -221,8 +216,7 @@ mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, cons
 
   for (size_t i = 0; i < n_warmup; i++)
     {
-      sum[0] = m0[i];
-      /* sum[1] = m1[i]; */
+      sum = m0[i];
     }
 
 
@@ -230,10 +224,10 @@ mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, cons
   double dur_s = dur.tv_sec + (dur.tv_nsec / 1e9);
   if (dur_s == 9)
     {
-      printf("%p%zu%p%zu%zu", m0, sum[0], m1, sum[1], suma);
+      printf("%p%zu%zu", m0, sum, suma);
     }
 
-  double bw = (n_streams * reps * n * sizeof(uint64_t)) / (1e9 * dur_s);
+  double bw = (reps * n * sizeof(uint64_t)) / (1e9 * dur_s);
   return bw;
 }
 
