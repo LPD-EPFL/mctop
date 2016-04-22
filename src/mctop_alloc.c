@@ -257,8 +257,8 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
 	}
       n_hwcs_per_socket = (alloc->n_hwcs / n_sockets) + ((alloc->n_hwcs % n_sockets) > 0);
 
-      printf("Balancing! %u hwcs, %u hwcs avail per socket -- Need #Sockets: %u, Put %u per socket\n",
-      	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket);
+      /* printf("Balancing! %u hwcs, %u hwcs avail per socket -- Need #Sockets: %u, Put %u per socket\n", */
+      /* 	     alloc->n_hwcs, n_hwcs_avail, n_sockets, n_hwcs_per_socket); */
     }
 
   const int n_hwcs = alloc->n_hwcs;
