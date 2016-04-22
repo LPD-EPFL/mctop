@@ -46,6 +46,7 @@ dot_graph(FILE* ofp, const char* title, const uint id)
   print2(ofp, "\tnode [shape=record];\n");
   print2(ofp, "\tnode [color=gray];\n");
   print2(ofp, "\tedge [fontcolor=blue];\n");
+  print2(ofp, "\tedge [fontsize=15];\n");
 }
 
 static void
@@ -60,14 +61,16 @@ static void
 dot_socket(FILE* ofp, const uint n_tabs, const uint id, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "label=\"Socket #%u (Latency: %d)\";\n", mctop_id_no_lvl(id), lat);
+  print2(ofp, "label=\"Socket %u - %d cycles\";\n", mctop_id_no_lvl(id), lat);
+  dot_tab(ofp, n_tabs);
+  print2(ofp, "fontsize=18;\n", mctop_id_no_lvl(id), lat);
 }
 
 static void
 dot_label(FILE* ofp, const uint n_tabs, const uint lat)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "label=\"%u cycles\";\n", lat);
+  print2(ofp, "label=\"%u cy\";\n", lat);
 }
 
 static void
@@ -81,7 +84,7 @@ static void
 dot_gs_label_id(FILE* ofp, const uint n_tabs, const uint id)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u [label=\"%u\"];\n", id, mctop_id_no_lvl(id));
+  print2(ofp, "gs_%u [label=\"%u\", fontsize=20];\n", id, mctop_id_no_lvl(id));
 }
 
 
@@ -122,7 +125,7 @@ static void
 dot_gss_link_bw(FILE* ofp, const uint n_tabs, const uint id0, const uint id1, const uint lat, const double bw)
 {
   dot_tab(ofp, n_tabs);
-  print2(ofp, "gs_%u -- gs_%u [label=\"%ucy\\n%.1fGB/s\", weight=\"%u\", decorate=%s];\n",
+  print2(ofp, "gs_%u -- gs_%u [label=\"%u cy\\n%.1f GB/s\", weight=\"%u\", decorate=%s];\n",
 	 id0, id1, lat, bw, dot_weight_calc(lat), decorate);
 }
 
@@ -200,10 +203,16 @@ dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
   if (socket->level > 1)
     {
       uint n_first_row = 1;
-      uint n_cores = mctop_socket_get_num_cores(socket);
+      const uint n_cores = mctop_socket_get_num_cores(socket);
       uint core_ids_first_row[n_cores];
 
       uint every = dot_dont_link_cores_every(n_cores);
+      if (socket->topo->n_hwcs_per_core > 2)
+	{
+	  /* every++; */
+	  every = socket->topo->n_hwcs_per_core / 2;
+	}
+
       hwc_gs_t* pgs = NULL;
       hwc_gs_t* gs = mctop_socket_get_first_gs_core(socket);
       for (int i = 1; i < n_cores; i++)
@@ -226,6 +235,9 @@ dot_gs_add_invisible_links(FILE* ofp, socket_t* socket)
   return 0;
 }
 
+/* plot only a single socket? */
+#define MCTOP_GRAPH_ONE_SOCKET          1
+
 void
 mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 {
@@ -237,7 +249,9 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
       fprintf(stderr, "MCTOP Warning: Cannot open output file %s! Will only plot at stdout.\n", out_file);
     }
 
-  for (int s = 0; s < topo->n_sockets; s++)
+  const uint n_sockets_plot = (MCTOP_GRAPH_ONE_SOCKET == 0) ? topo->n_sockets : 1;
+
+  for (int s = 0; s < n_sockets_plot; s++)
     {
       socket_t* socket = &topo->sockets[s];
       dot_graph(ofp, "intra_socket", s);
@@ -258,14 +272,17 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 	      dot_tab(ofp, 1);
 	      if (i == socket->local_node)
 		{
-		  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\", color=\"red\", "
-			 "style=filled, fillcolor=\"gray\"];\n", 
-			 i, socket->id, i, socket->mem_latencies[i]);
+		  /* print2(ofp, "mem_lat_%u_%u [label=\"Node#%u\\n%u ns\\n%.1f GB/s\", color=\"red\", " */
+		  /* 	 "style=filled, fillcolor=\"gray\"];\n",  */
+		  /* 	 i, socket->id, i, socket->mem_latencies[i], socket->mem_bandwidths_r[i]); */
+		  print2(ofp, "mem_lat_%u_%u [label=\"Node\\n%u\", color=\"red\", "
+			 "style=filled, fillcolor=\"gray\", fontsize=16];\n", i, socket->id, i);
 		}
 	      else
 		{
-		  print2(ofp, "mem_lat_%u_%u [label=\"Nod#%u\\n%u cy\"];\n", 
-			 i, socket->id, i, socket->mem_latencies[i]);
+		  /* print2(ofp, "mem_lat_%u_%u [label=\"Node#%u\\n%u ns\\n%.1f GB/s\"];\n",  */
+		  /* 	 i, socket->id, i, socket->mem_latencies[i], socket->mem_bandwidths_r[i]); */
+		  print2(ofp, "mem_lat_%u_%u [label=\"Node\\n%u\", fontsize=16];\n", i, socket->id, i);
 		}
 
 	      dot_tab(ofp, 1);
@@ -273,13 +290,13 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		{
 		  if (topo->has_mem == BANDWIDTH)
 		    {
-		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-			     i, socket->id, socket->id, socket->id, socket->mem_bandwidths_r[i]);
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cy\\n%.1f GB/s\"];\n", 
+			     i, socket->id, socket->id, socket->id, socket->mem_latencies[i], socket->mem_bandwidths_r[i]);
 		    }
 		  else
 		    {
-		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
-			     i, socket->id, socket->id, socket->id);
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cy];\n", 
+			     i, socket->id, socket->id, socket->id, socket->mem_latencies[i]);
 		    }
 		}
 	      else
@@ -287,13 +304,15 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		  const uint cp = id_med_first_row;
 		  if (topo->has_mem == BANDWIDTH)
 		    {
-		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%.1fGB/s\"];\n", 
-			     i, socket->id, socket->children[cp]->id, socket->id, socket->mem_bandwidths_r[i]);
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cy\\n%.1f GB/s\"];\n", 
+			     i, socket->id, socket->children[cp]->id, socket->id,
+			     socket->mem_latencies[i], socket->mem_bandwidths_r[i]);
 		    }
 		  else
 		    {
-		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u];\n", 
-			     i, socket->id, socket->children[cp]->id, socket->id);
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cy\"];\n", 
+			     i, socket->id, socket->children[cp]->id, socket->id,
+			     socket->mem_latencies[i]);
 		    }
 		}
 	    }
