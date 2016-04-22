@@ -203,6 +203,9 @@ cross_node_merging: ${TSTPATH}/merge_sort/cross_node_merging.c libmctop.a ${INCL
 merge_sort_seq_merge: ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp libmctop.a ${INCLUDES}
 	${CPP} $(CPPFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/merge_sort/merge_sort_seq_merge.cpp -o merge_sort_seq_merge -lmctop ${LDFLAGS} -fopenmp
 
+mctop_bw: ${TSTPATH}/mctop_bw.o libmctop.a ${INCLUDES} 
+	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${TSTPATH}/mctop_bw.o -o mctop_bw -lmctop ${LDFLAGS}
+
 ################################################################################
 ## .o compilation generic rules ################################################
 ################################################################################
