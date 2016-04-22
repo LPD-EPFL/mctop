@@ -11,6 +11,7 @@ typedef struct td
   uint id;
   uint n_hwcs;
   mctop_t* topo;
+  int type;
   uint size_mb;
   uint n_reps;
   double* bws;
@@ -19,6 +20,12 @@ typedef struct td
 } td_t;
 
 void* test_bw(void* params);
+
+enum
+  {
+    BW_READ,
+    BW_WRITE,
+  } rw;
 
 int
 main(int argc, char **argv) 
@@ -30,6 +37,7 @@ main(int argc, char **argv)
   uint manual_file = 0;
   int test_num_threads = 0;
   uint test_verbose = 0;
+  int test_type = BW_READ;
 
   struct option long_options[] = 
     {
@@ -44,7 +52,7 @@ main(int argc, char **argv)
   while(1) 
     {
       i = 0;
-      c = getopt_long(argc, argv, "hm:n:p:c:r:s:g:i:v", long_options, &i);
+      c = getopt_long(argc, argv, "hm:n:r:s:vw", long_options, &i);
 
       if(c == -1)
 	break;
@@ -72,6 +80,9 @@ main(int argc, char **argv)
 	  break;
 	case 'v':
 	  test_verbose = 1;
+	  break;
+	case 'w':
+	  test_type = BW_WRITE;
 	  break;
 	case 'h':
 	  mctop_alloc_help();
@@ -118,11 +129,14 @@ main(int argc, char **argv)
       pthread_attr_init(&attr);
       pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+      printf("## Mem bw for %s\n", test_type == BW_READ ? "READ" : "WRITE");
+
       for(size_t t = 0; t < n_hwcs; t++)
 	{
 	  tds[t].id = t;
 	  tds[t].n_hwcs = n_hwcs;
 	  tds[t].topo = topo;
+	  tds[t].type = test_type;
 	  tds[t].barrier = barrier;
 	  tds[t].size_mb = test_size_mb;
 	  tds[t].n_reps = test_n_reps;
@@ -174,12 +188,6 @@ timespec_diff(struct timespec start, struct timespec end)
     }
   return temp;
 }
-
-enum
-  {
-    BW_READ,
-    BW_WRITE,
-  } rw;
 
 double
 mem_bw_estimate(volatile uint64_t* mem, const uint do_read, const size_t n, const size_t reps)
@@ -260,7 +268,7 @@ test_bw(void* params)
 
 	  pthread_barrier_wait(td->barrier);
 
-	  double bwr = mem_bw_estimate(mem, BW_READ, MB_to_uin64(size_mb), td->n_reps);
+	  double bwr = mem_bw_estimate(mem, td->type, MB_to_uin64(size_mb), td->n_reps);
 	  td->bws[id] = bwr;
 
 	  pthread_barrier_wait(td->barrier);
