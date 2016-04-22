@@ -11,7 +11,8 @@ typedef struct td
   uint id;
   uint n_hwcs;
   mctop_t* topo;
-  size_t size_mb;
+  uint size_mb;
+  uint n_reps;
   double* bws;
   uint verbose;
   pthread_barrier_t* barrier;
@@ -23,12 +24,12 @@ int
 main(int argc, char **argv) 
 {
   size_t test_size_mb = 128;
+  uint test_n_reps = 1;
 
   char mct_file[100];
   uint manual_file = 0;
   int test_num_threads = 0;
   uint test_verbose = 0;
-  //  uint test_n_strems = 2;
 
   struct option long_options[] = 
     {
@@ -65,6 +66,9 @@ main(int argc, char **argv)
 	  break;
 	case 's':
 	  test_size_mb = atoi(optarg);
+	  break;
+	case 'r':
+	  test_n_reps = atoi(optarg);
 	  break;
 	case 'v':
 	  test_verbose = 1;
@@ -121,6 +125,7 @@ main(int argc, char **argv)
 	  tds[t].topo = topo;
 	  tds[t].barrier = barrier;
 	  tds[t].size_mb = test_size_mb;
+	  tds[t].n_reps = test_n_reps;
 	  tds[t].bws = bws;
 	  tds[t].verbose = test_verbose;
 	  if (pthread_create(&threads[t], &attr, test_bw, tds + t))
@@ -255,7 +260,7 @@ test_bw(void* params)
 
 	  pthread_barrier_wait(td->barrier);
 
-	  double bwr = mem_bw_estimate(mem, BW_READ, MB_to_uin64(size_mb), 1);
+	  double bwr = mem_bw_estimate(mem, BW_READ, MB_to_uin64(size_mb), td->n_reps);
 	  td->bws[id] = bwr;
 
 	  pthread_barrier_wait(td->barrier);
