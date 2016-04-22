@@ -5,7 +5,7 @@
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
-//#define MA_DP(args...) printf(args)
+/* #define MA_DP(args...) printf(args) */
 #define MA_DP(args...) //printf(args)
 
 void
@@ -314,7 +314,9 @@ mctop_alloc_prep_min_lat(mctop_alloc_t* alloc, int n_hwcs_per_socket, int smt_fi
     {
       if (balance == 1)
 	{
-	  n_hwcs_per_socket = (alloc->n_hwcs - hwc_i) / darray_get_num_elems(sockets) || 1;
+	  const uint n_remaining = alloc->n_hwcs - hwc_i;
+	  const uint n_sockets = darray_get_num_elems(sockets);
+	  n_hwcs_per_socket = (n_remaining / n_sockets) + ((n_remaining % n_sockets) > 0);
 	}
       for (int hwc = 1; (hwc_i < alloc->n_hwcs) && (hwc < topo->n_hwcs_per_core); hwc++)
 	{
