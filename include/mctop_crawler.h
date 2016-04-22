@@ -41,7 +41,7 @@ const uint test_mem_bw_num_reps    = 4;
 #define DEFAULT_FORMAT             MCT_FILE
 #define DEFAULT_VERBOSE            0
 #define DEFAULT_DO_MEM             ON_TOPO_BW
-#define DEFAULT_MEM_BW_SIZE        256 /* in MB */
+#define DEFAULT_MEM_BW_SIZE        512 /* in MB */
 #define DEFAULT_MEM_BW_MULTI       (1024 * 1024LL)
 
 typedef enum
