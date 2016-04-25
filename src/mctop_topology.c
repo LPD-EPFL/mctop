@@ -833,6 +833,10 @@ mctop_fix_n_hwcs_per_core_smt(mctop_t* topo)
       assert(gs->type == CORE);
       topo->n_hwcs_per_core = gs->n_children;
     }
+  else
+    {
+      topo->n_hwcs_per_core = 1;
+    }
 }
 
 void 
