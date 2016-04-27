@@ -23,8 +23,8 @@ then
   THREADS=("16" "16" "16" "16" "16");
 elif [[ $UNAME  == "diassrv8" ]]
 then
-    VERSIONS=("merge_sort_std_parallel" "mctop_sort_sse" "mctop_sort_sse_hyperthreads_3" "mctop_sort_no_sse_no_smt_all_sockets");
-  THREADS=("16" "16" "16" "16");
+  VERSIONS=("merge_sort_std_parallel" "mctop_sort_sse" "mctop_sort_sse_hyperthreads_3" "mctop_sort_no_sse_all_sockets" "mctop_sort_no_sse_no_smt_all_sockets");
+  THREADS=("16" "16" "16" "16" "16");
 elif [[ $UNAME  == "ol-collab1" ]]
 then
   VERSIONS=("merge_sort_std_parallel" "mctop_sort_no_sse_all_sockets");
