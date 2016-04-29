@@ -414,7 +414,7 @@ double
 mem_bw_estimate(volatile cache_line_t* mem, const uint do_read, const size_t n, const size_t reps)
 {
   volatile uint64_t* m0 = (volatile uint64_t*) mem;
-  size_t sum;
+  size_t sum = 0;
   volatile size_t suma = 0;
 
   const size_t n_warmup = n >> 2;
