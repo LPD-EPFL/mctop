@@ -215,6 +215,10 @@ mctop_free(mctop_t* topo)
 	  free(socket->mem_bandwidths_r);
 	  free(socket->mem_bandwidths1_r);
 	}
+      if (socket->pow_info)
+	{
+	  free(socket->pow_info);
+	}
     }
 
   /* free topo */
@@ -236,6 +240,10 @@ mctop_free(mctop_t* topo)
 	  free(topo->mem_bandwidths1_w);
 	}
     }
+  if (topo->pow_info)
+    {
+      free(topo->pow_info);
+    }
   free(topo);
   topo = NULL;
 }
@@ -246,6 +254,9 @@ mctop_print(mctop_t* topo)
 #define PD_0 "|||||||||"
 #define PD_1 "||||||"
 #define PD_2 "|||"
+#define P5DOUBLE "%-10.2f %-10.2f %-10.2f %-10.2f %-10.2f "
+#define G5DOUBLE(a) a[0], a[1], a[2], a[3], a[4]
+
   printf(PD_0" MCTOP Topology   / #HW contexts: %u / #Sockets: %u / Socket ref.: %u-xxxx / SMT: %d \n", 
 	 topo->n_hwcs, topo->n_sockets, topo->socket_level, topo->is_smt);
   if (topo->cache)
@@ -256,6 +267,17 @@ mctop_print(mctop_t* topo)
 	  printf(PD_1" Level %u / Latency: %-4zu / Size:    OS: %5zu KB     Estimated: %5zu KB\n",
 		 i, topo->cache->latencies[i], topo->cache->sizes_OS[i], topo->cache->sizes_estimated[i]);
 	}
+    }
+  if (topo->pow_info)
+    {
+      mctop_pow_info_t* pi = topo->pow_info;
+      printf(PD_0" Power info (Watt)   %-10s %-10s %-10s %-10s %-10s\n", "Cores", "Rest", "Package", "DRAM", "Total");
+      printf(PD_1" %-22s "P5DOUBLE"\n", "idle", G5DOUBLE(pi->idle));
+      printf(PD_1" %-22s "P5DOUBLE"\n", "1st core cost", G5DOUBLE(pi->first_core));
+      printf(PD_1" %-22s "P5DOUBLE"\n", "2nd core cost", G5DOUBLE(pi->second_core));
+      printf(PD_1" %-22s "P5DOUBLE"\n", "2nd hw ctx cost", G5DOUBLE(pi->second_hwc_core));
+      printf(PD_1" %-22s "P5DOUBLE"\n", "all cores", G5DOUBLE(pi->all_cores));
+      printf(PD_1" %-22s "P5DOUBLE"\n", "all hw ctxs", G5DOUBLE(pi->all_hwcs));
     }
   printf(PD_0" #Latency lvls: %u / Latencies: ", topo->n_levels);
   for (int i = 0; i < topo->n_levels; i++)
@@ -774,7 +796,6 @@ mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci)
   topo->cache = mci;
 }
 
-
 void
 mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table)
 {
@@ -822,7 +843,6 @@ mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table)
 	}
     }
 }
-
 
 void
 mctop_fix_n_hwcs_per_core_smt(mctop_t* topo)
@@ -926,3 +946,39 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
       while (swaps > 0);
     }
 }
+
+static void
+__copy_doubles(double to[MCTOP_POW_COMP_TYPE_NUM], double from[MCTOP_POW_COMP_TYPE_NUM], const uint n, const uint div)
+{
+  for (uint i = 0; i < n; i++)
+    {
+      to[i] = from[i] / div;
+    }
+}
+
+void
+mctop_pow_info_add(mctop_t* topo, double*** pm)
+{
+  for (int i = 0; i <= topo->n_sockets; i++)
+    {
+      mctop_pow_info_t* pi = malloc_assert(sizeof(mctop_pow_info_t));
+      uint div = 1;
+      if (i < topo->n_sockets)
+	{
+	  topo->sockets[i].pow_info = pi;
+	}
+      else
+	{
+	  topo->pow_info = pi;
+	  div = topo->n_sockets;
+	}
+      uint type = 0;
+      __copy_doubles(pi->idle, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
+      __copy_doubles(pi->first_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->second_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->second_hwc_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->all_cores, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
+      __copy_doubles(pi->all_hwcs, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
+    }
+}
+

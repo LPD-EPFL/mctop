@@ -64,11 +64,33 @@ extern "C" {
     uint64_t* sizes_estimated;
   } mctop_cache_info_t;
 
+  typedef enum 
+    {
+      CORES,
+      REST,
+      PACKAGE,
+      DRAM,
+      TOTAL,
+      MCTOP_POW_COMP_TYPE_NUM
+    } mctop_pow_type;
+  #define MCTOP_POW_TYPE_NUM 6
+
+
+  typedef struct mctop_pow_info
+  {
+    double idle[MCTOP_POW_TYPE_NUM];
+    double first_core[MCTOP_POW_TYPE_NUM];
+    double second_core[MCTOP_POW_TYPE_NUM];
+    double second_hwc_core[MCTOP_POW_TYPE_NUM];
+    double all_cores[MCTOP_POW_TYPE_NUM];
+    double all_hwcs[MCTOP_POW_TYPE_NUM];
+  } mctop_pow_info_t;
+
   typedef struct mctop
   {
     uint n_levels;		/* num. of latency lvls */
     uint* latencies;		/* latency per level */
-    uint n_hwcs;			/* num. of hwcs in this machine */
+    uint n_hwcs;		/* num. of hwcs in this machine */
     uint socket_level;		/* level of sockets */
     uint n_sockets;		/* num. of sockets/nodes */
     socket_t* sockets;		/* pointer to sockets/nodes */
@@ -84,6 +106,7 @@ extern "C" {
     double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
     double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
     double* mem_bandwidths1_w;	/* Write mem. bandwidth of each socket, single threaded */
+    mctop_pow_info_t* pow_info;	/* power info */
   } mctop_t;
 
   typedef struct hwc_gs		/* group / socket */
@@ -112,6 +135,7 @@ extern "C" {
     double* mem_bandwidths1_r;	/* Read mem. bandwidth of each socket, single threaded */
     double* mem_bandwidths_w;	/* Write mem. bandwidth of each socket, maximum */
     double* mem_bandwidths1_w;	/* Write mem. bandwidth of each socket, single threaded */
+    mctop_pow_info_t* pow_info;	/* power info */
   } hwc_gs_t;
 
   typedef struct sibling
@@ -181,6 +205,7 @@ extern "C" {
   void mctop_mem_bandwidth_add(mctop_t* topo, double** mem_bw_r, double** mem_bw_r1, double** mem_bw_w, double** mem_bw_w1);
   void mctop_mem_latencies_add(mctop_t* topo, uint64_t** mem_lat_table);
   void mctop_cache_info_add(mctop_t* topo, mctop_cache_info_t* mci);
+  void mctop_pow_info_add(mctop_t* topo, double*** pow_measurements);
 
   void mctop_print(mctop_t* topo);
   void mctop_dot_graph_plot(mctop_t* topo,  const uint max_cross_socket_lvl);
@@ -238,6 +263,7 @@ extern "C" {
   uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);
   socket_t* mctop_hwcid_get_socket(mctop_t* topo, const uint hwcid);
   hwc_gs_t* mctop_hwcid_get_core(mctop_t* topo, const uint hwcid);
+  uint mctop_hwcid_get_nth_hwc_in_socket(mctop_t* topo, const uint hwcid);
   uint mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid);
   uint mctop_hwcid_get_nth_core_in_socket(mctop_t* topo, const uint hwcid);
 

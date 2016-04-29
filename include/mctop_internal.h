@@ -10,10 +10,11 @@
 
 #include <atomics.h>
 
+#include <barrier.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #define MCTOP_DEBUG 0
 
@@ -21,11 +22,11 @@ extern "C" {
 static inline void
 mctop_dprint(const char* format, ...)
 {
-  va_list args;
-  va_start(args, format);
-  vfprintf(stdout, format, args);
-  va_end(args);
-  fflush(stdout);
+va_list args;
+va_start(args, format);
+vfprintf(stdout, format, args);
+va_end(args);
+fflush(stdout);
 }
 #else
 static inline void
@@ -35,47 +36,58 @@ mctop_dprint(const char* format, ...)
 }
 #endif
 
-  /* ******************************************************************************** */
-  /* MCTOP Cache */
-  /* ******************************************************************************** */
+typedef struct tld
+{
+int id;
+uint n_threads;
+int hw_context;
+barrier2_t* barrier2;
+pthread_barrier_t* barrier;
+mctop_t* topo;
+volatile int* run;
+} tld_t;
 
-  mctop_cache_info_t* mctop_cache_size_estimate();
-  void mctop_cache_info_free(mctop_cache_info_t* mci);
-  mctop_cache_info_t* mctop_cache_info_create(const uint n_levels);
+/* ******************************************************************************** */
+/* MCTOP Cache */
+/* ******************************************************************************** */
+
+mctop_cache_info_t* mctop_cache_size_estimate();
+void mctop_cache_info_free(mctop_cache_info_t* mci);
+mctop_cache_info_t* mctop_cache_info_create(const uint n_levels);
 
 
-  /* ******************************************************************************** */
-  /* AUX functions */
-  /* ******************************************************************************** */
-  void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
-  void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
-  void table_free(void** m, const size_t cols);
+/* ******************************************************************************** */
+/* AUX functions */
+/* ******************************************************************************** */
+void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
+void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
+void table_free(void** m, const size_t cols);
 
-  static inline void*
-  malloc_assert(size_t size)
-  {
-    void* m = malloc(size);
-    assert(m != NULL);
-    return m;
-  }
+static inline void*
+malloc_assert(size_t size)
+{
+void* m = malloc(size);
+assert(m != NULL);
+return m;
+}
 
-  static inline void*
-  realloc_assert(void* old, size_t size)
-  {
-    void* m = realloc(old, size);
-    assert(m != NULL);
-    return m;
-  }
+static inline void*
+realloc_assert(void* old, size_t size)
+{
+void* m = realloc(old, size);
+assert(m != NULL);
+return m;
+}
 
-  static inline void*
-  calloc_assert(size_t n, size_t size)
-  {
-    void* m = calloc(n, size);
-    assert(m != NULL);
-    return m;
-  }
+static inline void*
+calloc_assert(size_t n, size_t size)
+{
+void* m = calloc(n, size);
+assert(m != NULL);
+return m;
+}
 
-  extern int mctop_set_cpu(mctop_t* topo, int cpu);
+extern int mctop_set_cpu(mctop_t* topo, int cpu);
 
 
 #ifdef __cplusplus

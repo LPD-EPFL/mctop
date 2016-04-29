@@ -291,6 +291,21 @@ mctop_hwcid_get_core(mctop_t* topo, const uint hwcid)
 }
 
 uint
+mctop_hwcid_get_nth_hwc_in_socket(mctop_t* topo, const uint hwcid)
+{
+  socket_t* socket = mctop_hwcid_get_socket(topo, hwcid);
+  hw_context_t* hwc_first = mctop_socket_get_first_hwc(socket);
+  uint i = 0;
+  while (hwc_first && hwc_first->id != hwcid)
+    {
+      i++;
+      hwc_first = hwc_first->next;
+    }
+
+  return i;
+}
+
+uint
 mctop_hwcid_get_nth_hwc_in_core(mctop_t* topo, const uint hwcid)
 {
   hw_context_t* hwc = &topo->hwcs[hwcid];
