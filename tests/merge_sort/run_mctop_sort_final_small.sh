@@ -1,5 +1,12 @@
 #!/bin/bash
 
+rsetting=0;
+if [ $# -gt 0 ];
+then
+    rsetting=$1;
+fi;
+echo "* Random setting -r "$rsetting
+
 REPS=11
 
 SIZE=64
@@ -39,7 +46,7 @@ do
   echo "${version} ${threads} ${ALLOCATOR} ${SIZE}";
   for (( rep=0; rep<$REPS; rep++ ));
   do
-    text=$(./${binf}/${version} -n${threads} -s${SIZE} -p${ALLOCATOR} 2>&1);
+    text=$(./${binf}/${version} -n${threads} -s${SIZE} -p${ALLOCATOR} -r${rsetting} 2>&1);
     res=$(echo "$text" | awk '/Sorted/ {printf"%.3f", $9;}');
     error=$(echo "$text" | awk '/is sorted/ {printf"%d", $9;}');
     if [[ $res ]]
