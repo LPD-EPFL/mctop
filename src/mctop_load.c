@@ -4,6 +4,7 @@
 #include <time.h>
 
 double*** mctop_power_measurements_create(const uint n_sockets);
+void mctop_power_measurements_free(mctop_t* topo, double*** m);
 
 typedef enum
   {
@@ -286,6 +287,7 @@ mctop_load(const char* mct_file)
   table_free((void**) mem_bw_table1_r, n_hwcs);
   table_free((void**) mem_bw_table_w, n_hwcs);
   table_free((void**) mem_bw_table1_w, n_hwcs);
+  mctop_power_measurements_free(pow_measurements, n_sockets);
   fclose(ifile);
 
   free(have_data);

@@ -2,7 +2,7 @@
 #include <mctop_internal.h>
 
 double*** mctop_power_measurements_create(const uint n_sockets);
-
+void mctop_power_measurements_free(mctop_t* topo, double*** m);
 #if MCTOP_POWER == 1
 #  include "rapl_read.h"
 
@@ -168,20 +168,6 @@ mctop_pow_copy_vals_diff(double* to[MCTOP_POW_TYPE_NUM], rapl_stats_t* s, rapl_s
 	  to[u][TOTAL] = s->power_total[u] - sub->power_total[u];
 	}
     }
-}
-
-void
-mctop_power_measurements_free(mctop_t* topo, double*** m)
-{
-  for (uint i = 0; i < MCTOP_POW_TYPE_NUM; i++)
-    {
-      for (uint s = 0; s <= topo->n_sockets; s++)
-	{
-	  free(m[i][s]);
-	}
-      free(m[i]);
-    }
-  free(m);
 }
 
 double***

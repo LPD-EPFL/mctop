@@ -961,6 +961,20 @@ mctop_power_measurements_create(const uint n_sockets)
 }
 
 void
+mctop_power_measurements_free(mctop_t* topo, double*** m)
+{
+  for (uint i = 0; i < MCTOP_POW_TYPE_NUM; i++)
+    {
+      for (uint s = 0; s <= topo->n_sockets; s++)
+	{
+	  free(m[i][s]);
+	}
+      free(m[i]);
+    }
+  free(m);
+}
+
+void
 mctop_pow_info_add(mctop_t* topo, double*** pm)
 {
   for (int i = 0; i <= topo->n_sockets; i++)
