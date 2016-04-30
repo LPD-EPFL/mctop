@@ -180,9 +180,8 @@ mctop_load(const char* mct_file)
   double** mem_bw_table_r = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table1_r = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
-  double** mem_bw_table1_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
-  double*** pow_measurements = mctop_power_measurements_create(n_sockets);
-  
+  double** mem_bw_table1_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));  
+  double*** pow_measurements = NULL;
   mctop_cache_info_t* cache_info = NULL;
 
   uint8_t* have_data = calloc_assert(MCTOP_DTYPE_N, sizeof(uint8_t));
@@ -234,6 +233,7 @@ mctop_load(const char* mct_file)
 	      correct = (cache_info != NULL);
 	      break;
 	    case POWER:
+	      pow_measurements = mctop_power_measurements_create(n_sockets);
 	      correct = mctop_load_pow_info(ifile, n_sockets, pow_measurements);
 	      break;
 	    case UKNOWN:
@@ -287,7 +287,10 @@ mctop_load(const char* mct_file)
   table_free((void**) mem_bw_table1_r, n_hwcs);
   table_free((void**) mem_bw_table_w, n_hwcs);
   table_free((void**) mem_bw_table1_w, n_hwcs);
-  mctop_power_measurements_free(pow_measurements, n_sockets);
+  if (pow_measurements != NULL)
+    {
+      mctop_power_measurements_free(pow_measurements, n_sockets);
+    }
   fclose(ifile);
 
   free(have_data);
