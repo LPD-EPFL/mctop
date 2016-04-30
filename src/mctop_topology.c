@@ -254,8 +254,6 @@ mctop_print(mctop_t* topo)
 #define PD_0 "|||||||||"
 #define PD_1 "||||||"
 #define PD_2 "|||"
-#define P5DOUBLE "%-10.2f %-10.2f %-10.2f %-10.2f %-10.2f "
-#define G5DOUBLE(a) a[0], a[1], a[2], a[3], a[4]
 
   printf(PD_0" MCTOP Topology   / #HW contexts: %u / #Sockets: %u / Socket ref.: %u-xxxx / SMT: %d \n", 
 	 topo->n_hwcs, topo->n_sockets, topo->socket_level, topo->is_smt);
@@ -973,12 +971,12 @@ mctop_pow_info_add(mctop_t* topo, double*** pm)
 	  div = topo->n_sockets;
 	}
       uint type = 0;
-      __copy_doubles(pi->idle, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
-      __copy_doubles(pi->first_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
-      __copy_doubles(pi->second_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
-      __copy_doubles(pi->second_hwc_core, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, div);
-      __copy_doubles(pi->all_cores, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
-      __copy_doubles(pi->all_hwcs, pm[type++][topo->n_sockets], MCTOP_POW_COMP_TYPE_NUM, 1);
+      __copy_doubles(pi->idle, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, 1);
+      __copy_doubles(pi->first_core, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->second_core, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->second_hwc_core, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, div);
+      __copy_doubles(pi->all_cores, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, 1);
+      __copy_doubles(pi->all_hwcs, pm[type++][i], MCTOP_POW_COMP_TYPE_NUM, 1);
     }
 }
 
