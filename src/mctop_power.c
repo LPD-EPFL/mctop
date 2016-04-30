@@ -1,6 +1,7 @@
 #include <mctop.h>
 #include <mctop_internal.h>
 
+double*** mctop_power_measurements_create(const uint n_sockets);
 
 #if MCTOP_POWER == 1
 #  include "rapl_read.h"
