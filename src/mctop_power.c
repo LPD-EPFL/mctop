@@ -169,22 +169,6 @@ mctop_pow_copy_vals_diff(double* to[MCTOP_POW_TYPE_NUM], rapl_stats_t* s, rapl_s
     }
 }
 
-
-double***
-mctop_power_measurements_create(const uint n_sockets)
-{
-  double*** pow_measurements = malloc_assert(MCTOP_POW_TYPE_NUM * sizeof(double**));
-  for (uint i = 0; i < MCTOP_POW_TYPE_NUM; i++)
-    {
-      pow_measurements[i] = malloc_assert((n_sockets + 1) * sizeof(double*));
-      for (uint s = 0; s <= n_sockets; s++)
-	{
-	  pow_measurements[i][s] = malloc_assert(MCTOP_POW_COMP_TYPE_NUM * sizeof(double));
-	}
-    }
-  return pow_measurements;
-}
-
 void
 mctop_power_measurements_free(mctop_t* topo, double*** m)
 {

@@ -945,6 +945,21 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
     }
 }
 
+double***
+mctop_power_measurements_create(const uint n_sockets)
+{
+  double*** pow_measurements = malloc_assert(MCTOP_POW_TYPE_NUM * sizeof(double**));
+  for (uint i = 0; i < MCTOP_POW_TYPE_NUM; i++)
+    {
+      pow_measurements[i] = malloc_assert((n_sockets + 1) * sizeof(double*));
+      for (uint s = 0; s <= n_sockets; s++)
+	{
+	  pow_measurements[i][s] = malloc_assert(MCTOP_POW_COMP_TYPE_NUM * sizeof(double));
+	}
+    }
+  return pow_measurements;
+}
+
 void
 mctop_pow_info_add(mctop_t* topo, double*** pm)
 {
