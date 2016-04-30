@@ -961,11 +961,11 @@ mctop_power_measurements_create(const uint n_sockets)
 }
 
 void
-mctop_power_measurements_free(mctop_t* topo, double*** m)
+mctop_power_measurements_free(double*** m, const uint n_sockets)
 {
   for (uint i = 0; i < MCTOP_POW_TYPE_NUM; i++)
     {
-      for (uint s = 0; s <= topo->n_sockets; s++)
+      for (uint s = 0; s <= n_sockets; s++)
 	{
 	  free(m[i][s]);
 	}

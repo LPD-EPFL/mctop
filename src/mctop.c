@@ -59,8 +59,7 @@ ticks** lat_table_normalized_create(ticks* lat_table, const size_t n, cdf_cluste
 void mctop_mem_latencies_calc(struct mctop* topo, uint64_t** mem_lat_table);
 
 double*** mctop_power_measurements(mctop_t* topo);
-void mctop_power_measurements_free(mctop_t* topo, double*** m);
-
+void mctop_power_measurements_free(double*** m, const uint n_sockets);
 
 UNUSED static uint64_t
 fai_prof(cache_line_t* cl, const size_t reps, mctop_prof_t* profiler)
@@ -944,7 +943,7 @@ main(int argc, char **argv)
       double*** pow_measurements = mctop_power_measurements(topo);
       mctop_pow_info_add(topo, pow_measurements);
       print_pow_table(pow_measurements, topo->n_sockets, test_format, hostname);
-      mctop_power_measurements_free(topo, pow_measurements);
+      mctop_power_measurements_free(pow_measurements, topo->n_sockets);
     }
   else
     {

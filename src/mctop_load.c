@@ -4,7 +4,7 @@
 #include <time.h>
 
 double*** mctop_power_measurements_create(const uint n_sockets);
-void mctop_power_measurements_free(mctop_t* topo, double*** m);
+void mctop_power_measurements_free(double*** m, const uint n_sockets);
 
 typedef enum
   {
