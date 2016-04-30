@@ -50,6 +50,8 @@ static void cache_lines_destroy(cache_line_t* cl, const size_t size, const uint 
 int lat_table_get_hwc_with_lat(ticks** lat_table, const size_t n, ticks target_lat, int* hwcs);
 void print_lat_table(void* lt, size_t n, size_t n_sock, test_format_t format, array_format_t f, uint is_smt, const char* h);
 void print_cache_info(mctop_cache_info_t* mci, test_format_t test_format, const char* hostname);
+void print_pow_table(double*** pt, const uint n_sockets, test_format_t test_format, const char* hostname);
+
 void print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* h);
 void print_mem_bw_tables(double** mem_bw_table, double** mem_bw_table1, size_t n_sock,
 			 const char* rw, test_format_t test_format, const char* hn);
@@ -919,9 +921,9 @@ main(int argc, char **argv)
   printf("#### Caclulating power-related info\n");
   double*** pow_measurements = mctop_power_measurements(topo);
   mctop_pow_info_add(topo, pow_measurements);
+  print_pow_table(pow_measurements, topo->n_sockets, test_format, hostname);
   mctop_power_measurements_free(topo, pow_measurements);
-  
-#endif
+#endif	/* MCTOP_POWER == 1 */
 
   int mem_lat_new = 1;
   if (test_do_mem >= ON_TOPO)
@@ -1165,6 +1167,53 @@ print_cache_info(mctop_cache_info_t* mci, test_format_t test_format, const char*
       printf("##########################################################################\n");
     }
 }
+
+void 
+print_pow_table(double*** pt, const uint n_sockets, test_format_t test_format, const char* hostname)
+{
+  if (test_format == MCT_FILE)
+    {
+      printf("## Power info ############################################################\n");
+      char out_file[50];
+      sprintf(out_file, "./desc/%s.mct", hostname);
+      printf("## MCTOP output in: %s\n", out_file);
+
+      int ofp_open = 1;
+      FILE* ofp = fopen(out_file, "a");
+      if (ofp == NULL) 
+	{
+	  ofp_open = 0;
+	  fprintf(stderr, "MCTOP Error: Cannot open output file %s! Using stderr instead.\n", out_file);
+	  ofp = stderr;
+	}
+
+      fprintf(ofp, "#Power_measurements %d %d %-10s %-10s %-10s %-10s %-10s\n", 
+	      MCTOP_POW_TYPE_NUM, MCTOP_POW_COMP_TYPE_NUM, "Cores", "Rest", "Package", "DRAM", "Total");
+      for (uint s = 0; s <= n_sockets; s++)
+	{
+	  const char* text = (s < n_sockets) ? "sockt" : "total";
+	  uint type = 0;
+	  double* d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_idle \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_1stcore \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_2ndcore \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_2ndhwc \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_allcor \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  d = pt[type++][s];
+	  fprintf(ofp, "Power_%s_%d_allhwc \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	}
+      if (ofp_open)
+	{
+	  fclose(ofp);
+	}
+      printf("##########################################################################\n");
+    }
+}
+
 
 void
 print_mem_lat_table(ticks** mem_lat_table, size_t n, size_t n_sockets, test_format_t test_format, const char* hostname)
