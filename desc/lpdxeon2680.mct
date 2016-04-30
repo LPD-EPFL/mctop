@@ -1704,23 +1704,22 @@
 Cache_level 0   Latency 0      SizeOS 32    SizeEst 32   
 Cache_level 1   Latency 4      SizeOS 32    SizeEst 32   
 Cache_level 2   Latency 12     SizeOS 256   SizeEst 256  
-Cache_level 3   Latency 41     SizeOS 25600 SizeEst 22528
-#Power_measurements 6 5 Cores      Rest       Package    DRAM       Total     
-Power_sockt_0_idle 	2.01       12.57      14.58      18.81      33.39      
-Power_sockt_0_1stcore 	12.22      0.82       13.04      6.39       19.44      
-Power_sockt_0_2ndcore 	4.55       0.76       5.32       5.57       10.89      
-Power_sockt_0_2ndhwc 	0.28       0.10       0.38       2.65       3.03       
-Power_sockt_0_allcor 	46.96      16.50      63.45      45.12      108.58     
-Power_sockt_0_allhwc 	47.52      16.54      64.06      48.49      112.55     
-Power_sockt_1_idle 	2.58       12.97      15.56      18.74      34.30      
-Power_sockt_1_1stcore 	13.61      0.83       14.44      6.43       20.87      
-Power_sockt_1_2ndcore 	4.56       0.76       5.32       6.71       12.03      
-Power_sockt_1_2ndhwc 	0.16       0.10       0.27       1.55       1.82       
-Power_sockt_1_allcor 	51.14      16.90      68.04      44.76      112.80     
-Power_sockt_1_allhwc 	51.91      16.95      68.86      47.42      116.28     
-Power_total_2_idle 	4.59       25.54      30.13      37.55      67.69      
-Power_total_2_1stcore 	25.83      1.65       27.48      12.82      40.30      
-Power_total_2_2ndcore 	9.11       1.53       10.64      12.27      22.91      
-Power_total_2_2ndhwc 	0.44       0.21       0.65       4.20       4.85       
-Power_total_2_allcor 	98.10      33.40      131.50     89.88      221.38     
-Power_total_2_allhwc 	99.43      33.49      132.92     95.91      228.82     
+Cache_level 3   Latency 41     SizeOS 25600 SizeEst 22528#Power_measurements 6
+Power_sockt_0_idle 	1.868880   12.554782  14.423661  19.014752  33.438414  
+Power_sockt_0_1stcore 	12.462679  0.831069   13.293748  6.314176   19.607924  
+Power_sockt_0_2ndcore 	4.371507   0.769540   5.141047   5.462934   10.603981  
+Power_sockt_0_2ndhwc 	0.240320   0.093424   0.333744   2.641000   2.974743   
+Power_sockt_0_allcor 	46.898223  16.476095  63.374319  45.164619  108.538938 
+Power_sockt_0_allhwc 	47.656513  16.537219  64.193732  48.167049  112.360781 
+Power_sockt_1_idle 	2.360819   12.943052  15.303871  18.694806  33.998678  
+Power_sockt_1_1stcore 	13.734444  0.822650   14.557095  6.466471   21.023565  
+Power_sockt_1_2ndcore 	4.656928   0.788261   5.445189   6.579500   12.024689  
+Power_sockt_1_2ndhwc 	0.226602   0.134833   0.361435   1.526578   1.888013   
+Power_sockt_1_allcor 	51.072187  16.881716  67.953903  45.253819  113.207722 
+Power_sockt_1_allhwc 	51.939931  16.916147  68.856078  47.493906  116.349984 
+Power_total_2_idle 	4.229699   25.497834  29.727533  37.709559  67.437091  
+Power_total_2_1stcore 	26.197123  1.653719   27.850843  12.780646  40.631489  
+Power_total_2_2ndcore 	9.028435   1.557802   10.586236  12.042433  22.628669  
+Power_total_2_2ndhwc 	0.466922   0.228257   0.695179   4.167578   4.862757   
+Power_total_2_allcor 	97.970411  33.357811  131.328222 90.418438  221.746660 
+Power_total_2_allhwc 	99.596444  33.453366  133.049810 95.660955  228.710766 

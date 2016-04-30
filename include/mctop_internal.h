@@ -52,6 +52,7 @@ volatile int* run;
 /* ******************************************************************************** */
 
 #define P5DOUBLE "%-10.2f %-10.2f %-10.2f %-10.2f %-10.2f "
+#define P5DOUBLEP "%-10f %-10f %-10f %-10f %-10f "
 #define G5DOUBLE(a) a[0], a[1], a[2], a[3], a[4]
 
 /* ******************************************************************************** */
@@ -66,6 +67,17 @@ mctop_cache_info_t* mctop_cache_info_create(const uint n_levels);
 /* ******************************************************************************** */
 /* AUX functions */
 /* ******************************************************************************** */
+
+static inline void
+__copy_doubles(double* to, double* from, const uint n, const uint div)
+{
+  for (uint i = 0; i < n; i++)
+    {
+      to[i] = from[i] / div;
+    }
+}
+
+
 void** table_malloc(const size_t rows, const size_t cols, const size_t elem_size);
 void** table_calloc(const size_t rows, const size_t cols, const size_t elem_size);
 void table_free(void** m, const size_t cols);

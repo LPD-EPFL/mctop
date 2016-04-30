@@ -3,6 +3,8 @@
 #include <helper.h>
 #include <time.h>
 
+double*** mctop_power_measurements_create(const uint n_sockets);
+
 typedef enum
   {
     MEM_LAT,
@@ -11,6 +13,7 @@ typedef enum
     MEM_BW_WRITE,
     MEM_BW1_WRITE,
     CACHE,
+    POWER,
     UKNOWN,
     MCTOP_DTYPE_N,
   }  mctop_dtype_t;
@@ -23,6 +26,7 @@ const char* mctop_dtypes[] =
     "#Mem_bw-WRITE",
     "#Mem_bw1-WRITE",
     "#Cache_levels",
+    "#Power_measurements",
     "Uknown header",
     "Invalid measurements",
   };
@@ -100,6 +104,24 @@ mctop_load_cache_info(mctop_cache_info_t* existing, FILE* ifile, const uint n_le
   return mci;
 }
 		   
+static uint
+mctop_load_pow_info(FILE* ifile, const uint n_sockets, double*** pm)
+{
+  for (uint s = 0; s <= n_sockets; s++)
+    {
+      char nothing[40];
+      double pow[MCTOP_POW_COMP_TYPE_NUM];
+      for (uint type = 0; type < MCTOP_POW_TYPE_NUM; type++)
+	{
+	  if (fscanf(ifile, "%s %lf %lf %lf %lf %lf", nothing, &pow[0], &pow[1], &pow[2], &pow[3], &pow[4]) != 6)
+	    {
+	      return 0;
+	    }
+	  __copy_doubles(pm[type][s], pow, MCTOP_POW_COMP_TYPE_NUM, 1);
+	}
+    }
+  return 1;
+}
 
 mctop_t*
 mctop_load(const char* mct_file)
@@ -158,6 +180,8 @@ mctop_load(const char* mct_file)
   double** mem_bw_table1_r = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
   double** mem_bw_table1_w = (double**) table_malloc(n_hwcs, n_sockets, sizeof(double));
+  double*** pow_measurements = mctop_power_measurements_create(n_sockets);
+  
   mctop_cache_info_t* cache_info = NULL;
 
   uint8_t* have_data = calloc_assert(MCTOP_DTYPE_N, sizeof(uint8_t));
@@ -208,6 +232,9 @@ mctop_load(const char* mct_file)
 	      cache_info = mctop_load_cache_info(cache_info, ifile, param);
 	      correct = (cache_info != NULL);
 	      break;
+	    case POWER:
+	      correct = mctop_load_pow_info(ifile, n_sockets, pow_measurements);
+	      break;
 	    case UKNOWN:
 	    case MCTOP_DTYPE_N:	/* just for compilation warning */
 	      correct = 0;
@@ -241,6 +268,11 @@ mctop_load(const char* mct_file)
       if (cache_info != NULL)
 	{
 	  mctop_cache_info_add(topo, cache_info);
+	}
+
+      if (have_data[POWER])
+	{
+	  mctop_pow_info_add(topo, pow_measurements);
 	}
     }
   else

@@ -945,15 +945,6 @@ mctop_fix_siblings_by_bandwidth(mctop_t* topo)
     }
 }
 
-static void
-__copy_doubles(double to[MCTOP_POW_COMP_TYPE_NUM], double from[MCTOP_POW_COMP_TYPE_NUM], const uint n, const uint div)
-{
-  for (uint i = 0; i < n; i++)
-    {
-      to[i] = from[i] / div;
-    }
-}
-
 void
 mctop_pow_info_add(mctop_t* topo, double*** pm)
 {

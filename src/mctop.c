@@ -917,14 +917,6 @@ main(int argc, char **argv)
       printf("## Topology already contains cache info!\n");
     }
 
-#if MCTOP_POWER == 1
-  printf("#### Caclulating power-related info\n");
-  double*** pow_measurements = mctop_power_measurements(topo);
-  mctop_pow_info_add(topo, pow_measurements);
-  print_pow_table(pow_measurements, topo->n_sockets, test_format, hostname);
-  mctop_power_measurements_free(topo, pow_measurements);
-#endif	/* MCTOP_POWER == 1 */
-
   int mem_lat_new = 1;
   if (test_do_mem >= ON_TOPO)
     {
@@ -944,6 +936,22 @@ main(int argc, char **argv)
     {
       print_mem_lat_table(mem_lat_table, test_num_hw_ctx, test_num_sockets, test_format, hostname);
     }
+
+#if MCTOP_POWER == 1
+  if (test_do_mem > NO_MEM && (!test_mem_augment || (test_mem_augment && topo->pow_info == NULL)))
+    {
+      printf("#### Caclulating power-related info\n");
+      double*** pow_measurements = mctop_power_measurements(topo);
+      mctop_pow_info_add(topo, pow_measurements);
+      print_pow_table(pow_measurements, topo->n_sockets, test_format, hostname);
+      mctop_power_measurements_free(topo, pow_measurements);
+    }
+  else
+    {
+      printf("## Topology already contains power info!\n");
+    }
+#endif	/* MCTOP_POWER == 1 */
+
 
 
   if (test_do_mem == ON_TOPO_BW)
@@ -1187,24 +1195,23 @@ print_pow_table(double*** pt, const uint n_sockets, test_format_t test_format, c
 	  ofp = stderr;
 	}
 
-      fprintf(ofp, "#Power_measurements %d %d %-10s %-10s %-10s %-10s %-10s\n", 
-	      MCTOP_POW_TYPE_NUM, MCTOP_POW_COMP_TYPE_NUM, "Cores", "Rest", "Package", "DRAM", "Total");
+      fprintf(ofp, "#Power_measurements %d\n", MCTOP_POW_TYPE_NUM);
       for (uint s = 0; s <= n_sockets; s++)
 	{
 	  const char* text = (s < n_sockets) ? "sockt" : "total";
 	  uint type = 0;
 	  double* d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_idle \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_idle \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	  d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_1stcore \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_1stcore \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	  d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_2ndcore \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_2ndcore \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	  d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_2ndhwc \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_2ndhwc \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	  d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_allcor \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_allcor \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	  d = pt[type++][s];
-	  fprintf(ofp, "Power_%s_%d_allhwc \t"P5DOUBLE"\n", text, s, G5DOUBLE(d));
+	  fprintf(ofp, "Power_%s_%d_allhwc \t"P5DOUBLEP"\n", text, s, G5DOUBLE(d));
 	}
       if (ofp_open)
 	{
