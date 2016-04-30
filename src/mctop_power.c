@@ -93,37 +93,42 @@ do_power(void* param)
 const int ALL = -1;
 
 inline void
-MCTOP_POW_PRINT(char* type, rapl_stats_t* s, const int sp)		
+MCTOP_POW_PRINT(char* type, rapl_stats_t* s, const uint n_sockets, const int sp)
 {
   if (sp == ALL)				
     {									
-      printf("Power %-12s [all]: %7.2f %7.2f %7.2f %7.2f %7.2f \n"
-	     "      %-12s [  0]: %7.2f %7.2f %7.2f %7.2f %7.2f \n"
-	     "      %-12s [  1]: %7.2f %7.2f %7.2f %7.2f %7.2f \n",			
-	     type, s->power_pp0[2], s->power_rest[2], s->power_package[2], s->power_dram[2], s->power_total[2],
-	     type, s->power_pp0[0], s->power_rest[0], s->power_package[0], s->power_dram[0], s->power_total[0],
-	     type, s->power_pp0[1], s->power_rest[1], s->power_package[1], s->power_dram[1], s->power_total[1]
+      printf("## Power %-12s [all]: %7.2f %7.2f %7.2f %7.2f %7.2f \n",
+	     type, 
+	     s->power_pp0[n_sockets], 
+	     s->power_rest[n_sockets], 
+	     s->power_package[n_sockets], 
+	     s->power_dram[n_sockets], 
+	     s->power_total[n_sockets]
 	     );
+      for (uint i = 0; i < n_sockets; i++)
+	{
+	  printf("##       %-12s [%3d]: %7.2f %7.2f %7.2f %7.2f %7.2f \n",
+		 type, i, s->power_pp0[i], s->power_rest[i], 
+		 s->power_package[i], s->power_dram[i], s->power_total[i]
+		 );
+	}
     }
   else
     {
-      double pp0 = 0, rest = 0, pack = 0, dram = 0, tot = 0;
-      printf("Power %-12s [%3d]: %7.2f (%5.2f)  %7.2f (%5.2f)  %7.2f (%5.2f)  %7.2f (%5.2f)  %7.2f (%5.2f) \n",
-	     type, sp, s->power_pp0[sp], pp0,
-	     s->power_rest[sp], rest,
-	     s->power_package[sp], pack,
-	     s->power_dram[sp], dram,
-	     s->power_total[sp], tot
+      printf("## Power %-12s [%3d]: %7.2f  %7.2f  %7.2f  %7.2f  %7.2f \n",
+	     type, sp, s->power_pp0[sp],
+	     s->power_rest[sp], s->power_package[sp], s->power_dram[sp], s->power_total[sp]
 	     );
     }
-}
+ }
 
 static void
 mctop_pow_measure_one(char* msg, 
 		      rapl_stats_t* s, 
 		      pthread_barrier_t* barrier_pow, 
 		      volatile int* run,
-		      int socket)
+		      const uint n_sockets,
+		      const int socket)
 {
   *run = 1;
   pthread_barrier_wait(barrier_pow);
@@ -132,7 +137,7 @@ mctop_pow_measure_one(char* msg,
   RR_STOP_UNPROTECTED_ALL();
   *run = 0;
   RR_STATS(s);
-  MCTOP_POW_PRINT(msg, s, socket);
+  MCTOP_POW_PRINT(msg, s, n_sockets, socket);
   pthread_barrier_wait(barrier_pow);
 }
 
@@ -213,7 +218,7 @@ mctop_power_measurements(mctop_t* topo)
   RR_STOP_UNPROTECTED_ALL();
   rapl_stats_t s_idle, s;
   RR_STATS(&s_idle);
-  MCTOP_POW_PRINT("idle", &s_idle, ALL);
+  MCTOP_POW_PRINT("idle", &s_idle, topo->n_sockets, ALL);
 
   uint n_measur = 0;
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s_idle, NULL, topo->n_sockets);
@@ -231,19 +236,19 @@ mctop_power_measurements(mctop_t* topo)
   /* for (int n = -1; n < (int) mctop_get_num_nodes(topo); n++) */
   /*   { */
   rapl_stats_t s_core1;
-  mctop_pow_measure_one("1st core", &s_core1, barrier_pow, run, ALL);
+  mctop_pow_measure_one("1st core", &s_core1, barrier_pow, run, topo->n_sockets, ALL);
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s_core1, &s_idle, topo->n_sockets);
 
-  mctop_pow_measure_one("1st 2 cores", &s, barrier_pow, run, ALL);
+  mctop_pow_measure_one("1st 2 cores", &s, barrier_pow, run, topo->n_sockets, ALL);
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s, &s_core1, topo->n_sockets);
 
-  mctop_pow_measure_one("2hwcs 1 core", &s, barrier_pow, run, ALL);
+  mctop_pow_measure_one("2hwcs 1 core", &s, barrier_pow, run, topo->n_sockets, ALL);
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s, &s_core1, topo->n_sockets);
 
-  mctop_pow_measure_one("all cores", &s, barrier_pow, run, ALL);
+  mctop_pow_measure_one("all cores", &s, barrier_pow, run, topo->n_sockets, ALL);
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s, NULL, topo->n_sockets);
 
-  mctop_pow_measure_one("all hwcs", &s, barrier_pow, run, ALL);
+  mctop_pow_measure_one("all hwcs", &s, barrier_pow, run, topo->n_sockets, ALL);
   mctop_pow_copy_vals_diff(pow_measurements[n_measur++], &s, NULL, topo->n_sockets);
   /* } */
 
