@@ -45,6 +45,11 @@ ifneq ($(SSE_HYPERTHREAD_RATIO),)
   CFLAGS+=-DMCTOP_SORT_SSE_HYPERTHREAD_RATIO=${SSE_HYPERTHREAD_RATIO}
 endif
 
+ifeq ($(POWER), 1)
+	LDFLAGS += -Lexternal/lib -lraplread
+	CFLAGS += -DMCTOP_POWER=1
+endif
+
 
 ifeq ($(UNAME), maglite)
 CC = /opt/csw/bin/gcc 
@@ -92,10 +97,10 @@ FORCE:
 
 MCTOP_OBJS := ${SRCPATH}/mctop.o ${SRCPATH}/mctop_mem.o ${SRCPATH}/mctop_profiler.o ${SRCPATH}/helper.o ${SRCPATH}/numa_sparc.o \
 	${SRCPATH}/barrier.o ${SRCPATH}/cdf.o ${SRCPATH}/darray.o ${SRCPATH}/mctop_topology.o ${SRCPATH}/mctop_control.o \
-	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_cache.o
+	${SRCPATH}/mctop_aux.o ${SRCPATH}/mctop_load.o ${SRCPATH}/mctop_cache.o ${SRCPATH}/mctop_power.o
 
 mctop: 	${MCTOP_OBJS} ${INCLUDES}
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${MCTOP_OBJS} -o mctop ${LDFLAGS} 
 
 mct_load: ${SRCPATH}/mct_load.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_load.o -o mct_load -lmctop ${LDFLAGS}
@@ -213,7 +218,7 @@ mctop_bw: ${TSTPATH}/mctop_bw.o libmctop.a ${INCLUDES}
 ################################################################################
 
 $(SRCPATH)/%.o:: $(SRCPATH)/%.c 
-	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -Iexternal/include -o $@ -c $<
 
 $(MSTPATH)/%.o:: $(MSTPATH)/%.cc FORCE
 	${CPP} $(CFLAGS) $(VFLAGS) -I${INCLUDE} -o $@ -c $<
