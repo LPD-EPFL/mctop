@@ -22,17 +22,19 @@ VFLAGS = -D_GNU_SOURCE
 
 UNAME := $(shell uname -n)
 
-CC := cc
-CPP := g++
+ifeq ($(UNAME), diassrv8)
+  CC := /home-local/vasilis/gcc/localgcc/bin/gcc-4.9
+  CPP := /home-local/vasilis/gcc/localgcc/bin/g++-4.9
+endif
 
 ifeq ($(UNAME), lpdquad)
-ifneq ($(TSX), 0)
-TSX = 1
-endif
+  ifneq ($(TSX), 0)
+    TSX = 1
+  endif
 endif
 
 ifeq ($(TSX),1)
-CFLAGS += -D__TSX__ -mrtm
+  CFLAGS += -D__TSX__ -mrtm
 endif
 
 ifneq ($(SSE),)
