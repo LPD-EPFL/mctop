@@ -490,6 +490,28 @@ mctop_alloc_details_calc(mctop_alloc_t* alloc, uint* n_cores, uint* n_hwcs_socke
   *n_cores = n;
 }
 
+static double
+mctop_pow_estimate_socket(socket_t* socket, const uint n_cores, const uint n_hwcs, mctop_pow_type type)
+{
+  mctop_pow_info_t* pi = socket->pow_info;
+  const double sock_othr = (pi->all_cores[type] - pi->idle[type]) / socket->n_cores;
+
+  double pow_estimate = pi->idle[type] + ((n_hwcs - n_cores) * pi->second_hwc_core[type]);
+  if (n_cores <= 2)
+    {
+      pow_estimate += pi->first_core[type];
+    }
+  if (n_cores == 2)
+    {
+      pow_estimate += pi->second_core[type];
+    }
+  if (n_cores > 2)
+    {
+      pow_estimate += (n_cores * sock_othr);
+    }
+  return pow_estimate;
+}
+
 static mctop_alloc_t*
 mctop_alloc_create_config(mctop_t* topo, const int n_hwcs, const int n_config, mctop_alloc_policy policy,
 			  const uint do_more)
@@ -610,6 +632,47 @@ mctop_alloc_create_config(mctop_t* topo, const int n_hwcs, const int n_config, m
 							      alloc->sockets[i]->local_node);
 	  mctop_barrier_init(alloc->socket_barriers_cores[i], alloc->n_cores_per_socket[i]);
 	}
+
+      
+      if (topo->pow_info != NULL)
+	{
+	  double tot_tot = 0, tot_pac = 0;
+	  alloc->pow_max_pac = malloc_assert((topo->n_sockets + 1) * sizeof(double));
+	  alloc->pow_max_tot = malloc_assert((topo->n_sockets + 1) * sizeof(double));
+	  for (uint s = 0; s < alloc->n_sockets; s++)
+	    {
+	      socket_t* socket = alloc->sockets[s];
+	      const uint n_cores = alloc->n_cores_per_socket[s];
+	      const uint n_hwcs = alloc->n_hwcs_per_socket[s];	      
+	      const double pow_pac = mctop_pow_estimate_socket(socket, n_cores, n_hwcs, PACKAGE);
+	      double pow_tot = pow_pac;
+	      const uint n_cores_sat = 0.5 + (mctop_socket_get_bw_local(socket) / mctop_socket_get_bw_local_one(socket));
+	      mctop_pow_info_t* pi = socket->pow_info;
+	      if (n_cores >= n_cores_sat)
+		{
+		  pow_tot += pi->all_cores[DRAM];
+		}
+	      else 
+		{
+		  double extra = (n_cores * pi->second_core[DRAM]) + 
+		    ((n_hwcs - n_cores) * pi->second_hwc_core[DRAM]);
+		  if (extra > pi->all_cores[DRAM])
+		    {
+		      extra = pi->all_cores[DRAM];
+		    }
+		  pow_tot += extra;
+		}
+
+	      /* printf("## Pac -- Estimate pow for %u = %f\n", s, pow_pac); */
+	      /* printf("## Tot -- Estimate pow for %u = %f\n", s, pow_tot); */
+	      alloc->pow_max_pac[s] = pow_pac;
+	      alloc->pow_max_tot[s] = pow_tot;
+	      tot_pac += pow_pac;
+	      tot_tot += pow_tot;
+	    }
+	  alloc->pow_max_pac[topo->n_sockets] = tot_pac;
+	  alloc->pow_max_tot[topo->n_sockets] = tot_tot;
+	}
     }
  
   return alloc;
@@ -660,6 +723,21 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 	}
       printf(" \n");
     }
+  if (alloc->pow_max_pac)
+    {
+      printf("## Max Power Socket  : ");
+      for (int i = 0; i < alloc->n_sockets; i++)
+  	{
+  	  printf("%-5.1f ", alloc->pow_max_pac[i]);
+  	}
+      printf(" = %.1f Watt\n", alloc->pow_max_pac[alloc->n_sockets]);
+      printf("## Max Power Total   : ");
+      for (int i = 0; i < alloc->n_sockets; i++)
+  	{
+  	  printf("%-5.1f ", alloc->pow_max_tot[i]);
+  	}
+      printf(" = %.1f Watt\n", alloc->pow_max_tot[alloc->n_sockets]);
+    }
   printf("## # Cores           : %u\n", alloc->n_cores);
   printf("## HW Contexts (%-3u) : ", alloc->n_hwcs);
   for (int i = 0; i < alloc->n_hwcs; i++)
@@ -670,7 +748,7 @@ mctop_alloc_print(mctop_alloc_t* alloc)
 	}
       else
 	{
-      printf("%u ", alloc->hwcs[i]);
+	  printf("%u ", alloc->hwcs[i]);
 	}
     }
   printf("\n");
@@ -721,6 +799,11 @@ mctop_alloc_free(mctop_alloc_t* alloc)
   if (alloc->bw_proportions != NULL)
     {
       free(alloc->bw_proportions);
+    }
+  if (alloc->pow_max_pac != NULL)
+    {
+      free(alloc->pow_max_pac);
+      free(alloc->pow_max_tot);
     }
 
   if (alloc->global_barrier != NULL)

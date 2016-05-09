@@ -56,6 +56,8 @@ extern "C" {
     uint* n_cores_per_socket;
     uint* node_to_nth_socket;
     double* bw_proportions;
+    double* pow_max_pac;
+    double* pow_max_tot;
     uint max_latency;
     double min_bandwidth;
     uint* hwcs;
