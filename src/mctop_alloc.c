@@ -5,6 +5,8 @@
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
+#define MCTOP_ALLOC_INVALID_ID (-1)
+
 /* #define MA_DP(args...) printf(args) */
 #define MA_DP(args...) //printf(args)
 
@@ -1247,7 +1249,7 @@ mctop_alloc_thread_hw_context_id()
     {
       return __mctop_thread_info.hwc_id;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 int
@@ -1257,7 +1259,7 @@ mctop_alloc_thread_core_id()
     {
       return __mctop_thread_info.nth_core;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 uint
@@ -1267,7 +1269,7 @@ mctop_alloc_thread_incore_id()
     {
       return __mctop_thread_info.nth_hwc_in_core;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 uint
@@ -1277,7 +1279,7 @@ mctop_alloc_thread_insocket_id()
     {
       return __mctop_thread_info.nth_hwc_in_socket;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 /* mctop_alloc_thread_insocket_id() == 0 */
@@ -1312,7 +1314,7 @@ mctop_alloc_thread_core_insocket_id()
     {
       return __mctop_thread_info.nth_core_socket;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 int
@@ -1322,7 +1324,7 @@ mctop_alloc_thread_local_node()
     {
       return __mctop_thread_info.local_node;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 int
@@ -1332,7 +1334,7 @@ mctop_alloc_thread_local_socket_id()
     {
       return __mctop_thread_info.socket_id;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 int
@@ -1342,7 +1344,7 @@ mctop_alloc_thread_node_id()
     {
       return __mctop_thread_info.nth_socket;
     }
-  return 0;
+  return MCTOP_ALLOC_INVALID_ID;
 }
 
 
