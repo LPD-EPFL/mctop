@@ -364,6 +364,10 @@ hwc_gs_t*
 mctop_id_get_hwc_gs(mctop_t* topo, const uint id)
 {
   uint lvl = mctop_id_get_lvl(id);
+  if (lvl > topo->n_levels)
+    {
+      return NULL;
+    }
   hwc_gs_t* gs = NULL;
   if (lvl == 0)
     {
@@ -395,6 +399,10 @@ mctop_ids_get_latency(mctop_t* topo, const uint id0, const uint id1)
 {
   hwc_gs_t* gs0 = mctop_id_get_hwc_gs(topo, id0);
   hwc_gs_t* gs1 = mctop_id_get_hwc_gs(topo, id1);
+  if (gs0 == NULL || gs1 == NULL)
+    {
+      return 0;
+    }
 
   while (gs0->level < gs1->level)
     {
