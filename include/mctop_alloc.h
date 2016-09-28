@@ -86,6 +86,7 @@ extern "C" {
     uint hwc_id;
     uint local_node;
     uint nth_socket;
+    uint socket_id;
 
     uint nth_hwc_in_core;
     uint nth_hwc_in_socket;
@@ -172,6 +173,7 @@ extern "C" {
   int mctop_alloc_thread_local_node(); /* local NUMA node of thread */
   int mctop_alloc_thread_node_id();   /* sequence id of the node that this thread is using. For example, the allocator
 					  could be using sockets [3, 7]. Socket 3 is node seq id 0 and 7 seq id 1. */
+  int mctop_alloc_thread_local_socket_id(); /* MCTOP id of the local socket */
 
   uint mctop_alloc_thread_is_node_leader(); /* mctop_alloc_thread_insocket_id() == 0 */
   uint mctop_alloc_thread_is_node_last(); /* mctop_alloc_thread_insocket_id() == (n_hwcs in socket - 1) */

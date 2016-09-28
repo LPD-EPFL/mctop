@@ -920,6 +920,8 @@ mctop_alloc_pin_prepare(mctop_alloc_t* alloc, const uint id)
 
       __mctop_thread_info.local_node = mctop_hwcid_get_local_node(alloc->topo, hwcid);
       socket_t* socket = mctop_hwcid_get_socket(alloc->topo, hwcid);
+      __mctop_thread_info.socket_id = socket->id;
+
       size_t n_hwcs_prev_sockets = 0;
       for (int s = 0; s < alloc->n_sockets; s++)
 	{
@@ -1319,6 +1321,16 @@ mctop_alloc_thread_local_node()
   if (likely(mctop_alloc_thread_is_pinned()))
     {
       return __mctop_thread_info.local_node;
+    }
+  return 0;
+}
+
+int
+mctop_alloc_thread_local_socket_id()
+{
+  if (likely(mctop_alloc_thread_is_pinned()))
+    {
+      return __mctop_thread_info.socket_id;
     }
   return 0;
 }

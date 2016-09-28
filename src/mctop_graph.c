@@ -275,7 +275,7 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		  /* print2(ofp, "mem_lat_%u_%u [label=\"Node#%u\\n%u ns\\n%.1f GB/s\", color=\"red\", " */
 		  /* 	 "style=filled, fillcolor=\"gray\"];\n",  */
 		  /* 	 i, socket->id, i, socket->mem_latencies[i], socket->mem_bandwidths_r[i]); */
-		  print2(ofp, "mem_lat_%u_%u [label=\"Node\\n%u\", color=\"red\", "
+		  print2(ofp, "mem_lat_%u_%u [label=\"Node %u\", color=\"red\", "
 			 "style=filled, fillcolor=\"gray\", fontsize=16];\n", i, socket->id, i);
 		}
 	      else
@@ -304,7 +304,7 @@ mctop_dot_graph_intra_socket_plot(mctop_t* topo)
 		  const uint cp = id_med_first_row;
 		  if (topo->has_mem == BANDWIDTH)
 		    {
-		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cy\\n%.1f GB/s\"];\n", 
+		      print2(ofp, "mem_lat_%u_%u -- gs_%u [lhead=cluster_%u, label=\"%u cycles, %.1f GB/s\"];\n", 
 			     i, socket->id, socket->children[cp]->id, socket->id,
 			     socket->mem_latencies[i], socket->mem_bandwidths_r[i]);
 		    }
