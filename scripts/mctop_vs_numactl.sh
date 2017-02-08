@@ -10,7 +10,8 @@ numactl -H | grep -v MB > $out_numa;
 
 echo "|--> NUMA                                                     |--> MCTOP";
 
-if [ ! $(which colordiff) = "" ];
+has_colordiff=$(which colordiff);
+if [ ! "$has_colordiff" = "" ];
 then
     diff -w -s -y -d $out_numa $out_mctop | colordiff
 else
