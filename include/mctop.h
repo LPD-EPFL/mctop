@@ -252,12 +252,17 @@ extern "C" {
   hwc_gs_t* mctop_socket_get_nth_gs_core(socket_t* socket, const uint nth);
   hwc_gs_t* mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl);
   size_t mctop_socket_get_num_cores(socket_t* socket);
+  size_t mctop_socket_get_num_hw_contexts(socket_t* socket);
+
   double mctop_socket_get_bw_local(socket_t* socket);
   double mctop_socket_get_bw_local_one(socket_t* socket);
 
   double mctop_socket_get_bw_to(socket_t* socket, socket_t* to);
 
   uint mctop_socket_get_local_node(socket_t* socket);
+
+  /* node getters ******************************************************************* */
+  socket_t* mctop_node_to_socket(mctop_t* topo, const uint nid);
 
   /* hwcid ************************************************************************** */
   uint mctop_hwcid_get_local_node(mctop_t* topo, const uint hwcid);

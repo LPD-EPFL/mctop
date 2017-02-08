@@ -151,6 +151,7 @@ crawl(void* param)
   const uint _verbose = test_verbose;
   const int _do_dvfs = test_dvfs;
   int max_stdev = test_max_stdev;
+  uint n_retries = 0;
 
   mctop_prof_t* profiler = mctop_prof_create(_num_reps);
   mctop_prof_stats_t* stats = malloc_assert(sizeof(mctop_prof_stats_t));
@@ -211,7 +212,13 @@ crawl(void* param)
       size_t history_med[2] = { 0 };
       for (int y = x + 1; y < _num_hw_ctx; y++)
 	{
-	  ID1_DO(mctop_set_cpu(NULL, y););
+	  ID1_DO(
+		 mctop_set_cpu(NULL, y);
+		 if (_do_dvfs)
+		   {
+		     /* dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL); */
+		   }
+		 );
 
 	  hw_warmup(cache_line, _num_warmup_reps, barrier2, tid, profiler);
 
@@ -233,24 +240,46 @@ crawl(void* param)
 
 	  mctop_prof_stats_calc(profiler, stats);
 	  double stdev = stats->std_dev_perc;
-	  size_t median = stats->median;
+	  int64_t median = stats->median;
 	  if (likely(tid == 0))
 	    {
-	      if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
+	      if (unlikely(median < 0))
 		{
 		  high_stdev_retry = 1;
 		  cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
 		  test_cache_line = cache_lines_create(_test_cl_size, node_local);
+		  if (n_retries == 100)
+		    {
+		      printf("100 retries!\n");
+		      sleep(1);
+		      /* for (uint i = 0; i < _num_reps; i++) */
+		      /* 	{ */
+		      /* 	  printf("%zd \n", profiler->latencies[i]); */
+		      /* 	} */
+		      /* printf("\n"); */
+
+		      /* exit(-1); */
+		    }
+		}
+	      else
+		{
+		  if (stdev > max_stdev && (history_med[0] != median || history_med[1] != median))
+		    {
+		      high_stdev_retry = 1;
+		      cache_lines_destroy(test_cache_line, _test_cl_size, _do_mem == ON_TIME);
+		      test_cache_line = cache_lines_create(_test_cl_size, node_local);
+		    }
+
+		  lat_table_2d_set(lat_table, _num_hw_ctx, x, y, median);
+		  history_med[0] = history_med[1];
+		  history_med[1] = median;
 		}
 
 	      if (unlikely(_verbose))
 		{
-		  printf(" [%02d->%02d] median %-4zu with stdv %-7.2f%% | limit %2d%% %s\n",
+		  printf(" [%02d->%02d] median %-4zd with stdv %-7.2f%% | limit %2d%% %s\n",
 			 x, y, median, stdev, max_stdev,  high_stdev_retry ? "(high)" : "");
 		}
-	      lat_table_2d_set(lat_table, _num_hw_ctx, x, y, median);
-	      history_med[0] = history_med[1];
-	      history_med[1] = median;
 	    }
 	  else
 	    {
@@ -268,11 +297,13 @@ crawl(void* param)
 		}
 	      high_stdev_retry = 0;
 	      y--;
+	      n_retries++;
 	    }
 	  else
 	    {
 	      max_stdev = test_max_stdev;
 	      history_med[0] = history_med[1] = 0;
+	      n_retries = 0;
 	    }
 	}
 
@@ -282,9 +313,10 @@ crawl(void* param)
 	  double sec = (_clock_stop - _clock_start) / (double) CLOCKS_PER_SEC;
 	  test_completion_time += sec;
 	  test_completion_perc += test_completion_perc_step;
-	  printf("\r# Progress : %6.1f%% completed in %8.1f secs (step took %7.1f secs)",
-	  	 test_completion_perc, test_completion_time, sec);
-	  fflush(stdout);
+	  NOT_VERBOSE(printf("\r# Progress : %6.1f%% completed in %8.1f secs (step took %7.1f secs)",
+			     test_completion_perc, test_completion_time, sec);
+		      fflush(stdout);
+		      );
 	  assert(sum != 0);
 	}
     }

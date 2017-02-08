@@ -44,6 +44,7 @@
 /cscope.files
 /data/*
 /mct_load
+/mct_numactl_print
 /mctop
 /mctop_bw
 /mctop_bw.c
@@ -79,6 +80,7 @@
 /sort1c
 /sort_algos
 /sortcc
+/spin
 /topo_latencies
 /work_queue
 /work_queue_sort

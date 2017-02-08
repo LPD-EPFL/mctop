@@ -190,10 +190,16 @@ mctop_socket_get_first_child_lvl(socket_t* socket, const uint lvl)
   return cur;
 }
 
-size_t
+inline size_t
 mctop_socket_get_num_cores(socket_t* socket)
 {
   return socket->n_cores;
+}
+
+inline size_t
+mctop_socket_get_num_hw_contexts(socket_t* socket)
+{
+  return socket->n_hwcs;
 }
 
 inline double
@@ -219,6 +225,20 @@ mctop_socket_get_bw_to(socket_t* socket, socket_t* to)
 {
   return socket->mem_bandwidths_r[to->local_node];
 }
+
+/* node getters ******************************************************************** */
+
+inline socket_t*
+mctop_node_to_socket(mctop_t* topo, const uint nid)
+{
+  if (likely(topo->has_mem) && nid < mctop_get_num_nodes(topo))
+    {
+      return &topo->sockets[topo->node_to_socket[nid]];
+    }
+  return NULL;
+}
+
+
 
 /* sibling getters ***************************************************************** */
 

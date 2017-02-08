@@ -105,6 +105,9 @@ mctop: 	${MCTOP_OBJS} ${INCLUDES}
 mct_load: ${SRCPATH}/mct_load.o libmctop.a ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_load.o -o mct_load -lmctop ${LDFLAGS}
 
+mct_numactl_print: ${SRCPATH}/mct_numactl_print.o libmctop.a ${INCLUDES}
+	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mct_numactl_print.o -o mct_numactl_print -lmctop ${LDFLAGS}
+
 mctop_latency: ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/helper.o ${INCLUDES}
 	${CC} $(CFLAGS) $(VFLAGS) -I${INCLUDE} ${SRCPATH}/mctop_control.o ${SRCPATH}/mctop_latency.o ${SRCPATH}/helper.o -o mctop_latency ${LDFLAGS}
 
