@@ -1,6 +1,8 @@
 # mctop
 multi-core topology tool
 
+*TODO*: Write a proper README file. 
+
 ## Compilation
 Invoke `make`. `libnuma` is required.
 
@@ -17,7 +19,4 @@ If you do not pass any parameters, then it plots topology of the current machine
 
 To use the mctop library for scheduling threads (`libmctop.a`), you can simply include `mctop.h` in your software and link with `-lmctop`. For an example, look at [run_on_node0.c](./tests/run_on_node0.c).
 
-## Interface
 
-For now, I have implemented very few scheduling functions in `libmctop`. 
-I will extend the interface as needed.
