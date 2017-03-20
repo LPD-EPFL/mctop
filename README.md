@@ -4,7 +4,7 @@ multi-core topology tool
 **TODO**: Write a proper README file. 
 
 * Website             : http://lpd.epfl.ch/site/mctop
-* Author              : Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
+* Author              : Vasileios Trigonakis <github@trigonakis.com>
 * Related Publications:
   - [*Abstracting Multi-Core Topologies with MCTOP*](http://eurosys2017.org),  
     Georgios Chatzopoulos and Rachid Guerraoui (EPFL), Tim Harris (Oracle Labs), and Vasileios Trigonakis (EPFL/Oracle Labs) (alphabetical order),  
@@ -25,5 +25,9 @@ To load and plot a graph you can use the [./scripts/load_and_plot.sh](./scripts/
 If you do not pass any parameters, then it plots topology of the current machine. Otherwise, you can pass the hostname of the target machine (the corresponding mct file should exist in the `desc` folder). This script accepts a second parameter to fix the maximum latency level that you want to print as a direct cross-socket link. For instance, on a 4-socket processor, you might have the following direct links (0,1), (0,2), (1,3), (2,3). In this case, 0 with 3 and 1 with 2 communicate over 2 hops, thus you might want to not represent those links on the graph.
 
 To use the mctop library for scheduling threads (`libmctop.a`), you can simply include `mctop.h` in your software and link with `-lmctop`. For an example, look at [run_on_node0.c](./tests/run_on_node0.c).
+
+## DVFS
+
+Note that DVFS is the worst enemy of `mctop`. In case `mctop` fails to infer the topology of a processor, even after tuning its parameters, you can try disabling DVFS from the BIOS settings of the processor.
 
 
