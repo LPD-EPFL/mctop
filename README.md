@@ -1,7 +1,14 @@
 # mctop
 multi-core topology tool
 
-*TODO*: Write a proper README file. 
+**TODO**: Write a proper README file. 
+
+* Website             : http://lpd.epfl.ch/site/mctop
+* Author              : Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
+* Related Publications:
+  - [*Abstracting Multi-Core Topologies with MCTOP*](http://eurosys2017.org),  
+    Georgios Chatzopoulos and Rachid Guerraoui (EPFL), Tim Harris (Oracle Labs), and Vasileios Trigonakis (EPFL/Oracle Labs) (alphabetical order),  
+    EuroSys 2017 (*to appear*)
 
 ## Compilation
 Invoke `make`. `libnuma` is required.
