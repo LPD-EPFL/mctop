@@ -934,6 +934,14 @@ main(int argc, char **argv)
   else  /* test_mem_augment == 1 */
     {
       topo = mctop_load(NULL);
+      if (topo == NULL)
+        {
+          free(tds);
+          free(barrier2);
+          free(lat_table);
+          return 0;
+        }
+
     }
 
   /*
