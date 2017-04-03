@@ -97,7 +97,7 @@ cdf_cluster(cdf_t* cdf, const uint sens, const uint target_n_clusters)
       size_t pprev = cdf->points[0].val, pprev_min = 0, n_clusters = 0, median = 0, cluster_size = 1;
       for (int i = 1; i < cdf->n_points; i++)
 	{
-	  if (cdf->points[i].val > (pprev + sensitivity))
+	   if (cdf->points[i].val > (pprev + sensitivity) || (pprev == 0 && cdf->points[i].val > 0))
 	    {
 	      CDF_CLUSTER_DEBUG_PRINT(" -- size %zu\n", cluster_size);
 	      clusters[n_clusters].idx = n_clusters;
