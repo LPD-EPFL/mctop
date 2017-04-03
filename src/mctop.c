@@ -936,6 +936,7 @@ main(int argc, char **argv)
       topo = mctop_load(NULL);
     }
 
+  /*
   if (test_do_mem > NO_MEM && (!test_mem_augment || (test_mem_augment && topo->cache == NULL)))
     {
       printf("#### Calculating cache latencies / sizes\n");
@@ -947,7 +948,8 @@ main(int argc, char **argv)
     {
       printf("## Topology already contains cache info!\n");
     }
-
+  */
+	
   int mem_lat_new = 1;
   if (test_do_mem >= ON_TOPO)
     {
