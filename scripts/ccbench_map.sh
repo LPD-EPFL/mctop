@@ -14,7 +14,7 @@ do
     for n1 in $nodes;
     do
 	c1=$(echo "$numactl_out" | awk -v node=$n1 '/node .* cpus/ {if ($2 == node) print $5 }');
-	echo "########## $n0 (core $c0)  <--> $n1 (core $c1)";
-	${ccbench} -x$c0 -y$c1 | grep "avg :";
+	printf "########## %3d (core %3d)  <--> %3d (core %3d) #######################################################\n" $n0 $c0 $n1 $c1;
+	${ccbench} -x$c0 -y$c1 | grep -A7 "statistics:";
     done;
 done;
