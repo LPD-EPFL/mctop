@@ -216,7 +216,7 @@ crawl(void* param)
 		 mctop_set_cpu(NULL, y);
 		 if (_do_dvfs)
 		   {
-		     /* dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL); */
+		     dvfs_scale_up(test_num_dvfs_reps, test_dvfs_ratio, NULL);
 		   }
 		 );
 
