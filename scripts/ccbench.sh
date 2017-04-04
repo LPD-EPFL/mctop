@@ -19,7 +19,7 @@ then
     cd -;
 fi;
 
-${ccbench} -t12 -s1 $@;
+${ccbench} -r50000 -t12 -s1 $@;
 
 
 
