@@ -22,7 +22,7 @@ fi;
 
 
 echo "";
-echo "Use ccbench (https://github.com/trigonak/ccbench) to explore potential differences!"
-
+echo "Use ccbench (https://github.com/trigonak/ccbench) to explore any differences!"
+echo "Invoke ./scripts/ccbench.sh -h for help!";
 
 rm $out_numa $out_mctop &> /dev/null;
