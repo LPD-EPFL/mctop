@@ -26,6 +26,8 @@ do
 done;
 echo "";
 
+out=ccbench_socket_node${node}.out;
+printf "" > $out;
 
 for c0 in $cores;
 do
@@ -36,7 +38,10 @@ do
 	then
 	    printf " %-8d " 0;
 	else
+	    echo "------------------------------------------------------------------------>> ${c0} - ${c1}" >> $out;
 	    res=$(${ccbench} -x$c0 -y$c1);
+	    echo "$res" >> $out;
+
 	    xr=$(echo "$res" | awk '/\[00\]   0-10\%/ { print $9 }');
 	    yr=$(echo "$res" | awk '/\[01\]   0-10\%/ { print $9 }');
 	    printf "%4.0f/%-4.0f " $xr $yr;
