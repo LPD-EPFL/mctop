@@ -321,7 +321,7 @@ extern "C" {
 
 
   /* ******************************************************************************** */
-  /* MCTOP Scheduling */
+  /* MCTOP Placement */
   /* ******************************************************************************** */
   int mctop_run_on_socket(mctop_t* topo, const uint socket_n);
   int mctop_run_on_socket_nm(mctop_t* topo, const uint socket_n); /* doea not set preferred node */
