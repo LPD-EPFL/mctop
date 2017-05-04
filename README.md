@@ -4,9 +4,9 @@ multi-core topology tool
 * Website             : http://lpd.epfl.ch/site/mctop
 * Author              : Vasileios Trigonakis <github@trigonakis.com>
 * Related Publications:
-  - [*Abstracting Multi-Core Topologies with MCTOP*](http://eurosys2017.org),  
+  - [*Abstracting Multi-Core Topologies with MCTOP*](http://dl.acm.org/citation.cfm?id=3064194),  
     Georgios Chatzopoulos and Rachid Guerraoui (EPFL), Tim Harris (Oracle Labs), and Vasileios Trigonakis (EPFL/Oracle Labs) (alphabetical order),  
-    EuroSys 2017 (*to appear*)
+    EuroSys 2017
 
 ## Compilation
 Invoke `make`. `libnuma` is required.
